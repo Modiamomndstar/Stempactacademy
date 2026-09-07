@@ -1,0 +1,58 @@
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:16-alpine
+    container_name: stempact-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stempact}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stempact_secure_password_2025}
+      POSTGRES_DB: ${POSTGRES_DB:-stempact_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stempact} -d ${POSTGRES_DB:-stempact_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Express + Prisma Backend Service
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: stempact-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stempact}:${POSTGRES_PASSWORD:-stempact_secure_password_2025}@db:5432/${POSTGRES_DB:-stempact_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-stempact_jwt_super_secret_production_key_2025}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
+    ports:
+      - "5000:5000"
+    volumes:
+      - stempact_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React Vite Frontend Service (Served via Nginx Reverse Proxy)
+  web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: stempact-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+    driver: local
+  stempact_uploads:
+    driver: local

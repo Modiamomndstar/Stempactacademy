@@ -1,0 +1,606 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ACADEMIC_ADMIN
+  FINANCE_ADMIN
+  INSTRUCTOR
+  STUDENT
+  PARENT
+}
+
+enum ProgramStatus {
+  DRAFT
+  PUBLISHED
+  UPCOMING
+  OPEN_FOR_APPLICATION
+  FULL
+  CLOSED
+  ARCHIVED
+}
+
+enum CohortStatus {
+  DRAFT
+  UPCOMING
+  OPEN
+  ALMOST_FULL
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ASSESSMENT_PENDING
+  ASSESSED
+  PLACED
+  ADMITTED
+  ENROLLED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum CertificateType {
+  PARTICIPATION
+  COMPLETION
+  PROFESSIONAL
+  ADVANCED_PROFESSIONAL
+  SPECIALIST
+  INNOVATION
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          Role      @default(STUDENT)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studentProfile    StudentProfile?
+  parentProfile     ParentProfile?
+  instructorProfile InstructorProfile?
+  applications      Application[]
+  assessmentAttempts AssessmentAttempt[]
+  submissions       Submission[]
+  attendanceMarked  Attendance[]        @relation("InstructorAttendance")
+  announcements     Announcement[]      @relation("AuthorAnnouncements")
+}
+
+model School {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  description String
+  icon        String?
+  color       String    @default("#2563eb")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  programs    Program[]
+}
+
+model Program {
+  id                   String        @id @default(uuid())
+  code                 String        @unique
+  name                 String
+  schoolId             String
+  school               School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  description          String
+  targetLearner        String
+  entryRequirements    String
+  prerequisites        String
+  duration             String
+  contactHours         Int           @default(48)
+  learningLevels       String        // JSON string or summary e.g. "Level 1: Beginner, Level 2: Intermediate, Level 3: Advanced"
+  tools                String        // comma-separated or JSON e.g. "VSCode, Python, React, Git"
+  projects             String        // summary of hands-on projects
+  capstone             String        // capstone description
+  assessmentCriteria   String
+  competencies         String
+  certification        String
+  careerPathways       String
+  progressionPathway   String
+  status               ProgramStatus @default(OPEN_FOR_APPLICATION)
+  isFeatured           Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  cohorts              Cohort[]
+  applications         Application[]
+  courses              Course[]
+  competencyList       Competency[]
+  assessments          Assessment[]
+  projectsList         Project[]
+}
+
+model Course {
+  id          String     @id @default(uuid())
+  programId   String
+  program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  code        String
+  title       String
+  description String
+  credits     Int        @default(3)
+  order       Int        @default(0)
+  modules     Module[]
+  assignments Assignment[]
+}
+
+model Module {
+  id            String   @id @default(uuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  durationHours Int      @default(12)
+  order         Int      @default(0)
+  lessons       Lesson[]
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  moduleId  String
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  resources String?  // links or docs
+  order     Int      @default(0)
+}
+
+model Competency {
+  id          String   @id @default(uuid())
+  programId   String
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  code        String
+  title       String
+  description String
+  category    String   // e.g. "Technical", "Analytical", "Soft Skills"
+  studentRecords StudentCompetency[]
+}
+
+model Cohort {
+  id                  String        @id @default(uuid())
+  cohortCode          String        @unique // e.g. "STP-2025-C1-WD"
+  name                String
+  programId           String
+  program             Program       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  level               String        @default("Level 1 (Foundation)")
+  startDate           DateTime
+  endDate             DateTime
+  applicationDeadline DateTime
+  schedule            String        // e.g. "Mon, Wed, Fri 4:00 PM - 6:30 PM"
+  mode                String        @default("Hybrid (Onsite Ile-Ife & Virtual)")
+  location            String        @default("STEMPACT Main Hub, Ile-Ife, Osun State")
+  instructorName      String        @default("Academy Lead Instructor")
+  maxCapacity         Int           @default(25)
+  currentEnrollment   Int           @default(0)
+  trainingFee         Float         @default(65000)
+  registrationFee     Float         @default(5000)
+  certificationFee    Float         @default(10000)
+  discountPercentage  Float         @default(0)
+  status              CohortStatus  @default(OPEN)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  applications        Application[]
+  admissions          Admission[]
+  classSessions       ClassSession[]
+  studentProfiles     StudentProfile[]
+  assignments         Assignment[]
+  projects            Project[]
+}
+
+model Application {
+  id                  String            @id @default(uuid())
+  applicationNumber   String            @unique // e.g. "APP-2025-0104"
+  userId              String?
+  user                User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  programId           String
+  program             Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohortId            String?
+  cohort              Cohort?           @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  preferredSchedule   String
+  fullName            String
+  dateOfBirth         DateTime
+  gender              String
+  phone               String
+  email               String
+  address             String
+  educationLevel      String
+  institution         String?
+  previousTraining    String?
+  technicalExperience String?
+  relevantSkills      String?
+  previousProjects    String?
+  careerGoals         String
+  learningObjectives  String
+  statementOfPurpose  String
+  isMinor             Boolean           @default(false)
+  parentName          String?
+  parentPhone         String?
+  parentEmail         String?
+  parentRelationship  String?
+  consentAccepted     Boolean           @default(true)
+  status              ApplicationStatus @default(SUBMITTED)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  assessmentAttempts  AssessmentAttempt[]
+  placement           Placement?
+  admission           Admission?
+  invoices            Invoice[]
+}
+
+model Assessment {
+  id              String   @id @default(uuid())
+  title           String
+  programId       String
+  program         Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  durationMinutes Int      @default(30)
+  passingScore    Int      @default(60)
+  instructions    String
+  questions       AssessmentQuestion[]
+  attempts        AssessmentAttempt[]
+}
+
+model AssessmentQuestion {
+  id           String      @id @default(uuid())
+  assessmentId String
+  assessment   Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  category     String      // DIGITAL_LITERACY, LOGICAL_REASONING, MATHEMATICS, TECHNICAL_KNOWLEDGE, PROGRAMMING, PROBLEM_SOLVING
+  type         String      @default("MULTIPLE_CHOICE") // MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, CODE_SNIPPET
+  prompt       String
+  codeSnippet  String?
+  options      String      // JSON array of options
+  correctAnswer String
+  explanation  String?
+  points       Int         @default(5)
+  order        Int         @default(0)
+}
+
+model AssessmentAttempt {
+  id                     String      @id @default(uuid())
+  applicationId          String
+  application            Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId                 String?
+  user                   User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assessmentId           String
+  assessment             Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  score                  Float
+  maxScore               Float
+  percentage             Float
+  categoryScores         String      // JSON string of scores per category
+  answers                String      // JSON string of student answers
+  recommendedProgram     String
+  recommendedLevel       String
+  recommendationReason   String
+  completedAt            DateTime    @default(now())
+
+  placement              Placement?
+}
+
+model Placement {
+  id                  String            @id @default(uuid())
+  applicationId       String            @unique
+  application         Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  assessmentAttemptId String?           @unique
+  assessmentAttempt   AssessmentAttempt? @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
+  recommendedProgram  String
+  recommendedLevel    String
+  reason              String
+  approvedProgram     String?
+  approvedLevel       String?
+  approvedCohortCode  String?
+  adminNotes          String?
+  reviewerName        String?
+  status              String            @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, MODIFIED, REJECTED
+  reviewedAt          DateTime?
+  createdAt           DateTime          @default(now())
+}
+
+model Admission {
+  id                  String      @id @default(uuid())
+  admissionNumber     String      @unique // e.g. "ADM-2025-089"
+  studentIdNumber     String      @unique // e.g. "STP-2025-0142"
+  applicationId       String      @unique
+  application         Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  cohortId            String
+  cohort              Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  programName         String
+  level               String
+  schedule            String
+  assignedClass       String      @default("Lab 1 - Turing Hall")
+  instructorName      String      @default("Engr. Adeyemi & Tech Faculty")
+  letterPdfPath       String?
+  orientationDate     DateTime?
+  acceptanceDeadline  DateTime?
+  whatsappGroupUrl    String      @default("https://chat.whatsapp.com/stempact-community")
+  handbookUrl         String      @default("/resources/STEMPACT_Student_Handbook_2025.pdf")
+  status              String      @default("ISSUED") // ISSUED, ACCEPTED, ENROLLED
+  issuedAt            DateTime    @default(now())
+}
+
+model StudentProfile {
+  id                String       @id @default(uuid())
+  userId            String       @unique
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentIdNumber   String       @unique // e.g. "STP-2025-0142"
+  guardianId        String?
+  guardian          ParentProfile? @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  currentCohortId   String?
+  cohort            Cohort?      @relation(fields: [currentCohortId], references: [id], onDelete: SetNull)
+  currentLevel      String       @default("Level 1")
+  enrollmentDate    DateTime     @default(now())
+  completionRate    Float        @default(0)
+  attendanceRate    Float        @default(100)
+  status            String       @default("ACTIVE") // ACTIVE, GRADUATED, ON_LEAVE
+
+  attendances       Attendance[]
+  submissions       Submission[]
+  competencies      StudentCompetency[]
+  invoices          Invoice[]
+  certificates      Certificate[]
+  projectMembers    ProjectMember[]
+}
+
+model ParentProfile {
+  id               String           @id @default(uuid())
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relationship     String           @default("Parent/Guardian")
+  emergencyContact String?
+  address          String?
+  students         StudentProfile[]
+}
+
+model InstructorProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffCode      String         @unique
+  bio            String?
+  specialization String
+  qualification  String
+  assignedSchools String?       // JSON list of school codes
+  classSessions  ClassSession[]
+}
+
+model ClassSession {
+  id           String             @id @default(uuid())
+  cohortId     String
+  cohort       Cohort             @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  instructorId String?
+  instructor   InstructorProfile? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  title        String
+  date         DateTime
+  startTime    String
+  endTime      String
+  topic        String
+  room         String             @default("Lab 1 - Ile-Ife Hub")
+  attendances  Attendance[]
+}
+
+model Attendance {
+  id             String           @id @default(uuid())
+  classSessionId String
+  classSession   ClassSession     @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date           DateTime         @default(now())
+  status         AttendanceStatus @default(PRESENT)
+  remarks        String?
+  markedById     String?
+  markedBy       User?            @relation("InstructorAttendance", fields: [markedById], references: [id], onDelete: SetNull)
+}
+
+model Assignment {
+  id          String       @id @default(uuid())
+  cohortId    String
+  cohort      Cohort       @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  courseId    String?
+  course      Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  maxPoints   Int          @default(100)
+  dueDate     DateTime
+  submissions Submission[]
+}
+
+model Submission {
+  id             String         @id @default(uuid())
+  assignmentId   String
+  assignment     Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content        String
+  attachmentUrl  String?
+  submittedAt    DateTime       @default(now())
+  grade          Float?
+  feedback       String?
+  gradedAt       DateTime?
+}
+
+model Project {
+  id             String          @id @default(uuid())
+  cohortId       String?
+  cohort         Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  programId      String?
+  program        Program?        @relation(fields: [programId], references: [id], onDelete: SetNull)
+  title          String
+  description    String
+  category       String          // Web, AI, Robotics, Hardware, Solar, Business, Youth
+  skills         String          // comma-separated
+  tools          String          // comma-separated
+  thumbnail      String?
+  githubUrl      String?
+  liveDemoUrl    String?
+  score          Float?
+  feedback       String?
+  isFeaturedPublic Boolean       @default(true)
+  members        ProjectMember[]
+  createdAt      DateTime        @default(now())
+}
+
+model ProjectMember {
+  id        String         @id @default(uuid())
+  projectId String
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  role      String         @default("Core Contributor")
+}
+
+model StudentCompetency {
+  id           String         @id @default(uuid())
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  competencyId String
+  competency   Competency     @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  status       String         @default("ACQUIRED") // ACQUIRED, IN_PROGRESS, NEEDS_PRACTICE
+  evaluatedAt  DateTime       @default(now())
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique // e.g. "INV-2025-0045"
+  studentId     String?
+  student       StudentProfile? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  applicationId String?
+  application   Application?  @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  title         String
+  totalAmount   Float
+  amountPaid    Float         @default(0)
+  balance       Float
+  dueDate       DateTime
+  status        InvoiceStatus @default(UNPAID)
+  items         String        // JSON string of breakdown items
+  payments      Payment[]
+  createdAt     DateTime      @default(now())
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  invoiceId        String
+  invoice          Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paymentReference String        @unique // e.g. "PAY-STP-202509-9821"
+  amount           Float
+  currency         String        @default("NGN")
+  channel          String        @default("PAYSTACK") // PAYSTACK, FLUTTERWAVE, BANK_TRANSFER, TEST
+  status           PaymentStatus @default(PAID)
+  paidAt           DateTime      @default(now())
+  receiptUrl       String?
+  metadata         String?       // JSON
+}
+
+model Certificate {
+  id                String          @id @default(uuid())
+  certificateNumber String          @unique // e.g. "STP-2027-0001"
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentName       String
+  programName       String
+  certificateType   CertificateType @default(PROFESSIONAL)
+  achievement       String
+  issueDate         DateTime        @default(now())
+  verified          Boolean         @default(true)
+  signers           String          // JSON array e.g. ["Dr. Director of Academics", "Lead Instructor"]
+  verificationCode  String          @unique
+  createdAt         DateTime        @default(now())
+}
+
+model Announcement {
+  id             String   @id @default(uuid())
+  title          String
+  content        String
+  targetAudience String   @default("ALL") // ALL, SCHOOL, PROGRAM, COHORT, PARENTS, INSTRUCTORS
+  targetId       String?
+  priority       String   @default("NORMAL") // NORMAL, HIGH, URGENT
+  authorId       String?
+  author         User?    @relation("AuthorAnnouncements", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+}
+
+model Event {
+  id             String   @id @default(uuid())
+  title          String
+  description    String
+  category       String   @default("Workshop")
+  startDate      DateTime
+  endDate        DateTime?
+  location       String   @default("STEMPACT Ile-Ife Innovation Hub")
+  isVirtual      Boolean  @default(false)
+  virtualLink    String?
+  coverImage     String?
+  status         String   @default("UPCOMING") // UPCOMING, ONGOING, COMPLETED
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  excerpt     String
+  content     String
+  coverImage  String?
+  author      String   @default("STEMPACT Academic Board")
+  category    String   @default("STEM Education")
+  readTime    String   @default("4 min read")
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+}
+
+model Testimonial {
+  id           String   @id @default(uuid())
+  name         String
+  role         String
+  organization String?
+  avatarUrl    String?
+  content      String
+  rating       Int      @default(5)
+  isFeatured   Boolean  @default(true)
+}
+
+model Partner {
+  id          String  @id @default(uuid())
+  name        String
+  logoUrl     String?
+  websiteUrl  String?
+  category    String  @default("TECHNOLOGY") // TECHNOLOGY, ACADEMIC, CORPORATE, GOVERNMENT
+  isFeatured  Boolean @default(true)
+}

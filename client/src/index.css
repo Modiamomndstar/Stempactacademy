@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Brand Quadrant Colors */
+    --color-stem-science: #e11d48;
+    --color-stem-tech: #16a34a;
+    --color-stem-eng: #2563eb;
+    --color-stem-math: #d97706;
+    --color-stem-navy: #0f172a;
+    --color-stem-navy-dark: #090e1a;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  code, pre, kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom utility animations and card styles */
+.gradient-stem {
+  background: linear-gradient(135deg, #e11d48 0%, #2563eb 50%, #16a34a 100%);
+}
+
+.gradient-stem-subtle {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.05) 0%, rgba(37, 99, 235, 0.05) 50%, rgba(22, 163, 74, 0.05) 100%);
+}
+
+.quadrant-science-border {
+  border-left: 4px solid #e11d48;
+}
+
+.quadrant-tech-border {
+  border-left: 4px solid #16a34a;
+}
+
+.quadrant-eng-border {
+  border-left: 4px solid #2563eb;
+}
+
+.quadrant-math-border {
+  border-left: 4px solid #d97706;
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark-glass-panel {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
