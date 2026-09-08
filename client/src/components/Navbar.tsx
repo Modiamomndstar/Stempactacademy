@@ -22,6 +22,7 @@ export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, logout, portalRoute } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -34,10 +35,11 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile drawer on route change
+  // Close mobile drawer and dropdowns on route change
   useEffect(() => {
     setIsOpen(false);
     setDropdownOpen(false);
+    setUserMenuOpen(false);
   }, [location.pathname]);
 
   const navLinks = [
@@ -251,23 +253,83 @@ export const Navbar: React.FC = () => {
         {/* User Auth Buttons & Primary CTA */}
         <div className="hidden lg:flex items-center gap-3">
           {user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                to={portalRoute}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-colors"
-              >
-                <User className="w-3.5 h-3.5 text-blue-600" />
-                <span>
-                  {user.firstName} ({user.role.replace('_', ' ')})
-                </span>
-              </Link>
+            <div className="relative">
               <button
-                onClick={logout}
-                title="Log Out"
-                className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/90 text-slate-800 text-xs font-semibold transition-all shadow-2xs hover:shadow-xs"
               >
-                <LogOut className="w-4 h-4" />
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
+                  {user.firstName ? user.firstName[0].toUpperCase() : 'U'}
+                </div>
+                <span className="font-semibold text-slate-800">{user.firstName}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180 text-blue-600' : ''}`} />
               </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-2xl border border-slate-200/90 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-2.5 bg-slate-50 rounded-xl mb-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 truncate">
+                        {user.firstName} {user.lastName}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200/60">
+                        {user.role === 'SUPER_ADMIN'
+                          ? 'Super Admin'
+                          : user.role === 'COORDINATOR_ADMIN'
+                          ? 'Coordinator'
+                          : user.role === 'ACADEMIC_ADMIN'
+                          ? 'Academic Admin'
+                          : user.role === 'FINANCE_ADMIN'
+                          ? 'Finance Admin'
+                          : user.role === 'INSTRUCTOR'
+                          ? 'Faculty'
+                          : user.role === 'PARENT'
+                          ? 'Parent'
+                          : 'Student'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono truncate">
+                      {user.email}
+                    </div>
+                  </div>
+
+                  <div className="py-1 space-y-0.5">
+                    <Link
+                      to={portalRoute}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-800 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-blue-600" />
+                        <span>Go to My Portal</span>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                    </Link>
+
+                    <Link
+                      to="/portal/login"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Switch Portal Door</span>
+                    </Link>
+                  </div>
+
+                  <div className="pt-1 mt-1 border-t border-slate-100">
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-500" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -333,21 +395,58 @@ export const Navbar: React.FC = () => {
 
           <div className="pt-4 border-t border-slate-100 space-y-2">
             {user ? (
-              <>
-                <Link
-                  to={portalRoute}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold"
-                >
-                  <User className="w-4 h-4 text-blue-400" />
-                  <span>Go to My Dashboard</span>
-                </Link>
-                <button
-                  onClick={logout}
-                  className="w-full py-2 px-4 text-center rounded-lg text-rose-600 text-sm font-medium hover:bg-rose-50"
-                >
-                  Log Out
-                </button>
-              </>
+              <div className="space-y-2.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                      {user.firstName ? user.firstName[0].toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-slate-900 leading-tight">
+                        {user.firstName} {user.lastName}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono truncate max-w-[160px]">
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                    {user.role === 'SUPER_ADMIN'
+                      ? 'Super Admin'
+                      : user.role === 'COORDINATOR_ADMIN'
+                      ? 'Coordinator'
+                      : user.role === 'ACADEMIC_ADMIN'
+                      ? 'Academic'
+                      : user.role === 'FINANCE_ADMIN'
+                      ? 'Finance'
+                      : user.role === 'INSTRUCTOR'
+                      ? 'Faculty'
+                      : user.role === 'PARENT'
+                      ? 'Parent'
+                      : 'Student'}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
+                  <Link
+                    to={portalRoute}
+                    onClick={() => setIsOpen(false)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-sm"
+                  >
+                    <span>My Portal</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      logout();
+                    }}
+                    className="py-2 px-3 rounded-xl bg-slate-200/80 hover:bg-rose-100 text-slate-700 hover:text-rose-700 text-xs font-semibold transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
             ) : (
               <Link
                 to="/portal/login"
