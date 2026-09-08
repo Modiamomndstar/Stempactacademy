@@ -203,11 +203,11 @@ export const CertificateVerifyPage: React.FC = () => {
                   </div>
                   <div className="text-[10px] text-slate-400">
                     Date:{' '}
-                    {new Date(certData.issueDate).toLocaleDateString('en-GB', {
+                    {certData.issueDate ? new Date(certData.issueDate).toLocaleDateString('en-GB', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',
-                    })}
+                    }) : 'N/A'}
                   </div>
                 </div>
 

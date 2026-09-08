@@ -263,7 +263,7 @@ export const StudentDashboardPage: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900">{s.title}</span>
                           <span className="text-slate-500 font-medium">
-                            {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} • {s.startTime} - {s.endTime}
+                            {s.date ? new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'TBA'} • {s.startTime || ''} - {s.endTime || ''}
                           </span>
                         </div>
                         <p className="text-slate-600">{s.topic}</p>
@@ -290,7 +290,7 @@ export const StudentDashboardPage: React.FC = () => {
                       <div className="font-bold text-slate-900">{ann.title}</div>
                       <p className="text-slate-600 leading-relaxed">{ann.content}</p>
                       <div className="text-[10px] text-slate-400">
-                        {new Date(ann.createdAt).toLocaleDateString('en-GB')}
+                        {ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('en-GB') : ''}
                       </div>
                     </div>
                   ))}
@@ -298,79 +298,79 @@ export const StudentDashboardPage: React.FC = () => {
               </Card>
 
               <Card className="p-6 space-y-3">
-                <h3 className="font-bold text-sm text-slate-900">Student Handbook & Guides</h3>
+                <h3 className="font-bold text-sm text-slate-900">Learning Toolkit</h3>
                 <div className="space-y-2 text-xs">
-                  <a
-                    href="/resources/STEMPACT_Student_Handbook_2025.pdf"
-                    target="_blank"
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold"
-                  >
-                    <span>Download Student Handbook (PDF)</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-blue-600" />
-                  </a>
-                  <a
-                    href="https://wa.me/2348031234567"
-                    target="_blank"
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold"
-                  >
-                    <span>Academic Support Desk</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-blue-600" />
-                  </a>
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
+                    <span className="font-medium text-slate-700">LMS Terminal</span>
+                    <Badge variant="blue">Online</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
+                    <span className="font-medium text-slate-700">Code Repository</span>
+                    <Badge variant="green">Connected</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50">
+                    <span className="font-medium text-slate-700">Discord Community</span>
+                    <Badge variant="purple">Active</Badge>
+                  </div>
                 </div>
               </Card>
             </div>
           </div>
         )}
 
-        {/* TAB 2: CURRICULUM & SYLLABUS */}
+        {/* TAB 2: CURRICULUM */}
         {activeTab === 'curriculum' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-900">Program Course Outline & Modules</h2>
-            {program?.courses?.map((course: any) => (
-              <Card key={course.id} className="p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <span className="text-xs font-bold text-blue-600 uppercase">{course.code}</span>
-                  <span className="text-xs font-semibold text-slate-500">Order #{course.order}</span>
-                </div>
-                <h3 className="font-bold text-base text-slate-900">{course.title}</h3>
-                <p className="text-xs text-slate-600">{course.description}</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {course.modules?.map((m: any) => (
-                    <div key={m.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
-                      <div className="font-bold text-slate-900">{m.title}</div>
-                      <p className="text-slate-500">{m.description}</p>
-                      <span className="inline-block mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                        {m.durationHours} Hours Dedicated Lab
-                      </span>
+            <h2 className="text-xl font-bold text-slate-900">Program Modules & Coursework</h2>
+            <div className="space-y-4">
+              {program?.courses?.map((c: any) => (
+                <Card key={c.id} className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-mono font-bold text-blue-600">{c.code}</span>
+                      <h3 className="font-bold text-base text-slate-900">{c.title}</h3>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
+                    <Badge variant="blue">{c.credits} Academic Credits</Badge>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">{c.description}</p>
+                  
+                  {c.modules && c.modules.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="text-xs font-bold text-slate-700">Instructional Modules:</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {c.modules.map((m: any) => (
+                          <div key={m.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                            <span className="font-semibold text-slate-800">{m.title}</span>
+                            <div className="text-[10px] text-slate-500">{m.durationHours} Hours Dedicated</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 
         {/* TAB 3: ATTENDANCE */}
         {activeTab === 'attendance' && (
           <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base text-slate-900">Attendance Log</h3>
-                <p className="text-xs text-slate-500">Official log recorded by class faculty instructors.</p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-500">Total Rate:</span>
-                <span className="text-lg font-black text-emerald-600 ml-2">{metrics.attendanceRate}%</span>
+                <h2 className="text-lg font-bold text-slate-900">Official Attendance Register</h2>
+                <p className="text-xs text-slate-500">
+                  Attendance is verified by assigned faculty mentors during each in-person and hybrid lab.
+                </p>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-500">
+                  <tr className="border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px]">
                     <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Class Session Title</th>
+                    <th className="py-2.5 px-3">Class Session</th>
                     <th className="py-2.5 px-3">Status</th>
                     <th className="py-2.5 px-3">Remarks</th>
                   </tr>
@@ -379,7 +379,7 @@ export const StudentDashboardPage: React.FC = () => {
                   {attendances.map((att: any) => (
                     <tr key={att.id}>
                       <td className="py-3 px-3 font-semibold">
-                        {new Date(att.date).toLocaleDateString('en-GB')}
+                        {att.date ? new Date(att.date).toLocaleDateString('en-GB') : '—'}
                       </td>
                       <td className="py-3 px-3 font-medium">
                         {att.classSession?.title || 'Class Session'}
@@ -418,7 +418,7 @@ export const StudentDashboardPage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-blue-600">Assignment Max: {ass.maxPoints} pts</span>
                       <span className="text-xs text-slate-500">
-                        Due: {new Date(ass.dueDate).toLocaleDateString('en-GB')}
+                        Due: {ass.dueDate ? new Date(ass.dueDate).toLocaleDateString('en-GB') : 'TBA'}
                       </span>
                     </div>
 
@@ -428,7 +428,7 @@ export const StudentDashboardPage: React.FC = () => {
                     {sub ? (
                       <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-2">
                         <div className="flex items-center justify-between font-bold text-emerald-900">
-                          <span>Work Submitted ({new Date(sub.submittedAt).toLocaleDateString('en-GB')})</span>
+                          <span>Work Submitted ({sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-GB') : ''})</span>
                           {sub.grade !== null && (
                             <span className="text-sm text-emerald-800">Grade: {sub.grade}/{ass.maxPoints}</span>
                           )}
@@ -508,15 +508,15 @@ export const StudentDashboardPage: React.FC = () => {
                   <div className="grid grid-cols-3 gap-4 text-xs bg-slate-50 p-4 rounded-xl">
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase">Total Tuition</span>
-                      <span className="font-bold text-slate-900">₦{inv.totalAmount.toLocaleString()}</span>
+                      <span className="font-bold text-slate-900">₦{(inv?.totalAmount || 0).toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase">Amount Paid</span>
-                      <span className="font-bold text-emerald-600">₦{inv.amountPaid.toLocaleString()}</span>
+                      <span className="font-bold text-emerald-600">₦{(inv?.amountPaid || 0).toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase">Outstanding Balance</span>
-                      <span className="font-bold text-slate-900">₦{inv.balance.toLocaleString()}</span>
+                      <span className="font-bold text-slate-900">₦{(inv?.balance || 0).toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -528,7 +528,7 @@ export const StudentDashboardPage: React.FC = () => {
                           <div>
                             <span className="font-mono font-bold text-emerald-900">{pay.paymentReference}</span>
                             <span className="text-slate-500 ml-2">
-                              (₦{pay.amount.toLocaleString()} via {pay.channel})
+                              (₦{(pay?.amount || 0).toLocaleString()} via {pay.channel || 'Direct'})
                             </span>
                           </div>
                           <span className="text-[10px] text-emerald-700 font-bold uppercase">PAID & VERIFIED</span>
@@ -562,11 +562,11 @@ export const StudentDashboardPage: React.FC = () => {
                   <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs text-slate-400">
                       Issued:{' '}
-                      {new Date(cert.issueDate).toLocaleDateString('en-GB', {
+                      {cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('en-GB', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
-                      })}
+                      }) : 'Verified'}
                     </span>
                     <Link
                       to={`/verify/${cert.certificateNumber}`}

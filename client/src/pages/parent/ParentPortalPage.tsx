@@ -113,7 +113,7 @@ export const ParentPortalPage: React.FC = () => {
                           {att.classSession?.title || 'Class Session'}
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          {new Date(att.date).toLocaleDateString('en-GB')}
+                          {att.date ? new Date(att.date).toLocaleDateString('en-GB') : '—'}
                         </div>
                       </div>
                       <span
@@ -162,7 +162,7 @@ export const ParentPortalPage: React.FC = () => {
                   <div key={inv.id} className="p-3 rounded-xl bg-slate-50 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-bold text-slate-900">{inv.title}</span>
-                      <span className="text-slate-500 ml-2">Total: ₦{inv.totalAmount.toLocaleString()}</span>
+                      <span className="text-slate-500 ml-2">Total: ₦{(inv?.totalAmount || 0).toLocaleString()}</span>
                     </div>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${

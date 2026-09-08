@@ -87,7 +87,7 @@ export const BlogPage: React.FC = () => {
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    {new Date(post.publishedAt).toLocaleDateString('en-GB')}
+                    {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-GB') : ''}
                   </span>
                 </div>
               </Card>

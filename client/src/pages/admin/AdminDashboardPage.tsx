@@ -734,7 +734,10 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                   <div className="text-xs text-slate-600 space-y-1">
                     <div>Schedule: {c.schedule}</div>
                     <div>Capacity: {c.maxSeats} Seats (Enrolled: {c.enrolledCount || 0})</div>
-                    <div>Dates: {new Date(c.startDate).toLocaleDateString()} – {new Date(c.endDate).toLocaleDateString()}</div>
+                    <div>
+                      Dates: {c.startDate ? new Date(c.startDate).toLocaleDateString() : 'TBA'} –{' '}
+                      {c.endDate ? new Date(c.endDate).toLocaleDateString() : 'TBA'}
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -767,8 +770,8 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2">{p.description}</p>
                   <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-slate-100">
-                    <span>₦{p.tuitionFeeNgn.toLocaleString()}</span>
-                    <span className="text-slate-400">{p.durationWeeks} Weeks</span>
+                    <span>₦{(p.tuitionFeeNgn || p.cohorts?.[0]?.trainingFee || 0).toLocaleString()}</span>
+                    <span className="text-slate-400">{p.durationWeeks || p.duration || '12 Weeks'}</span>
                   </div>
                 </Card>
               ))}
@@ -786,10 +789,14 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                   <div>
                     <div className="text-xs font-mono font-bold text-slate-500">{inv.invoiceNumber}</div>
                     <div className="font-bold text-sm text-slate-900">{inv.title}</div>
-                    <div className="text-xs text-slate-500">Due: {new Date(inv.dueDate).toLocaleDateString()}</div>
+                    <div className="text-xs text-slate-500">
+                      Due: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Immediate'}
+                    </div>
                   </div>
                   <div className="text-right space-y-0.5">
-                    <span className="font-black text-slate-900 text-sm block">₦{inv.totalAmount.toLocaleString()}</span>
+                    <span className="font-black text-slate-900 text-sm block">
+                      ₦{(inv.totalAmount || 0).toLocaleString()}
+                    </span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'

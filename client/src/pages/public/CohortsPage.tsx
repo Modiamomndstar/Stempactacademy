@@ -155,11 +155,11 @@ export const CohortsPage: React.FC = () => {
                       <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                       <div>
                         <strong>Start Date:</strong>{' '}
-                        {new Date(cohort.startDate).toLocaleDateString('en-GB', {
+                        {cohort.startDate ? new Date(cohort.startDate).toLocaleDateString('en-GB', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric',
-                        })}
+                        }) : 'TBA'}
                       </div>
                     </div>
 
@@ -212,19 +212,19 @@ export const CohortsPage: React.FC = () => {
                       <span className="font-semibold">
                         {hasDiscount && (
                           <span className="line-through text-slate-400 mr-1.5">
-                            ₦{cohort.trainingFee.toLocaleString()}
+                            ₦{(cohort.trainingFee || 0).toLocaleString()}
                           </span>
                         )}
-                        ₦{discountedFee.toLocaleString()}
+                        ₦{(discountedFee || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span>Registration / Portal:</span>
-                      <span>₦{cohort.registrationFee.toLocaleString()}</span>
+                      <span>₦{(cohort.registrationFee || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span>Official Credential Fee:</span>
-                      <span>₦{cohort.certificationFee.toLocaleString()}</span>
+                      <span>₦{(cohort.certificationFee || 0).toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -232,11 +232,11 @@ export const CohortsPage: React.FC = () => {
                     <Flame className="w-3.5 h-3.5" />
                     <span>
                       Deadline:{' '}
-                      {new Date(cohort.applicationDeadline).toLocaleDateString('en-GB', {
+                      {cohort.applicationDeadline ? new Date(cohort.applicationDeadline).toLocaleDateString('en-GB', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
-                      })}
+                      }) : 'Open'}
                     </span>
                   </div>
                 </div>

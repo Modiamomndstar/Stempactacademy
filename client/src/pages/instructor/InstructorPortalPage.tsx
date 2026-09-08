@@ -119,7 +119,7 @@ export const InstructorPortalPage: React.FC = () => {
   const currentCohort = cohorts.find((c: any) => c.id === selectedCohortId) || cohorts[0];
 
   return (
-    <PortalLayout activeTab={activeTab === 'classes' ? 'classes' : activeTab} onTabChange={(t) => setActiveTab((t === 'classes' ? 'cohorts' : t) as any)}>
+    <PortalLayout activeTab={activeTab} onTabChange={(t) => setActiveTab(t)}>
       <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
       {/* Faculty Header */}
       <div className="max-w-7xl mx-auto bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -361,7 +361,7 @@ export const InstructorPortalPage: React.FC = () => {
                         </h3>
                       </div>
                       <span className="text-xs text-slate-400">
-                        Submitted: {new Date(sub.submittedAt).toLocaleDateString('en-GB')}
+                        Submitted: {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString('en-GB') : '—'}
                       </span>
                     </div>
 

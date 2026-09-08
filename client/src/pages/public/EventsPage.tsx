@@ -65,7 +65,7 @@ export const EventsPage: React.FC = () => {
                     <Badge variant="purple">{e.category}</Badge>
                     <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>{new Date(e.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                      <span>{e.startDate ? new Date(e.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'TBA'}</span>
                     </span>
                   </div>
 

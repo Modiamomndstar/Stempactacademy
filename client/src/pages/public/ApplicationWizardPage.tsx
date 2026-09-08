@@ -308,7 +308,7 @@ export const ApplicationWizardPage: React.FC = () => {
                   <option value="">-- Choose Cohort Batch --</option>
                   {filteredCohorts.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.cohortCode} • Starts {new Date(c.startDate).toLocaleDateString('en-GB')})
+                      {c.name} ({c.cohortCode} • Starts {c.startDate ? new Date(c.startDate).toLocaleDateString('en-GB') : 'TBA'})
                     </option>
                   ))}
                 </select>

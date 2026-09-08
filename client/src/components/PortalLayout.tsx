@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PortalSidebar } from './PortalSidebar';
 import {
@@ -25,6 +25,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     setMobileOpen(false);
@@ -75,7 +76,16 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
 
             <div>
               <div className="text-xs font-black text-slate-900 tracking-tight uppercase flex items-center gap-2">
-                <span>{user.role.replace('_', ' ')} PORTAL</span>
+                <span>
+                  {location.pathname.startsWith('/portal/instructor') || user.role === 'INSTRUCTOR'
+                    ? 'FACULTY INSTRUCTOR'
+                    : location.pathname.startsWith('/portal/student') || user.role === 'STUDENT'
+                    ? 'STUDENT LEARNER'
+                    : location.pathname.startsWith('/portal/parent') || user.role === 'PARENT'
+                    ? 'PARENT & GUARDIAN'
+                    : user.role.replace('_', ' ')}{' '}
+                  PORTAL
+                </span>
                 <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <span className="hidden sm:inline-block text-[10px] text-slate-500 font-mono font-normal">
                   Ile-Ife Campus Hub
@@ -85,6 +95,13 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/portal/login"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
+            >
+              <span>Switch Portal</span>
+            </Link>
+
             <Link
               to="/"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"

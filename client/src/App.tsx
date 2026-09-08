@@ -35,6 +35,7 @@ import { InstructorPortalPage } from './pages/instructor/InstructorPortalPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 
 // Protected Route Component
+// Protected Route Component with Strict Role Isolation
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
   children,
   allowedRoles,
@@ -43,7 +44,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   if (loading) return null;
   if (!user) return <Navigate to="/portal/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    // Redirect user strictly to their own dedicated portal:
+    if (['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN'].includes(user.role)) {
+      return <Navigate to="/portal/admin" replace />;
+    }
+    if (user.role === 'INSTRUCTOR') {
+      return <Navigate to="/portal/instructor" replace />;
+    }
+    if (user.role === 'PARENT') {
+      return <Navigate to="/portal/parent" replace />;
+    }
+    return <Navigate to="/portal/student" replace />;
   }
   return <>{children}</>;
 };
@@ -108,7 +119,7 @@ const AppShell: React.FC = () => {
       <Route
         path="/portal/instructor"
         element={
-          <ProtectedRoute allowedRoles={['INSTRUCTOR', 'SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN']}>
+          <ProtectedRoute allowedRoles={['INSTRUCTOR']}>
             <InstructorPortalPage />
           </ProtectedRoute>
         }
@@ -118,7 +129,7 @@ const AppShell: React.FC = () => {
       <Route
         path="/portal/student"
         element={
-          <ProtectedRoute allowedRoles={['STUDENT', 'SUPER_ADMIN', 'ACADEMIC_ADMIN']}>
+          <ProtectedRoute allowedRoles={['STUDENT']}>
             <StudentDashboardPage />
           </ProtectedRoute>
         }
@@ -128,7 +139,7 @@ const AppShell: React.FC = () => {
       <Route
         path="/portal/parent"
         element={
-          <ProtectedRoute allowedRoles={['PARENT', 'SUPER_ADMIN', 'ACADEMIC_ADMIN']}>
+          <ProtectedRoute allowedRoles={['PARENT']}>
             <ParentPortalPage />
           </ProtectedRoute>
         }

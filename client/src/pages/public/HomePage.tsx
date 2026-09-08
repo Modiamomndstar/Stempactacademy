@@ -365,7 +365,7 @@ export const HomePage: React.FC = () => {
                   <div className="text-[11px] text-slate-300 mt-2 space-y-1">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3 h-3 text-emerald-400" />
-                      <span>Starts: {new Date(cohort.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                      <span>Starts: {cohort.startDate ? new Date(cohort.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'TBA'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3 h-3 text-amber-400" />
@@ -378,7 +378,7 @@ export const HomePage: React.FC = () => {
                   <div>
                     <div className="text-[10px] text-slate-400 uppercase font-semibold">Tuition</div>
                     <div className="font-extrabold text-sm text-white">
-                      ₦{cohort.trainingFee.toLocaleString()}
+                      ₦{(cohort.trainingFee || 0).toLocaleString()}
                     </div>
                   </div>
                   <Link

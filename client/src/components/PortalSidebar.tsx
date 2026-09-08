@@ -44,7 +44,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   if (!user) return null;
 
-  const handleLinkClick = (tabKey?: string) => {
+  const handleLinkClick = (tabKey?: string, itemRoute?: string) => {
+    if (itemRoute && location.pathname !== itemRoute) {
+      navigate(itemRoute);
+    }
     if (tabKey && onTabChange) {
       onTabChange(tabKey);
     }
@@ -53,21 +56,74 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     }
   };
 
-  // Determine role-based menu sections
+  // Determine role-based menu sections strictly isolated per role
   const getNavSections = () => {
-    if (user.role === 'SUPER_ADMIN') {
+    // 1. Instructor Portal
+    if (user.role === 'INSTRUCTOR' || location.pathname.startsWith('/portal/instructor')) {
       return [
         {
-          title: 'Executive & Governance',
+          title: 'Faculty Workstation',
           items: [
-            { key: 'analytics', label: 'Executive KPIs', icon: TrendingUp, route: '/portal/admin' },
-            { key: 'admins', label: 'Admin Accounts', icon: ShieldAlert, route: '/portal/admin', badge: 'Super', badgeColor: 'bg-indigo-600' },
-            { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
+            { key: 'cohorts', label: 'Assigned Cohorts & Rosters', icon: BookOpen, route: '/portal/instructor' },
+            { key: 'attendance', label: 'Mark Class Attendance', icon: CheckCircle2, route: '/portal/instructor', badge: 'Live', badgeColor: 'bg-emerald-600' },
+            { key: 'grading', label: 'Submissions & Grading', icon: ClipboardList, route: '/portal/instructor', badge: 'Tasks', badgeColor: 'bg-amber-600' },
           ],
         },
+      ];
+    }
+
+    // 2. Parent & Guardian Portal
+    if (user.role === 'PARENT' || location.pathname.startsWith('/portal/parent')) {
+      return [
         {
-          title: 'Academic Core',
+          title: 'Guardian Overview',
           items: [
+            { key: 'overview', label: 'Enrolled Wards Overview', icon: Users, route: '/portal/parent' },
+          ],
+        },
+      ];
+    }
+
+    // 3. Student Learner Portal
+    if (user.role === 'STUDENT' || location.pathname.startsWith('/portal/student')) {
+      return [
+        {
+          title: 'Learning Ledger',
+          items: [
+            { key: 'overview', label: 'My Learning Cockpit', icon: TrendingUp, route: '/portal/student' },
+            { key: 'curriculum', label: 'Modules & Syllabus', icon: BookOpen, route: '/portal/student' },
+            { key: 'attendance', label: 'Attendance Record', icon: CheckCircle2, route: '/portal/student' },
+            { key: 'assignments', label: 'Assignments & Submissions', icon: ClipboardList, route: '/portal/student' },
+            { key: 'invoices', label: 'Tuition Fees & Receipts', icon: CreditCard, route: '/portal/student' },
+            { key: 'certificates', label: 'Certificates & Credentials', icon: Award, route: '/portal/student' },
+          ],
+        },
+      ];
+    }
+
+    // 4. Finance Administrator
+    if (user.role === 'FINANCE_ADMIN') {
+      return [
+        {
+          title: 'Financial Management',
+          items: [
+            { key: 'analytics', label: 'Financial Overview', icon: TrendingUp, route: '/portal/admin' },
+            { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin', badge: 'Billing', badgeColor: 'bg-emerald-600' },
+            { key: 'applications', label: 'Student Billing & Intake', icon: ClipboardList, route: '/portal/admin' },
+            { key: 'cohorts', label: 'Cohort Billing Schedules', icon: Calendar, route: '/portal/admin' },
+          ],
+        },
+      ];
+    }
+
+    // 5. Coordinator Admin & Academic Admin
+    if (user.role === 'COORDINATOR_ADMIN' || user.role === 'ACADEMIC_ADMIN') {
+      return [
+        {
+          title: 'Academic Administration',
+          items: [
+            { key: 'analytics', label: 'Academic Overview', icon: TrendingUp, route: '/portal/admin' },
+            { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
             { key: 'programs', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
             { key: 'cohorts', label: 'Cohorts & Scheduling', icon: Calendar, route: '/portal/admin' },
             { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
@@ -75,9 +131,8 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           ],
         },
         {
-          title: 'Operations & Records',
+          title: 'Records & Bulletins',
           items: [
-            { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin' },
             { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
             { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Bell, route: '/portal/admin' },
           ],
@@ -85,65 +140,31 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       ];
     }
 
-    if (user.role === 'COORDINATOR_ADMIN' || user.role === 'ACADEMIC_ADMIN') {
-      return [
-        {
-          title: 'Academic Administration',
-          items: [
-            { key: 'analytics', label: 'Academic Overview', icon: TrendingUp, route: '/portal/admin' },
-            { key: 'instructors', label: 'Faculty Management', icon: Users, route: '/portal/admin', badge: 'Manage', badgeColor: 'bg-blue-600' },
-            { key: 'placements', label: 'Academic Board Placements', icon: Sparkles, route: '/portal/admin', badge: 'Review', badgeColor: 'bg-amber-600' },
-            { key: 'cohorts', label: 'Cohorts & Classes', icon: Calendar, route: '/portal/admin' },
-            { key: 'applications', label: 'Admissions Intake', icon: ClipboardList, route: '/portal/admin' },
-            { key: 'certificates', label: 'Certificate Clearances', icon: Award, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    if (user.role === 'INSTRUCTOR') {
-      return [
-        {
-          title: 'Instructional Cockpit',
-          items: [
-            { key: 'overview', label: 'Teaching Overview', icon: TrendingUp, route: '/portal/instructor' },
-            { key: 'classes', label: 'My Cohorts & Classes', icon: BookOpen, route: '/portal/instructor' },
-            { key: 'attendance', label: 'Daily Attendance Sheet', icon: CheckCircle2, route: '/portal/instructor', badge: 'Live', badgeColor: 'bg-emerald-600' },
-            { key: 'grading', label: 'Assignment Grading Queue', icon: ClipboardList, route: '/portal/instructor', badge: 'Tasks', badgeColor: 'bg-amber-600' },
-            { key: 'projects', label: 'Capstone Project Reviews', icon: FolderGit2, route: '/portal/instructor' },
-          ],
-        },
-      ];
-    }
-
-    if (user.role === 'PARENT') {
-      return [
-        {
-          title: 'Guardian Overview',
-          items: [
-            { key: 'overview', label: 'Ward Dashboard', icon: TrendingUp, route: '/portal/parent' },
-            { key: 'progress', label: 'Curriculum Progress', icon: BookOpen, route: '/portal/parent' },
-            { key: 'attendance', label: 'Attendance Ledger', icon: CheckCircle2, route: '/portal/parent' },
-            { key: 'grades', label: 'Instructor Feedback & Grades', icon: Award, route: '/portal/parent' },
-            { key: 'invoices', label: 'Tuition Fees & Invoices', icon: CreditCard, route: '/portal/parent' },
-          ],
-        },
-      ];
-    }
-
-    // Default: STUDENT
+    // 6. Super Administrator (Full Management Suite)
     return [
       {
-        title: 'Learning Ledger',
+        title: 'Executive & Governance',
         items: [
-          { key: 'overview', label: 'My Learning Cockpit', icon: TrendingUp, route: '/portal/student' },
-          { key: 'curriculum', label: 'Modules & Syllabus', icon: BookOpen, route: '/portal/student' },
-          { key: 'timetable', label: 'Timetable & Class Link', icon: Calendar, route: '/portal/student' },
-          { key: 'attendance', label: 'Attendance Record', icon: CheckCircle2, route: '/portal/student' },
-          { key: 'assessment', label: 'Diagnostic Assessment', icon: Sparkles, route: '/portal/student', badge: 'Readiness', badgeColor: 'bg-amber-500' },
-          { key: 'assignments', label: 'Assignments & Submissions', icon: ClipboardList, route: '/portal/student' },
-          { key: 'invoices', label: 'Tuition Fees & Receipts', icon: CreditCard, route: '/portal/student' },
-          { key: 'projects', label: 'Submit Capstone Project', icon: FolderGit2, route: '/portal/student' },
+          { key: 'analytics', label: 'Executive KPIs', icon: TrendingUp, route: '/portal/admin' },
+          { key: 'admins', label: 'Admin Accounts', icon: ShieldAlert, route: '/portal/admin', badge: 'Super', badgeColor: 'bg-indigo-600' },
+          { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
+        ],
+      },
+      {
+        title: 'Academic Core',
+        items: [
+          { key: 'programs', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
+          { key: 'cohorts', label: 'Cohorts & Scheduling', icon: Calendar, route: '/portal/admin' },
+          { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
+          { key: 'applications', label: 'Admissions Intake', icon: ClipboardList, route: '/portal/admin' },
+        ],
+      },
+      {
+        title: 'Operations & Records',
+        items: [
+          { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin' },
+          { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
+          { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Bell, route: '/portal/admin' },
         ],
       },
     ];
@@ -162,7 +183,13 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               STEMPACT PORTAL
             </div>
             <div className="text-[10px] text-slate-400 font-mono">
-              {user.role.replace('_', ' ')}
+              {location.pathname.startsWith('/portal/instructor') || user.role === 'INSTRUCTOR'
+                ? 'FACULTY INSTRUCTOR'
+                : location.pathname.startsWith('/portal/student') || user.role === 'STUDENT'
+                ? 'STUDENT LEARNER'
+                : location.pathname.startsWith('/portal/parent') || user.role === 'PARENT'
+                ? 'PARENT & GUARDIAN'
+                : user.role.replace('_', ' ')}
             </div>
           </div>
         </Link>
@@ -225,7 +252,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 return (
                   <button
                     key={item.key}
-                    onClick={() => handleLinkClick(item.key)}
+                    onClick={() => handleLinkClick(item.key, item.route)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
                       isTabActive
                         ? 'bg-blue-600 text-white font-bold shadow-md'
