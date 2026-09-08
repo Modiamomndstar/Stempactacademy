@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stempact_secure_password_2025}
       POSTGRES_DB: ${POSTGRES_DB:-stempact_db}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,6 +20,7 @@ services:
 
   # Express + Prisma Backend Service
   api:
+    image: stempactacademy-api:latest
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -32,7 +33,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-stempact_jwt_super_secret_production_key_2025}
       CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
     ports:
-      - "5000:5000"
+      - "${API_PORT:-5001}:5000"
     volumes:
       - stempact_uploads:/app/uploads
     depends_on:
@@ -41,13 +42,14 @@ services:
 
   # React Vite Frontend Service (Served via Nginx Reverse Proxy)
   web:
+    image: stempactacademy-web:latest
     build:
       context: ./client
       dockerfile: Dockerfile
     container_name: stempact-web
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${WEB_PORT:-3000}:80"
     depends_on:
       - api
 
