@@ -13,6 +13,7 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
       invoices,
       allAttendances,
       programsBreakdown,
+      statusGroups,
     ] = await Promise.all([
       prisma.application.count(),
       prisma.application.count({ where: { status: 'SUBMITTED' } }),
@@ -32,6 +33,10 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
         },
         orderBy: { applications: { _count: 'desc' } },
         take: 6,
+      }),
+      prisma.application.groupBy({
+        by: ['status'],
+        _count: { _all: true },
       }),
     ]);
 
@@ -58,11 +63,18 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
         activeStudents,
         programsCount,
         cohortsCount,
+        activeCohorts: cohortsCount,
+        totalPrograms: programsCount,
         totalRevenue,
         outstandingBalance,
+        outstandingInvoices: outstandingBalance,
         overallAttendanceRate,
         conversionRate,
       },
+      applicationsByStatus: statusGroups.map((g) => ({
+        status: g.status,
+        _count: g._count._all,
+      })),
       popularPrograms: programsBreakdown.map((p) => ({
         id: p.id,
         name: p.name,
@@ -71,6 +83,15 @@ export const getAdminStats = async (req: Request, res: Response): Promise<void> 
         schoolColor: p.school.color,
         applicantCount: p._count.applications,
         cohortCount: p._count.cohorts,
+        durationWeeks: 12,
+        _count: p._count,
+      })),
+      programsWithEnrolledCount: programsBreakdown.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        durationWeeks: 12,
+        _count: p._count,
       })),
     });
   } catch (error: any) {

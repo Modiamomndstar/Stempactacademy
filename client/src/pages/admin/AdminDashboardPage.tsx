@@ -389,30 +389,34 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Card className="p-5 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Total Applicants</span>
-                <div className="text-2xl font-black text-slate-900">{stats.metrics.totalApplicants}</div>
-                <div className="text-[11px] text-blue-600 font-semibold">{stats.metrics.newApplicants} New Pending</div>
+                <div className="text-2xl font-black text-slate-900">{stats?.metrics?.totalApplicants || 0}</div>
+                <div className="text-[11px] text-blue-600 font-semibold">{stats?.metrics?.newApplicants || 0} New Pending</div>
               </Card>
 
               <Card className="p-5 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Admitted Learners</span>
-                <div className="text-2xl font-black text-emerald-600">{stats.metrics.admittedStudents}</div>
-                <div className="text-[11px] text-slate-500 font-semibold">{stats.metrics.conversionRate}% Conversion Rate</div>
+                <div className="text-2xl font-black text-emerald-600">{stats?.metrics?.admittedStudents || 0}</div>
+                <div className="text-[11px] text-slate-500 font-semibold">{stats?.metrics?.conversionRate || 0}% Conversion Rate</div>
               </Card>
 
               <Card className="p-5 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Total Revenue Collected</span>
                 <div className="text-2xl font-black text-slate-900">
-                  ₦{(stats.metrics.totalRevenue || 0).toLocaleString()}
+                  ₦{(stats?.metrics?.totalRevenue || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-amber-600 font-semibold">
-                  ₦{(stats.metrics.outstandingInvoices || 0).toLocaleString()} Outstanding
+                  ₦{(stats?.metrics?.outstandingInvoices || stats?.metrics?.outstandingBalance || 0).toLocaleString()} Outstanding
                 </div>
               </Card>
 
               <Card className="p-5 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Active Cohorts</span>
-                <div className="text-2xl font-black text-slate-900">{stats.metrics.activeCohorts}</div>
-                <div className="text-[11px] text-purple-600 font-semibold">{stats.metrics.totalPrograms} Academic Tracks</div>
+                <div className="text-2xl font-black text-slate-900">
+                  {stats?.metrics?.activeCohorts || stats?.metrics?.cohortsCount || 0}
+                </div>
+                <div className="text-[11px] text-purple-600 font-semibold">
+                  {stats?.metrics?.totalPrograms || stats?.metrics?.programsCount || 0} Academic Tracks
+                </div>
               </Card>
             </div>
 
@@ -423,22 +427,26 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                   <span>Pipeline Distribution by Status</span>
                 </h3>
                 <div className="space-y-3">
-                  {stats.applicationsByStatus.map((item: any) => (
-                    <div key={item.status} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-slate-700">
-                        <span>{item.status.replace(/_/g, ' ')}</span>
-                        <span>{item._count} applicants</span>
+                  {(stats?.applicationsByStatus || []).length > 0 ? (
+                    (stats.applicationsByStatus || []).map((item: any) => (
+                      <div key={item.status} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold text-slate-700">
+                          <span>{item.status?.replace(/_/g, ' ') || 'Pending'}</span>
+                          <span>{item._count || 0} applicants</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-600 rounded-full"
+                            style={{
+                              width: `${((item._count || 0) / (stats?.metrics?.totalApplicants || 1)) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 rounded-full"
-                          style={{
-                            width: `${(item._count / (stats.metrics.totalApplicants || 1)) * 100}%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-xs text-slate-400 py-4 text-center">No application records found.</div>
+                  )}
                 </div>
               </Card>
 
@@ -448,13 +456,13 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                   <span>Top Enrolled Academic Programs</span>
                 </h3>
                 <div className="space-y-3 text-xs">
-                  {stats.programsWithEnrolledCount?.slice(0, 5).map((p: any) => (
+                  {(stats?.popularPrograms || stats?.programsWithEnrolledCount || []).slice(0, 5).map((p: any) => (
                     <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
                       <div>
                         <div className="font-bold text-slate-900">{p.name}</div>
-                        <div className="text-[10px] text-slate-400">{p.code} • {p.durationWeeks} Weeks</div>
+                        <div className="text-[10px] text-slate-400">{p.code} • {p.durationWeeks || 12} Weeks</div>
                       </div>
-                      <Badge variant="blue">{p._count?.applications || 0} Enrolled</Badge>
+                      <Badge variant="blue">{p.applicantCount || p._count?.applications || 0} Enrolled</Badge>
                     </div>
                   ))}
                 </div>
