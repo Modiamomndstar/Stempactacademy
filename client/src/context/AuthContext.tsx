@@ -9,6 +9,7 @@ interface AuthContextType {
   register: (userData: any) => Promise<User>;
   logout: () => void;
   isSuperAdmin: boolean;
+  isCoordinatorAdmin: boolean;
   isAcademicAdmin: boolean;
   isInstructor: boolean;
   isStudent: boolean;
@@ -63,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isCoordinatorAdmin = user?.role === 'COORDINATOR_ADMIN' || isSuperAdmin;
   const isAcademicAdmin = user?.role === 'ACADEMIC_ADMIN' || isSuperAdmin;
   const isInstructor = user?.role === 'INSTRUCTOR';
   const isStudent = user?.role === 'STUDENT';
@@ -70,14 +72,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   let portalRoute = '/portal/login';
   if (user) {
-    if (['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN'].includes(user.role)) {
-      portalRoute = '/admin';
+    if (['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN'].includes(user.role)) {
+      portalRoute = '/portal/admin';
     } else if (user.role === 'INSTRUCTOR') {
-      portalRoute = '/instructor';
+      portalRoute = '/portal/instructor';
     } else if (user.role === 'PARENT') {
-      portalRoute = '/parent';
+      portalRoute = '/portal/parent';
     } else {
-      portalRoute = '/student';
+      portalRoute = '/portal/student';
     }
   }
 
@@ -90,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         isSuperAdmin,
+        isCoordinatorAdmin,
         isAcademicAdmin,
         isInstructor,
         isStudent,

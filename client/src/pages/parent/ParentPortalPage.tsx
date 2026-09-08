@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { PortalLayout } from '../../components/PortalLayout';
 import {
   Users,
   Calendar,
@@ -39,7 +40,8 @@ export const ParentPortalPage: React.FC = () => {
   const { parent, wards, announcements } = data;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+    <PortalLayout>
+      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
       {/* Top Banner */}
       <div className="max-w-7xl mx-auto bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -177,5 +179,6 @@ export const ParentPortalPage: React.FC = () => {
         ))}
       </div>
     </div>
+  </PortalLayout>
   );
 };

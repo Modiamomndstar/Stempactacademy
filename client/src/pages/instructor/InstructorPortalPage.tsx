@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { PortalLayout } from '../../components/PortalLayout';
 import {
   Users,
   Calendar,
@@ -21,7 +22,7 @@ export const InstructorPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'cohorts' | 'attendance' | 'grading'>('cohorts');
+  const [activeTab, setActiveTab] = useState<string>('cohorts');
 
   // Attendance Sheet State
   const [selectedCohortId, setSelectedCohortId] = useState<string>('');
@@ -118,7 +119,8 @@ export const InstructorPortalPage: React.FC = () => {
   const currentCohort = cohorts.find((c: any) => c.id === selectedCohortId) || cohorts[0];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+    <PortalLayout activeTab={activeTab === 'classes' ? 'classes' : activeTab} onTabChange={(t) => setActiveTab((t === 'classes' ? 'cohorts' : t) as any)}>
+      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
       {/* Faculty Header */}
       <div className="max-w-7xl mx-auto bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -428,5 +430,6 @@ export const InstructorPortalPage: React.FC = () => {
         )}
       </div>
     </div>
+  </PortalLayout>
   );
 };

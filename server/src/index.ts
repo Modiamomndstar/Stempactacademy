@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRouter from './routes/api.js';
+import { ensureSuperAdminFromEnv } from './controllers/authController.js';
 
 dotenv.config();
 
@@ -51,9 +52,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 STEMPACT ACADEMY Server running on http://localhost:${PORT}`);
   console.log(`📍 Academy Hub: Ile-Ife, Osun State, Nigeria`);
+  await ensureSuperAdminFromEnv();
 });
 
 export default app;

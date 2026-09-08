@@ -131,4 +131,10 @@ export const api = {
 
   // Admin Analytics
   getAdminStats: () => apiRequest('/admin/stats'),
+
+  // Admin & Instructor Management
+  getAdmins: () => apiRequest('/admin/admins'),
+  createAdmin: (data: any) => apiRequest('/admin/admins', { method: 'POST', body: JSON.stringify(data) }),
+  getInstructors: () => apiRequest('/admin/instructors'),
+  createInstructor: (data: any) => apiRequest('/admin/instructors', { method: 'POST', body: JSON.stringify(data) }),
 };

@@ -20,6 +20,7 @@ import * as certificateController from '../controllers/certificateController.js'
 import * as paymentController from '../controllers/paymentController.js';
 import * as cmsController from '../controllers/cmsController.js';
 import * as adminStatsController from '../controllers/adminStatsController.js';
+import * as adminUserController from '../controllers/adminUserController.js';
 
 const router = Router();
 
@@ -94,6 +95,12 @@ router.post('/cms/events', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEM
 router.post('/cms/blog', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cmsController.createBlogPost);
 
 // 15. Admin Analytics
-router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN), adminStatsController.getAdminStats);
+router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN), adminStatsController.getAdminStats);
+
+// 16. Admin & Instructor Management
+router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);
+router.get('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.getAdmins);
+router.post('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN), adminUserController.createInstructor);
+router.get('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.ACADEMIC_ADMIN), adminUserController.getInstructors);
 
 export default router;

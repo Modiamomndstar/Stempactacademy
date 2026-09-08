@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
-import { SideMenuLayout } from './components/SideMenuLayout';
 
 // Public Pages
 import { HomePage } from './pages/public/HomePage';
@@ -25,8 +24,11 @@ import { ContactPage } from './pages/public/ContactPage';
 import { FAQPage } from './pages/public/FAQPage';
 import { CertificateVerifyPage } from './pages/public/CertificateVerifyPage';
 
-// Auth & Dashboard Portals
+// Auth & Registration Pages
 import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+
+// Authenticated Role Portals
 import { StudentDashboardPage } from './pages/student/StudentDashboardPage';
 import { ParentPortalPage } from './pages/parent/ParentPortalPage';
 import { InstructorPortalPage } from './pages/instructor/InstructorPortalPage';
@@ -49,11 +51,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 // Main App Navigation Shell
 const AppShell: React.FC = () => {
   const location = useLocation();
-  const isHomePage = location.pathname === '/';
+
+  // Check if current route is an authenticated portal viewport
+  const isPortalRoute =
+    location.pathname.startsWith('/portal/admin') && !location.pathname.includes('/login') ||
+    location.pathname.startsWith('/portal/instructor') && !location.pathname.includes('/login') ||
+    location.pathname.startsWith('/portal/student') && !location.pathname.includes('/login') ||
+    location.pathname.startsWith('/portal/parent') && !location.pathname.includes('/login') ||
+    location.pathname === '/admin' ||
+    location.pathname === '/instructor' ||
+    location.pathname === '/student' ||
+    location.pathname === '/parent';
 
   const routes = (
     <Routes>
-      {/* Public Routes */}
+      {/* 1. Public Marketing Pages (Full Navbar + Content + Footer) */}
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/schools" element={<SchoolsPage />} />
@@ -61,7 +73,9 @@ const AppShell: React.FC = () => {
       <Route path="/programs/:code" element={<ProgramDetailPage />} />
       <Route path="/cohorts" element={<CohortsPage />} />
       <Route path="/admissions" element={<AdmissionsPage />} />
-      <Route path="/apply" element={<ApplicationWizardPage />} />
+      <Route path="/apply" element={<RegisterPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/application-wizard" element={<ApplicationWizardPage />} />
       <Route path="/assessment" element={<AssessmentEnginePage />} />
       <Route path="/innovation-lab" element={<InnovationLabPage />} />
       <Route path="/startup-lab" element={<StartupLabPage />} />
@@ -74,61 +88,71 @@ const AppShell: React.FC = () => {
       <Route path="/verify" element={<CertificateVerifyPage />} />
       <Route path="/verify/:certNumber" element={<CertificateVerifyPage />} />
 
-      {/* Auth Portal */}
+      {/* 2. Authentication Gates */}
       <Route path="/portal/login" element={<LoginPage />} />
+      <Route path="/portal/admin/login" element={<LoginPage />} />
+      <Route path="/portal/instructor/login" element={<LoginPage />} />
+      <Route path="/portal/student/login" element={<LoginPage />} />
 
-      {/* Authenticated Role Portals */}
+      {/* 3. Authenticated Role Portals (Render Dedicated Role Sidebars via PortalLayout) */}
       <Route
-        path="/student"
+        path="/portal/admin"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/admin" element={<Navigate to="/portal/admin" replace />} />
+
+      <Route
+        path="/portal/instructor"
+        element={
+          <ProtectedRoute allowedRoles={['INSTRUCTOR', 'SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN']}>
+            <InstructorPortalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/instructor" element={<Navigate to="/portal/instructor" replace />} />
+
+      <Route
+        path="/portal/student"
         element={
           <ProtectedRoute allowedRoles={['STUDENT', 'SUPER_ADMIN', 'ACADEMIC_ADMIN']}>
             <StudentDashboardPage />
           </ProtectedRoute>
         }
       />
+      <Route path="/student" element={<Navigate to="/portal/student" replace />} />
+
       <Route
-        path="/parent"
+        path="/portal/parent"
         element={
           <ProtectedRoute allowedRoles={['PARENT', 'SUPER_ADMIN', 'ACADEMIC_ADMIN']}>
             <ParentPortalPage />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/instructor"
-        element={
-          <ProtectedRoute allowedRoles={['INSTRUCTOR', 'SUPER_ADMIN', 'ACADEMIC_ADMIN']}>
-            <InstructorPortalPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN']}>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/parent" element={<Navigate to="/portal/parent" replace />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 
-  // Home Page: Uses full-width top Navbar layout
-  if (isHomePage) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-1">{routes}</main>
-        <Footer />
-      </div>
-    );
+  // Authenticated Portal Pages: Render without public Navbar/Footer (PortalLayout handles Sidebar & Top Bar)
+  if (isPortalRoute) {
+    return <div className="min-h-screen bg-slate-50">{routes}</div>;
   }
 
-  // All Other Pages: Uses dedicated Side Menu layout
-  return <SideMenuLayout>{routes}</SideMenuLayout>;
+  // All Public & Auth Login Pages: Standard Institutional Web Layout (Navbar + Main + Footer)
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-1">{routes}</main>
+      <Footer />
+    </div>
+  );
 };
 
 export const App: React.FC = () => {

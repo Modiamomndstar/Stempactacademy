@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
+export type Role = 'SUPER_ADMIN' | 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
 
 export type ProgramStatus = 'DRAFT' | 'PUBLISHED' | 'UPCOMING' | 'OPEN_FOR_APPLICATION' | 'FULL' | 'CLOSED' | 'ARCHIVED';
 
@@ -13,6 +13,7 @@ export type PaymentStatus = 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'FAILED' | '
 export interface User {
   id: string;
   email: string;
+  username?: string;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -366,4 +367,27 @@ export interface BlogPost {
   category: string;
   readTime: string;
   publishedAt: string;
+}
+
+export interface CreateAdminData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  username?: string;
+  phone?: string;
+  role: 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN';
+  password: string;
+}
+
+export interface CreateInstructorData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  username?: string;
+  phone?: string;
+  specialization: string;
+  bio?: string;
+  qualification?: string;
+  assignedSchools?: string;
+  password: string;
 }

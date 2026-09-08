@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { PortalLayout } from '../../components/PortalLayout';
 import {
   BookOpen,
   Calendar,
@@ -80,7 +81,8 @@ export const StudentDashboardPage: React.FC = () => {
   const { profile, cohort, program, metrics, attendances, assignments, submissions, invoices, certificates, announcements } = data;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+    <PortalLayout activeTab={activeTab} onTabChange={(t) => setActiveTab(t)}>
+      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
       {/* Top Banner with Student ID & Status */}
       <div className="max-w-7xl mx-auto bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -588,5 +590,6 @@ export const StudentDashboardPage: React.FC = () => {
         )}
       </div>
     </div>
+  </PortalLayout>
   );
 };
