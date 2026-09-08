@@ -103,6 +103,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const assignedUsername = username || email.split('@')[0];
 
     const result = await prisma.$transaction(async (tx) => {
+      let appRecord: any = null;
+
       const user = await tx.user.create({
         data: {
           email,
@@ -133,7 +135,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           const appCount = await tx.application.count();
           const applicationNumber = `APP-${new Date().getFullYear()}-${String(appCount + 1).padStart(4, '0')}`;
 
-          await tx.application.create({
+          appRecord = await tx.application.create({
             data: {
               applicationNumber,
               userId: user.id,
@@ -169,17 +171,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         });
       }
 
-      return user;
+      return { user, application: appRecord };
     });
 
     const token = jwt.sign(
       {
-        id: result.id,
-        email: result.email,
-        username: result.username,
-        role: result.role,
-        firstName: result.firstName,
-        lastName: result.lastName,
+        id: result.user.id,
+        email: result.user.email,
+        username: result.user.username,
+        role: result.user.role,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as any }
@@ -189,14 +191,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       message: 'Account created and course enrolled successfully!',
       token,
       user: {
-        id: result.id,
-        email: result.email,
-        username: result.username,
-        firstName: result.firstName,
-        lastName: result.lastName,
-        phone: result.phone,
-        role: result.role,
+        id: result.user.id,
+        email: result.user.email,
+        username: result.user.username,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        phone: result.user.phone,
+        role: result.user.role,
       },
+      applicationId: result.application?.id || null,
     });
   } catch (error: any) {
     console.error('Registration error:', error);

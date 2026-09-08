@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Assessment, AssessmentQuestion } from '../../types';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
@@ -19,6 +20,7 @@ export const AssessmentEnginePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const applicationId = searchParams.get('appId');
   const programId = searchParams.get('programId');
+  const { user, portalRoute } = useAuth();
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -80,12 +82,14 @@ export const AssessmentEnginePage: React.FC = () => {
 
     try {
       const response = await api.submitAssessmentAttempt({
-        applicationId: applicationId || 'demo-applicant-session',
+        applicationId: applicationId || undefined,
+        programId: programId || undefined,
         assessmentId: assessment.id,
         answers,
       });
       setResultData(response);
       setIsSubmitted(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to submit assessment answers.');
     } finally {
@@ -185,12 +189,12 @@ export const AssessmentEnginePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-center gap-4 pt-2">
+          <div className="flex flex-wrap justify-center gap-4 pt-2">
             <Link
-              to="/portal/login"
+              to={user ? portalRoute : '/portal/login'}
               className="py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors"
             >
-              Access Applicant Portal
+              {user ? 'Go to My Portal' : 'Access Applicant Portal'}
             </Link>
             <Link
               to="/"
@@ -319,11 +323,19 @@ export const AssessmentEnginePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Error Alert Banner */}
+        {errorMsg && (
+          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         {/* Navigation & Submit Buttons */}
         <div className="flex items-center justify-between pt-6 border-t border-slate-100">
           <button
             type="button"
-            disabled={currentQuestionIndex === 0}
+            disabled={currentQuestionIndex === 0 || submitting}
             onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
             className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30"
           >
@@ -345,7 +357,7 @@ export const AssessmentEnginePage: React.FC = () => {
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmit}
-                className="px-7 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-md"
+                className="px-7 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
                 <span>{submitting ? 'Submitting Answers...' : 'Submit Assessment'}</span>

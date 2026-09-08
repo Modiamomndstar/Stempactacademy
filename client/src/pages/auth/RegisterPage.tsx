@@ -36,6 +36,7 @@ export const RegisterPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [registeredUser, setRegisteredUser] = useState<any | null>(null);
+  const [createdApplicationId, setCreatedApplicationId] = useState<string>('');
 
   // Form Fields
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
@@ -172,6 +173,9 @@ export const RegisterPage: React.FC = () => {
       });
 
       setRegisteredUser(res.user);
+      if (res.applicationId) {
+        setCreatedApplicationId(res.applicationId);
+      }
     } catch (err: any) {
       setErrorMsg(
         err.message || 'Registration failed. Please check your details and try again.'
@@ -238,13 +242,12 @@ export const RegisterPage: React.FC = () => {
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() =>
-                navigate(
-                  currentProgram
-                    ? `/assessment?programId=${currentProgram.id}`
-                    : '/assessment'
-                )
-              }
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (currentProgram) params.set('programId', currentProgram.id);
+                if (createdApplicationId) params.set('appId', createdApplicationId);
+                navigate(`/assessment${params.toString() ? `?${params.toString()}` : ''}`);
+              }}
               className="flex-1 py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5"
             >
               <span>Take Diagnostic Assessment</span>

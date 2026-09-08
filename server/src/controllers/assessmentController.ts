@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { Role, ApplicationStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
 
 export const getAssessmentForProgram = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -16,7 +20,7 @@ export const getAssessmentForProgram = async (req: Request, res: Response): Prom
       if (app) targetProgramId = app.programId;
     }
 
-    // Find assessment specifically for program or fallback to general STEM diagnostic test
+    // 1. Find assessment specifically for program
     let assessment = targetProgramId
       ? await prisma.assessment.findFirst({
           where: { programId: targetProgramId },
@@ -38,6 +42,39 @@ export const getAssessmentForProgram = async (req: Request, res: Response): Prom
         })
       : null;
 
+    // 2. If no assessment specifically linked to this program, try finding one for the program's school
+    if (!assessment && targetProgramId) {
+      const targetProg = await prisma.program.findUnique({
+        where: { id: targetProgramId },
+        select: { schoolId: true },
+      });
+      if (targetProg?.schoolId) {
+        assessment = await prisma.assessment.findFirst({
+          where: {
+            program: {
+              schoolId: targetProg.schoolId,
+            },
+          },
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              select: {
+                id: true,
+                category: true,
+                type: true,
+                prompt: true,
+                codeSnippet: true,
+                options: true,
+                points: true,
+                order: true,
+              },
+            },
+          },
+        });
+      }
+    }
+
+    // 3. Fallback to general STEM diagnostic test
     if (!assessment) {
       assessment = await prisma.assessment.findFirst({
         include: {
@@ -72,22 +109,100 @@ export const getAssessmentForProgram = async (req: Request, res: Response): Prom
 
 export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { applicationId, assessmentId, answers } = req.body;
-    // answers is an object mapping questionId to selected answer string or index
+    const { applicationId, assessmentId, programId, answers } = req.body;
 
-    if (!applicationId || !assessmentId || !answers) {
-      res.status(400).json({ message: 'applicationId, assessmentId, and answers are required.' });
+    if (!assessmentId || !answers) {
+      res.status(400).json({ message: 'assessmentId and answers are required.' });
       return;
     }
 
-    const application = await prisma.application.findUnique({
-      where: { id: applicationId },
+    // Extract user from token if present
+    let authUser = req.user;
+    if (!authUser && req.headers.authorization?.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded?.id) {
+          const u = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, email: true, role: true, firstName: true, lastName: true, phone: true, isActive: true },
+          });
+          if (u && u.isActive) {
+            authUser = u as any;
+          }
+        }
+      } catch (tokenErr) {
+        // Continue gracefully
+      }
+    }
+
+    // 1. Fetch assessment
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
       include: { program: true },
     });
 
-    if (!application) {
-      res.status(404).json({ message: 'Application not found' });
+    if (!assessment) {
+      res.status(404).json({ message: 'Assessment not found' });
       return;
+    }
+
+    // 2. Resolve Application record
+    let application: any = null;
+
+    if (applicationId && applicationId !== 'demo-applicant-session') {
+      application = await prisma.application.findUnique({
+        where: { id: applicationId },
+        include: { program: true },
+      });
+    }
+
+    // If not found by ID, look up application for authenticated user matching programId or latest application
+    if (!application && authUser) {
+      if (programId) {
+        application = await prisma.application.findFirst({
+          where: { userId: authUser.id, programId: String(programId) },
+          include: { program: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+      if (!application) {
+        application = await prisma.application.findFirst({
+          where: { userId: authUser.id },
+          include: { program: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+    }
+
+    // If still no application exists, generate an application session automatically
+    if (!application) {
+      const appCount = await prisma.application.count();
+      const prefix = authUser ? 'APP' : 'APP-GUEST';
+      const applicationNumber = `${prefix}-${new Date().getFullYear()}-${String(appCount + 1).padStart(4, '0')}`;
+      const targetProgId = programId ? String(programId) : assessment.programId;
+
+      application = await prisma.application.create({
+        data: {
+          applicationNumber,
+          userId: authUser ? authUser.id : null,
+          programId: targetProgId,
+          preferredSchedule: 'Hybrid (Weekend & Evening)',
+          fullName: authUser ? `${authUser.firstName} ${authUser.lastName}` : 'Guest Applicant',
+          dateOfBirth: new Date(Date.now() - 18 * 365 * 24 * 3600 * 1000),
+          gender: 'Unspecified',
+          phone: (authUser as any)?.phone || '0000000000',
+          email: authUser?.email || `guest_${Date.now()}@stempact.org`,
+          address: 'Ile-Ife, Osun State',
+          educationLevel: 'High School / Undergraduate',
+          careerGoals: 'Practical STEM Mastery & Real-World Impact',
+          learningObjectives: 'Hands-on Technical Excellence',
+          statementOfPurpose: 'Placement Diagnostic Assessment completed.',
+          status: ApplicationStatus.SUBMITTED,
+          consentAccepted: true,
+        },
+        include: { program: true },
+      });
     }
 
     const questions = await prisma.assessmentQuestion.findMany({
@@ -155,6 +270,8 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       recommendationReason = `Score (${percentage.toFixed(1)}%). Recommended for Level 1 with dedicated peer-mentorship and digital literacy support.`;
     }
 
+    const progName = application.program?.name || assessment.program?.name || 'STEMPACT Academy';
+
     // Record Assessment Attempt
     const attempt = await prisma.assessmentAttempt.create({
       data: {
@@ -166,7 +283,7 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
         percentage,
         categoryScores: JSON.stringify(categoryPercentages),
         answers: JSON.stringify(answers),
-        recommendedProgram: application.program.name,
+        recommendedProgram: progName,
         recommendedLevel,
         recommendationReason,
       },
@@ -178,14 +295,14 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       create: {
         applicationId: application.id,
         assessmentAttemptId: attempt.id,
-        recommendedProgram: application.program.name,
+        recommendedProgram: progName,
         recommendedLevel,
         reason: recommendationReason,
         status: 'PENDING_REVIEW',
       },
       update: {
         assessmentAttemptId: attempt.id,
-        recommendedProgram: application.program.name,
+        recommendedProgram: progName,
         recommendedLevel,
         reason: recommendationReason,
         status: 'PENDING_REVIEW',
@@ -206,7 +323,7 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
         maxScore: maxPossibleScore,
         percentage: Math.round(percentage),
         categoryScores: categoryPercentages,
-        recommendedProgram: application.program.name,
+        recommendedProgram: progName,
         recommendedLevel,
         recommendationReason,
       },

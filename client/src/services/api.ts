@@ -75,8 +75,12 @@ export const api = {
     const query = new URLSearchParams(params as any).toString();
     return apiRequest(`/assessments${query ? `?${query}` : ''}`);
   },
-  submitAssessmentAttempt: (data: { applicationId: string; assessmentId: string; answers: Record<string, any> }) =>
-    apiRequest('/assessments/attempt', { method: 'POST', body: JSON.stringify(data) }),
+  submitAssessmentAttempt: (data: {
+    applicationId?: string;
+    programId?: string;
+    assessmentId: string;
+    answers: Record<string, any>;
+  }) => apiRequest('/assessments/attempt', { method: 'POST', body: JSON.stringify(data) }),
 
   // Placements & Academic Board Review
   getPendingPlacements: () => apiRequest('/placements/pending'),
