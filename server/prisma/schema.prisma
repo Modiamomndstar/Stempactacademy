@@ -9,12 +9,28 @@ datasource db {
 
 enum Role {
   SUPER_ADMIN
-  COORDINATOR_ADMIN
   ACADEMIC_ADMIN
   FINANCE_ADMIN
+  ADMISSIONS_ADMIN
+  PROGRAM_COORDINATOR
+  COORDINATOR_ADMIN
   INSTRUCTOR
   STUDENT
   PARENT
+  COUNSELOR
+  CONTENT_MANAGER
+  INNOVATION_MANAGER
+  MARKETING_MANAGER
+  PARTNER
+  APPLICANT
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+  ARCHIVED
 }
 
 enum ProgramStatus {
@@ -39,14 +55,17 @@ enum CohortStatus {
 }
 
 enum ApplicationStatus {
+  DRAFT
   SUBMITTED
   UNDER_REVIEW
   ASSESSMENT_PENDING
   ASSESSED
+  PLACEMENT_PENDING
   PLACED
   ADMITTED
   ENROLLED
   REJECTED
+  WITHDRAWN
 }
 
 enum AttendanceStatus {
@@ -81,27 +100,33 @@ enum CertificateType {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  username      String?   @unique
+  id            String     @id @default(uuid())
+  email         String     @unique
+  username      String?    @unique
   passwordHash  String
   firstName     String
   lastName      String
   phone         String?
-  role          Role      @default(STUDENT)
+  role          Role       @default(STUDENT)
+  status        UserStatus @default(ACTIVE)
   avatarUrl     String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  studentProfile    StudentProfile?
-  parentProfile     ParentProfile?
-  instructorProfile InstructorProfile?
-  applications      Application[]
+  studentProfile     StudentProfile?
+  parentProfile      ParentProfile?
+  instructorProfile  InstructorProfile?
+  coordinatorProfile CoordinatorProfile?
+  partnerProfile     PartnerProfile?
+  applications       Application[]
   assessmentAttempts AssessmentAttempt[]
-  submissions       Submission[]
-  attendanceMarked  Attendance[]        @relation("InstructorAttendance")
-  announcements     Announcement[]      @relation("AuthorAnnouncements")
+  submissions        Submission[]
+  attendanceMarked   Attendance[]         @relation("InstructorAttendance")
+  announcements      Announcement[]       @relation("AuthorAnnouncements")
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  counselorRecords   CounselingRecord[]   @relation("CounselorRecords")
 }
 
 model School {
@@ -378,6 +403,9 @@ model StudentProfile {
   invoices          Invoice[]
   certificates      Certificate[]
   projectMembers    ProjectMember[]
+  counselingRecords CounselingRecord[]
+  competitionTeams  TeamMember[]
+  sponsorships      SponsoredStudent[]
 }
 
 model ParentProfile {
@@ -612,3 +640,138 @@ model Partner {
   category    String  @default("TECHNOLOGY") // TECHNOLOGY, ACADEMIC, CORPORATE, GOVERNMENT
   isFeatured  Boolean @default(true)
 }
+
+model CoordinatorProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffCode        String   @unique
+  department       String   @default("Academic Operations")
+  assignedSchools  String   @default("[]") // JSON string of school codes
+  assignedPrograms String   @default("[]") // JSON string of program codes
+  createdAt        DateTime @default(now())
+}
+
+model PartnerProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationName   String
+  partnerType        String             @default("CORPORATE") // CORPORATE, NGO, SCHOOL, GOVERNMENT
+  contactPhone       String?
+  mouDetails         String?
+  grantBudget        Float              @default(0)
+  activeSponsorships Int                @default(0)
+  sponsoredStudents  SponsoredStudent[]
+  createdAt          DateTime           @default(now())
+}
+
+model SponsoredStudent {
+  id               String         @id @default(uuid())
+  partnerProfileId String
+  partnerProfile   PartnerProfile @relation(fields: [partnerProfileId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scholarshipName  String         @default("STEMPACT Future Leaders Grant")
+  coveragePercent  Float          @default(100)
+  startDate        DateTime       @default(now())
+  status           String         @default("ACTIVE") // ACTIVE, COMPLETED, REVOKED
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ALERT
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName      String?
+  userRole      String?
+  action        String
+  resource      String
+  resourceId    String?
+  previousValue String?  // JSON string
+  newValue      String?  // JSON string
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+}
+
+model CounselingRecord {
+  id             String         @id @default(uuid())
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  counselorId    String?
+  counselor      User?          @relation("CounselorRecords", fields: [counselorId], references: [id], onDelete: SetNull)
+  category       String         // ACADEMIC_STRUGGLE, ATTENDANCE_RISK, BEHAVIORAL, CAREER_GUIDANCE, PERSONAL
+  riskLevel      String         @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  summary        String
+  notes          String
+  actionPlan     String?
+  parentNotified Boolean        @default(false)
+  status         String         @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, ESCALATED
+  followUpDate   DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Competition {
+  id                   String            @id @default(uuid())
+  title                String
+  slug                 String            @unique
+  category             String            // HACKATHON, OLYMPIAD, ROBOTICS_EXPO, AI_CHALLENGE
+  description          String
+  rules                String?
+  prizePool            String?
+  startDate            DateTime
+  endDate              DateTime
+  registrationDeadline DateTime
+  status               String            @default("UPCOMING") // UPCOMING, ACTIVE, JUDGING, COMPLETED
+  bannerUrl            String?
+  createdAt            DateTime          @default(now())
+  teams                CompetitionTeam[]
+}
+
+model CompetitionTeam {
+  id             String        @id @default(uuid())
+  competitionId  String
+  competition    Competition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  name           String
+  projectTitle   String?
+  projectSummary String?
+  repositoryUrl  String?
+  demoUrl        String?
+  score          Float?
+  rank           Int?
+  feedback       String?
+  createdAt      DateTime      @default(now())
+  members        TeamMember[]
+}
+
+model TeamMember {
+  id        String          @id @default(uuid())
+  teamId    String
+  team      CompetitionTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  role      String          @default("Member") // Team Lead, Developer, Designer, Researcher
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  role       Role
+  permission String
+  createdAt  DateTime @default(now())
+
+  @@unique([role, permission])
+}
+

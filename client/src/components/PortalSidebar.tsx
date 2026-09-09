@@ -25,6 +25,14 @@ import {
   LogOut,
   X,
   ExternalLink,
+  HeartPulse,
+  Lightbulb,
+  Megaphone,
+  Briefcase,
+  UserPlus,
+  Sliders,
+  History,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface PortalSidebarProps {
@@ -56,9 +64,45 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     }
   };
 
-  // Determine role-based menu sections strictly isolated per role
+  const getRoleDisplayName = () => {
+    switch (user.role) {
+      case 'SUPER_ADMIN': return 'SUPER ADMINISTRATOR';
+      case 'ACADEMIC_ADMIN': return 'ACADEMIC ADMINISTRATOR';
+      case 'FINANCE_ADMIN': return 'FINANCE ADMINISTRATOR';
+      case 'ADMISSIONS_ADMIN': return 'ADMISSIONS ADMINISTRATOR';
+      case 'PROGRAM_COORDINATOR':
+      case 'COORDINATOR_ADMIN': return 'PROGRAM COORDINATOR';
+      case 'INSTRUCTOR': return 'FACULTY INSTRUCTOR';
+      case 'STUDENT': return 'STUDENT LEARNER';
+      case 'PARENT': return 'PARENT & GUARDIAN';
+      case 'COUNSELOR': return 'STUDENT COUNSELOR';
+      case 'CONTENT_MANAGER': return 'CONTENT & LMS MANAGER';
+      case 'INNOVATION_MANAGER': return 'INNOVATION & CHALLENGE MGR';
+      case 'MARKETING_MANAGER': return 'MARKETING & COMMS MGR';
+      case 'PARTNER': return 'CORPORATE & NGO PARTNER';
+      case 'APPLICANT': return 'PROSPECTIVE APPLICANT';
+      default: return (user.role as string)?.replace('_', ' ') || 'PORTAL USER';
+    }
+  };
+
+  // Determine role-based menu sections strictly tailored to each of the 14 personas
   const getNavSections = () => {
-    // 1. Instructor Portal
+    // 1. Prospective Applicant
+    if (user.role === 'APPLICANT' || location.pathname.startsWith('/portal/applicant')) {
+      return [
+        {
+          title: 'Enrollment Journey',
+          items: [
+            { key: 'status', label: 'Application Status', icon: ClipboardList, route: '/portal/applicant', badge: 'Active', badgeColor: 'bg-blue-600' },
+            { key: 'assessment', label: 'Diagnostic Assessment', icon: Sparkles, route: '/portal/applicant' },
+            { key: 'admission', label: 'Offer of Admission', icon: Award, route: '/portal/applicant' },
+            { key: 'tuition', label: 'Tuition & Enrollment', icon: CreditCard, route: '/portal/applicant' },
+          ],
+        },
+      ];
+    }
+
+    // 2. Faculty Instructor
     if (user.role === 'INSTRUCTOR' || location.pathname.startsWith('/portal/instructor')) {
       return [
         {
@@ -72,7 +116,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       ];
     }
 
-    // 2. Parent & Guardian Portal
+    // 3. Parent & Guardian
     if (user.role === 'PARENT' || location.pathname.startsWith('/portal/parent')) {
       return [
         {
@@ -84,7 +128,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       ];
     }
 
-    // 3. Student Learner Portal
+    // 4. Student Learner
     if (user.role === 'STUDENT' || location.pathname.startsWith('/portal/student')) {
       return [
         {
@@ -101,7 +145,89 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       ];
     }
 
-    // 4. Finance Administrator
+    // 5. Counselor / Student Support Officer
+    if (user.role === 'COUNSELOR' || location.pathname.startsWith('/portal/counselor')) {
+      return [
+        {
+          title: 'Pastoral Care & Guidance',
+          items: [
+            { key: 'atrisk', label: 'At-Risk Watchlist', icon: AlertTriangle, route: '/portal/counselor', badge: 'Alerts', badgeColor: 'bg-rose-600' },
+            { key: 'records', label: 'Counseling & Case Records', icon: HeartPulse, route: '/portal/counselor' },
+            { key: 'interventions', label: 'Intervention Plans', icon: ClipboardList, route: '/portal/counselor' },
+          ],
+        },
+      ];
+    }
+
+    // 6. Program Coordinator
+    if (user.role === 'PROGRAM_COORDINATOR' || location.pathname.startsWith('/portal/coordinator')) {
+      return [
+        {
+          title: 'Program Operations',
+          items: [
+            { key: 'overview', label: 'Program Pacing & Cohorts', icon: Compass, route: '/portal/coordinator' },
+            { key: 'cohorts', label: 'Cohort Rosters & Capacity', icon: Calendar, route: '/portal/coordinator' },
+            { key: 'attendance', label: 'Attendance Monitoring', icon: CheckCircle2, route: '/portal/coordinator' },
+          ],
+        },
+      ];
+    }
+
+    // 7. Innovation & Challenge Manager
+    if (user.role === 'INNOVATION_MANAGER' || location.pathname.startsWith('/portal/innovation')) {
+      return [
+        {
+          title: 'Innovation & Hackathons',
+          items: [
+            { key: 'competitions', label: 'Competitions & Hackathons', icon: Lightbulb, route: '/portal/innovation', badge: 'Active', badgeColor: 'bg-amber-600' },
+            { key: 'squads', label: 'Student Innovation Squads', icon: Users, route: '/portal/innovation' },
+            { key: 'judging', label: 'Project Submissions & Judging', icon: Award, route: '/portal/innovation' },
+          ],
+        },
+      ];
+    }
+
+    // 8. Corporate / NGO Partner
+    if (user.role === 'PARTNER' || location.pathname.startsWith('/portal/partner')) {
+      return [
+        {
+          title: 'Partnership & CSR Hub',
+          items: [
+            { key: 'overview', label: 'Partnership Overview', icon: Briefcase, route: '/portal/partner' },
+            { key: 'students', label: 'Sponsored Scholars Roster', icon: Users, route: '/portal/partner' },
+            { key: 'reports', label: 'CSR Impact Reports', icon: FileText, route: '/portal/partner' },
+          ],
+        },
+      ];
+    }
+
+    // 9. Content & LMS Manager
+    if (user.role === 'CONTENT_MANAGER' || location.pathname.startsWith('/portal/content')) {
+      return [
+        {
+          title: 'Curriculum & LMS Vault',
+          items: [
+            { key: 'programs', label: 'Schools & Curriculum', icon: BookOpen, route: '/portal/admin' },
+            { key: 'cms', label: 'Campus Content & CMS', icon: Bell, route: '/portal/admin' },
+          ],
+        },
+      ];
+    }
+
+    // 10. Marketing & Comms Manager
+    if (user.role === 'MARKETING_MANAGER' || location.pathname.startsWith('/portal/marketing')) {
+      return [
+        {
+          title: 'Marketing & Outreach',
+          items: [
+            { key: 'cms', label: 'Campus Bulletins & Blog', icon: Megaphone, route: '/portal/admin' },
+            { key: 'applications', label: 'Inbound Inquiries & Leads', icon: ClipboardList, route: '/portal/admin' },
+          ],
+        },
+      ];
+    }
+
+    // 11. Finance Administrator
     if (user.role === 'FINANCE_ADMIN') {
       return [
         {
@@ -109,38 +235,45 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           items: [
             { key: 'analytics', label: 'Financial Overview', icon: TrendingUp, route: '/portal/admin' },
             { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin', badge: 'Billing', badgeColor: 'bg-emerald-600' },
-            { key: 'applications', label: 'Student Billing & Intake', icon: ClipboardList, route: '/portal/admin' },
-            { key: 'cohorts', label: 'Cohort Billing Schedules', icon: Calendar, route: '/portal/admin' },
+            { key: 'transfers', label: 'Bank Transfer Approvals', icon: CheckCircle2, route: '/portal/admin', badge: 'Review', badgeColor: 'bg-amber-600' },
+            { key: 'cohorts', label: 'Cohort Fee Structures', icon: Calendar, route: '/portal/admin' },
           ],
         },
       ];
     }
 
-    // 5. Coordinator Admin & Academic Admin
-    if (user.role === 'COORDINATOR_ADMIN' || user.role === 'ACADEMIC_ADMIN') {
+    // 12. Admissions Administrator
+    if (user.role === 'ADMISSIONS_ADMIN') {
       return [
         {
-          title: 'Academic Administration',
+          title: 'Admissions & Enrollment',
           items: [
-            { key: 'analytics', label: 'Academic Overview', icon: TrendingUp, route: '/portal/admin' },
-            { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
-            { key: 'programs', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
-            { key: 'cohorts', label: 'Cohorts & Scheduling', icon: Calendar, route: '/portal/admin' },
-            { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
-            { key: 'applications', label: 'Admissions Intake', icon: ClipboardList, route: '/portal/admin' },
-          ],
-        },
-        {
-          title: 'Records & Bulletins',
-          items: [
-            { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
-            { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Bell, route: '/portal/admin' },
+            { key: 'applications', label: 'Applicant Intake Pipeline', icon: UserPlus, route: '/portal/admin', badge: 'Intake', badgeColor: 'bg-blue-600' },
+            { key: 'placements', label: 'Placement Confirmation', icon: Sparkles, route: '/portal/admin' },
+            { key: 'cohorts', label: 'Cohort Enrollment Roster', icon: Calendar, route: '/portal/admin' },
           ],
         },
       ];
     }
 
-    // 6. Super Administrator (Full Management Suite)
+    // 13. Academic Administrator
+    if (user.role === 'ACADEMIC_ADMIN') {
+      return [
+        {
+          title: 'Academic Board',
+          items: [
+            { key: 'analytics', label: 'Academic Overview', icon: TrendingUp, route: '/portal/admin' },
+            { key: 'programs', label: 'Schools & Syllabi', icon: BookOpen, route: '/portal/admin' },
+            { key: 'cohorts', label: 'Cohorts & Timetables', icon: Calendar, route: '/portal/admin' },
+            { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
+            { key: 'instructors', label: 'Faculty Directory', icon: Users, route: '/portal/admin' },
+            { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
+          ],
+        },
+      ];
+    }
+
+    // 14. Super Administrator (Omnipotent Platform Owner)
     return [
       {
         title: 'Executive & Governance',
@@ -148,6 +281,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           { key: 'analytics', label: 'Executive KPIs', icon: TrendingUp, route: '/portal/admin' },
           { key: 'admins', label: 'Admin Accounts', icon: ShieldAlert, route: '/portal/admin', badge: 'Super', badgeColor: 'bg-indigo-600' },
           { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
+          { key: 'audit', label: 'System Audit Trail', icon: History, route: '/portal/admin', badge: 'Security', badgeColor: 'bg-purple-600' },
         ],
       },
       {
@@ -160,7 +294,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         ],
       },
       {
-        title: 'Operations & Records',
+        title: 'Finances & Operations',
         items: [
           { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin' },
           { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
@@ -182,14 +316,8 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             <div className="text-xs font-black tracking-tight text-white uppercase">
               STEMPACT PORTAL
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">
-              {location.pathname.startsWith('/portal/instructor') || user.role === 'INSTRUCTOR'
-                ? 'FACULTY INSTRUCTOR'
-                : location.pathname.startsWith('/portal/student') || user.role === 'STUDENT'
-                ? 'STUDENT LEARNER'
-                : location.pathname.startsWith('/portal/parent') || user.role === 'PARENT'
-                ? 'PARENT & GUARDIAN'
-                : user.role.replace('_', ' ')}
+            <div className="text-[10px] text-blue-400 font-mono font-bold tracking-tight">
+              {getRoleDisplayName()}
             </div>
           </div>
         </Link>

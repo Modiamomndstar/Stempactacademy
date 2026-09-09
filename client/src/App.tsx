@@ -33,29 +33,30 @@ import { StudentDashboardPage } from './pages/student/StudentDashboardPage';
 import { ParentPortalPage } from './pages/parent/ParentPortalPage';
 import { InstructorPortalPage } from './pages/instructor/InstructorPortalPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { ApplicantDashboardPage } from './pages/applicant/ApplicantDashboardPage';
+import { CounselorDashboardPage } from './pages/counselor/CounselorDashboardPage';
+import { InnovationDashboardPage } from './pages/innovation/InnovationDashboardPage';
+import { PartnerDashboardPage } from './pages/partner/PartnerDashboardPage';
+import { CoordinatorDashboardPage } from './pages/coordinator/CoordinatorDashboardPage';
 
-// Protected Route Component
-// Protected Route Component with Strict Role Isolation
+// Protected Route Component with Strict Role Isolation & Super Admin Omnipotence
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
   children,
   allowedRoles,
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, portalRoute } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/portal/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect user strictly to their own dedicated portal:
-    if (['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN'].includes(user.role)) {
-      return <Navigate to="/portal/admin" replace />;
-    }
-    if (user.role === 'INSTRUCTOR') {
-      return <Navigate to="/portal/instructor" replace />;
-    }
-    if (user.role === 'PARENT') {
-      return <Navigate to="/portal/parent" replace />;
-    }
-    return <Navigate to="/portal/student" replace />;
+
+  // Super Admin has omnipotent access across all role portals
+  if (user.role === 'SUPER_ADMIN') {
+    return <>{children}</>;
   }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={portalRoute} replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -65,10 +66,7 @@ const AppShell: React.FC = () => {
 
   // Check if current route is an authenticated portal viewport
   const isPortalRoute =
-    location.pathname.startsWith('/portal/admin') && !location.pathname.includes('/login') ||
-    location.pathname.startsWith('/portal/instructor') && !location.pathname.includes('/login') ||
-    location.pathname.startsWith('/portal/student') && !location.pathname.includes('/login') ||
-    location.pathname.startsWith('/portal/parent') && !location.pathname.includes('/login') ||
+    location.pathname.startsWith('/portal/') && !location.pathname.includes('/login') ||
     location.pathname === '/admin' ||
     location.pathname === '/instructor' ||
     location.pathname === '/student' ||
@@ -106,45 +104,99 @@ const AppShell: React.FC = () => {
       <Route path="/portal/student/login" element={<LoginPage />} />
 
       {/* 3. Authenticated Role Portals (Render Dedicated Role Sidebars via PortalLayout) */}
+      {/* Administration (Super Admin, Academic Admin, Finance Admin, Admissions Admin) */}
       <Route
         path="/portal/admin"
         element={
-          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN']}>
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN', 'ADMISSIONS_ADMIN', 'CONTENT_MANAGER', 'MARKETING_MANAGER']}>
             <AdminDashboardPage />
           </ProtectedRoute>
         }
       />
       <Route path="/admin" element={<Navigate to="/portal/admin" replace />} />
 
+      {/* Program Coordinator */}
+      <Route
+        path="/portal/coordinator"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'PROGRAM_COORDINATOR', 'COORDINATOR_ADMIN']}>
+            <CoordinatorDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Faculty Instructor */}
       <Route
         path="/portal/instructor"
         element={
-          <ProtectedRoute allowedRoles={['INSTRUCTOR']}>
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'INSTRUCTOR']}>
             <InstructorPortalPage />
           </ProtectedRoute>
         }
       />
       <Route path="/instructor" element={<Navigate to="/portal/instructor" replace />} />
 
+      {/* Student Learner */}
       <Route
         path="/portal/student"
         element={
-          <ProtectedRoute allowedRoles={['STUDENT']}>
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'STUDENT']}>
             <StudentDashboardPage />
           </ProtectedRoute>
         }
       />
       <Route path="/student" element={<Navigate to="/portal/student" replace />} />
 
+      {/* Parent & Guardian */}
       <Route
         path="/portal/parent"
         element={
-          <ProtectedRoute allowedRoles={['PARENT']}>
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'PARENT']}>
             <ParentPortalPage />
           </ProtectedRoute>
         }
       />
       <Route path="/parent" element={<Navigate to="/portal/parent" replace />} />
+
+      {/* Prospective Applicant */}
+      <Route
+        path="/portal/applicant"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'APPLICANT']}>
+            <ApplicantDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Student Counselor & Support */}
+      <Route
+        path="/portal/counselor"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COUNSELOR']}>
+            <CounselorDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Innovation & Competition Manager */}
+      <Route
+        path="/portal/innovation"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'INNOVATION_MANAGER']}>
+            <InnovationDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Corporate & NGO Partner */}
+      <Route
+        path="/portal/partner"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'PARTNER']}>
+            <PartnerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -47,6 +47,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<
     | 'analytics'
     | 'admins'
@@ -56,8 +57,10 @@ export const AdminDashboardPage: React.FC = () => {
     | 'cohorts'
     | 'programs'
     | 'invoices'
+    | 'transfers'
     | 'certificates'
     | 'cms'
+    | 'audit'
   >('analytics');
 
   // Modal / Review States
@@ -113,6 +116,7 @@ export const AdminDashboardPage: React.FC = () => {
         instructorsRes,
         certsRes,
         transfersRes,
+        auditRes,
       ] = await Promise.all([
         api.getAdminStats(),
         api.getApplications(),
@@ -124,6 +128,7 @@ export const AdminDashboardPage: React.FC = () => {
         api.getInstructors().catch(() => ({ instructors: [] })),
         api.getCertificates().catch(() => ({ certificates: [] })),
         api.getBankTransfers().catch(() => ({ payments: [] })),
+        api.getAuditLogs({ limit: 50 }).catch(() => ({ logs: [] })),
       ]);
 
       setStats(statsRes);
@@ -136,6 +141,7 @@ export const AdminDashboardPage: React.FC = () => {
       setInstructors(instructorsRes.instructors || []);
       setCertificates(certsRes.certificates || []);
       setBankTransfers(transfersRes.payments || []);
+      setAuditLogs(auditRes.logs || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -398,8 +404,10 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
             { id: 'cohorts', name: `Cohorts (${cohorts.length})` },
             { id: 'programs', name: `Programs (${programs.length})` },
             { id: 'invoices', name: `Revenue (${invoices.length})` },
+            { id: 'transfers', name: `Bank Transfers (${bankTransfers.filter((t) => t.status === 'PENDING').length})` },
             { id: 'certificates', name: `Certificates (${certificates.length})` },
             { id: 'cms', name: 'CMS & Bulletins' },
+            { id: 'audit', name: `Audit Trail (${auditLogs.length})`, superOnly: true },
           ]
             .filter((tab) => !tab.superOnly || isSuperAdmin)
             .map((tab) => (
@@ -1016,6 +1024,80 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                 <span>Broadcast Announcement</span>
               </button>
             </form>
+          </Card>
+        )}
+
+        {/* TAB 11: SYSTEM AUDIT TRAIL */}
+        {activeTab === 'audit' && (
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-purple-600" />
+                  <span>Immutable System Audit Trail</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Comprehensive security log recording administrative actions, role assignments, financial approvals, and grade ratifications.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
+                {auditLogs.length} Events Logged
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-wider text-[10px]">
+                    <th className="p-3 font-bold">Timestamp</th>
+                    <th className="p-3 font-bold">Actor</th>
+                    <th className="p-3 font-bold">Action</th>
+                    <th className="p-3 font-bold">Resource</th>
+                    <th className="p-3 font-bold">Details</th>
+                    <th className="p-3 font-bold">Client IP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-400">
+                        No audit records captured yet. Sensitive administrative events will be logged here.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs.map((log: any) => (
+                      <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </td>
+                        <td className="p-3">
+                          <strong className="text-slate-900 block">
+                            {log.userName || (log.user?.firstName ? `${log.user.firstName} ${log.user.lastName}` : 'System Action')}
+                          </strong>
+                          <span className="text-[10px] text-purple-700 font-mono font-semibold">
+                            {log.userRole || log.user?.role || 'SYSTEM'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-slate-600">
+                          {log.resource} {log.resourceId ? `(${log.resourceId.slice(0, 8)}...)` : ''}
+                        </td>
+                        <td className="p-3 max-w-xs truncate text-slate-500 text-[11px] font-mono">
+                          {log.newValue || log.previousValue || 'N/A'}
+                        </td>
+                        <td className="p-3 font-mono text-slate-400 text-[11px]">
+                          {log.ipAddress || '127.0.0.1'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </Card>
         )}
       </div>

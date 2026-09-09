@@ -17,9 +17,16 @@ import {
   Sparkles,
   CheckCircle2,
   HelpCircle,
+  Briefcase,
+  HeartPulse,
+  Lightbulb,
+  Compass,
+  CreditCard,
+  Megaphone,
+  Layers,
 } from 'lucide-react';
 
-export type PortalType = 'admin' | 'instructor' | 'student';
+export type PortalType = 'learners' | 'faculty' | 'admin' | 'ecosystem';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -30,13 +37,18 @@ export const LoginPage: React.FC = () => {
   // Determine initial portal door from URL path or query params
   const getInitialPortal = (): PortalType => {
     if (location.pathname.includes('/admin')) return 'admin';
-    if (location.pathname.includes('/instructor')) return 'instructor';
-    if (location.pathname.includes('/student')) return 'student';
+    if (location.pathname.includes('/instructor')) return 'faculty';
+    if (location.pathname.includes('/student')) return 'learners';
     const queryPortal = searchParams.get('portal');
-    if (queryPortal === 'admin' || queryPortal === 'instructor' || queryPortal === 'student') {
-      return queryPortal;
+    if (
+      queryPortal === 'admin' ||
+      queryPortal === 'faculty' ||
+      queryPortal === 'learners' ||
+      queryPortal === 'ecosystem'
+    ) {
+      return queryPortal as PortalType;
     }
-    return 'student'; // Default to learners & parents
+    return 'learners'; // Default to learners & parents
   };
 
   const [activePortal, setActivePortal] = useState<PortalType>(getInitialPortal());
@@ -53,14 +65,12 @@ export const LoginPage: React.FC = () => {
   const handleLogin = async (
     e?: React.FormEvent,
     customIdentifier?: string,
-    customPass?: string,
-    portalOverride?: PortalType
+    customPass?: string
   ) => {
     if (e) e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
-    const targetPortal = portalOverride || activePortal;
     const loginId = customIdentifier || identifier;
     const loginPass = customPass || password;
 
@@ -68,18 +78,46 @@ export const LoginPage: React.FC = () => {
       const user = await login({
         email: loginId,
         password: loginPass,
-        portal: targetPortal,
       });
 
-      // Navigate to corresponding authenticated portal route
-      if (['SUPER_ADMIN', 'COORDINATOR_ADMIN', 'ACADEMIC_ADMIN', 'FINANCE_ADMIN'].includes(user.role)) {
-        navigate('/portal/admin');
-      } else if (user.role === 'INSTRUCTOR') {
-        navigate('/portal/instructor');
-      } else if (user.role === 'PARENT') {
-        navigate('/portal/parent');
-      } else {
-        navigate('/portal/student');
+      // Route directly to the corresponding dedicated dashboard
+      switch (user.role) {
+        case 'SUPER_ADMIN':
+        case 'ACADEMIC_ADMIN':
+        case 'FINANCE_ADMIN':
+        case 'ADMISSIONS_ADMIN':
+          navigate('/portal/admin');
+          break;
+        case 'PROGRAM_COORDINATOR':
+        case 'COORDINATOR_ADMIN':
+          navigate('/portal/coordinator');
+          break;
+        case 'INSTRUCTOR':
+          navigate('/portal/instructor');
+          break;
+        case 'PARENT':
+          navigate('/portal/parent');
+          break;
+        case 'COUNSELOR':
+          navigate('/portal/counselor');
+          break;
+        case 'CONTENT_MANAGER':
+        case 'MARKETING_MANAGER':
+          navigate('/portal/admin');
+          break;
+        case 'INNOVATION_MANAGER':
+          navigate('/portal/innovation');
+          break;
+        case 'PARTNER':
+          navigate('/portal/partner');
+          break;
+        case 'APPLICANT':
+          navigate('/portal/applicant');
+          break;
+        case 'STUDENT':
+        default:
+          navigate('/portal/student');
+          break;
       }
     } catch (err: any) {
       setErrorMsg(
@@ -107,103 +145,128 @@ export const LoginPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              STEMPACT Academy Portal Login
+              STEMPACT Academy Unified Portal
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Official Management & Learning System • Ile-Ife Campus Hub
+              Select your institutional doorway to access your tailored dashboard • Ile-Ife Campus Hub
             </p>
           </div>
         </div>
 
-        {/* 3-Door Persona Selector Tabs */}
-        <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-3 gap-1 shadow-inner border border-slate-200">
+        {/* 4-Door Persona Selector Tabs */}
+        <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-1 shadow-inner border border-slate-200">
+          <button
+            type="button"
+            onClick={() => handlePortalSwitch('learners')}
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activePortal === 'learners'
+                ? 'bg-white text-blue-700 shadow-md border border-slate-200/80 font-black'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="truncate">Learners</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePortalSwitch('faculty')}
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activePortal === 'faculty'
+                ? 'bg-white text-emerald-700 shadow-md border border-slate-200/80 font-black'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="truncate">Faculty</span>
+          </button>
+
           <button
             type="button"
             onClick={() => handlePortalSwitch('admin')}
-            className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               activePortal === 'admin'
                 ? 'bg-white text-indigo-700 shadow-md border border-slate-200/80 font-black'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <ShieldAlert className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span className="truncate">Staff & Admin</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="truncate">Governance</span>
           </button>
 
           <button
             type="button"
-            onClick={() => handlePortalSwitch('instructor')}
-            className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activePortal === 'instructor'
-                ? 'bg-white text-emerald-700 shadow-md border border-slate-200/80 font-black'
+            onClick={() => handlePortalSwitch('ecosystem')}
+            className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              activePortal === 'ecosystem'
+                ? 'bg-white text-amber-700 shadow-md border border-slate-200/80 font-black'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="truncate">Faculty & Instructors</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handlePortalSwitch('student')}
-            className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activePortal === 'student'
-                ? 'bg-white text-blue-700 shadow-md border border-slate-200/80 font-black'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="truncate">Learners & Parents</span>
+            <Briefcase className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="truncate">Partners</span>
           </button>
         </div>
 
         {/* Main Login Card */}
         <Card className="p-6 sm:p-8 shadow-xl border border-slate-200 space-y-6">
           {/* Active Door Information Banner */}
+          {activePortal === 'learners' && (
+            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-blue-900 font-black text-xs uppercase tracking-wide">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span>Doorway 1: Learners & Guardians</span>
+                </div>
+                <Badge variant="blue">Students • Parents • Applicants</Badge>
+              </div>
+              <p className="text-[11px] text-blue-700 leading-relaxed">
+                Access your learning cockpit, dynamic diagnostic tests, syllabus, assignments, and tuition receipts.
+              </p>
+            </div>
+          )}
+
+          {activePortal === 'faculty' && (
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-900 font-black text-xs uppercase tracking-wide">
+                  <GraduationCap className="w-4 h-4 text-emerald-600" />
+                  <span>Doorway 2: Faculty & Mentors</span>
+                </div>
+                <Badge variant="green">Instructors • Counselors</Badge>
+              </div>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">
+                Course Instructors and Student Support Counselors. Access live class attendance, grading queues, and pastoral case records.
+              </p>
+            </div>
+          )}
+
           {activePortal === 'admin' && (
             <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-indigo-900 font-black text-xs uppercase tracking-wide">
                   <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                  <span>Executive Staff & Administration Portal</span>
+                  <span>Doorway 3: Institutional Administration</span>
                 </div>
-                <Badge variant="blue">Governance</Badge>
+                <Badge variant="blue">Super Admin • Academic • Finance • Admissions • Coordinator</Badge>
               </div>
               <p className="text-[11px] text-indigo-700 leading-relaxed">
-                Super Admin, Coordinator Admins, Academic Directors, and Finance Officers.
-                Super Admin credentials sync directly from environment variables.
+                Platform Owners, Academic Directors, Admissions Officers, Finance Officers, and Program Coordinators.
               </p>
             </div>
           )}
 
-          {activePortal === 'instructor' && (
-            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+          {activePortal === 'ecosystem' && (
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-1">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-900 font-black text-xs uppercase tracking-wide">
-                  <GraduationCap className="w-4 h-4 text-emerald-600" />
-                  <span>Faculty & Instructor Portal</span>
+                <div className="flex items-center gap-2 text-amber-900 font-black text-xs uppercase tracking-wide">
+                  <Briefcase className="w-4 h-4 text-amber-600" />
+                  <span>Doorway 4: Ecosystem & Partners</span>
                 </div>
-                <Badge variant="green">Academic Staff</Badge>
+                <Badge variant="amber">Corporate • Innovation • Content • Marketing</Badge>
               </div>
-              <p className="text-[11px] text-emerald-700 leading-relaxed">
-                Course Instructors, Lab Fellows, and Mentors. Access live attendance, student
-                progress, and grading queues.
-              </p>
-            </div>
-          )}
-
-          {activePortal === 'student' && (
-            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-blue-900 font-black text-xs uppercase tracking-wide">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>Student & Parent Portal</span>
-                </div>
-                <Badge variant="amber">Learners & Guardians</Badge>
-              </div>
-              <p className="text-[11px] text-blue-700 leading-relaxed">
-                Enrolled learners and parents/guardians. Access syllabus, timetable, submissions,
-                diagnostic assessments, and tuition receipts.
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                Corporate & NGO Sponsors, Hackathon Managers, Content Developers, and Communications Managers.
               </p>
             </div>
           )}
@@ -217,24 +280,14 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5 text-xs">
-              <label className="font-bold text-slate-700 flex items-center justify-between">
-                <span>
-                  {activePortal === 'instructor'
-                    ? 'Staff Code / Email / Username'
-                    : 'Email Address or Username'}
-                </span>
+              <label className="font-bold text-slate-700">
+                Email Address or Username
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder={
-                    activePortal === 'admin'
-                      ? 'admin@stempact.org or superadmin'
-                      : activePortal === 'instructor'
-                      ? 'STP-INS-001 or instructor@stempact.org'
-                      : 'student@stempact.org or username'
-                  }
+                  placeholder="name@stempact.org"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 font-medium"
@@ -264,189 +317,219 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 px-4 rounded-xl text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-                activePortal === 'admin'
-                  ? 'bg-indigo-600 hover:bg-indigo-700'
-                  : activePortal === 'instructor'
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+              className="w-full py-3 px-4 rounded-xl text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-slate-900 hover:bg-slate-800"
             >
               {loading ? (
-                <span>Authenticating with Ile-Ife Server...</span>
+                <span>Authenticating with Server...</span>
               ) : (
                 <>
-                  <span>
-                    Sign In to{' '}
-                    {activePortal === 'admin'
-                      ? 'Administration'
-                      : activePortal === 'instructor'
-                      ? 'Faculty Portal'
-                      : 'Learning Portal'}
-                  </span>
+                  <span>Sign In to Portal</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick 1-Click Role Login for instant testing */}
+          {/* Quick 1-Click Role Login for instant testing across all 14 personas */}
           <div className="pt-4 border-t border-slate-100 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Instant 1-Click Demo Credentials
+                Instant 1-Click Demo Profiles ({activePortal.toUpperCase()})
               </span>
-              <span className="text-[10px] text-blue-600 font-semibold">Ready to Test</span>
+              <span className="text-[10px] text-blue-600 font-semibold">1-Click Sign In</span>
             </div>
 
-            {activePortal === 'admin' && (
-              <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* Doorway 1: Learners & Guardians */}
+            {activePortal === 'learners' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIdentifier('admin@stempact.org');
-                    setPassword('Admin@12345');
-                    handleLogin(undefined, 'admin@stempact.org', 'Admin@12345', 'admin');
-                  }}
+                  onClick={() => handleLogin(undefined, 'student@stempact.org', 'Student123!')}
+                  className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-blue-900 text-xs flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Enrolled Student</span>
+                  </div>
+                  <div className="text-[10px] text-blue-600 font-mono truncate">student@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'parent@stempact.org', 'Parent123!')}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-amber-900 text-xs flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Parent / Guardian</span>
+                  </div>
+                  <div className="text-[10px] text-amber-600 font-mono truncate">parent@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'applicant@stempact.org', 'Applicant123!')}
+                  className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-purple-900 text-xs flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Prospective Applicant</span>
+                  </div>
+                  <div className="text-[10px] text-purple-600 font-mono truncate">applicant@stempact.org</div>
+                </button>
+              </div>
+            )}
+
+            {/* Doorway 2: Faculty & Mentors */}
+            {activePortal === 'faculty' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'instructor@stempact.org', 'Instructor123!')}
+                  className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-emerald-900 text-xs flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
+                      Lead Instructor
+                    </span>
+                    <span className="text-[9px] bg-emerald-200 px-1.5 py-0.5 rounded font-mono">STP-INS-001</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-600 font-mono truncate mt-0.5">instructor@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'counselor@stempact.org', 'Counselor123!')}
+                  className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-purple-900 text-xs flex items-center gap-1">
+                    <HeartPulse className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Student Counselor</span>
+                  </div>
+                  <div className="text-[10px] text-purple-600 font-mono truncate mt-0.5">counselor@stempact.org</div>
+                </button>
+              </div>
+            )}
+
+            {/* Doorway 3: Institutional Governance */}
+            {activePortal === 'admin' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'admin@stempact.org', 'Admin123!')}
                   className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100/60 text-left transition-all"
                 >
-                  <div className="font-black text-indigo-900 text-xs flex items-center gap-1">
+                  <div className="font-bold text-indigo-900 text-xs flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Super Admin</span>
                   </div>
-                  <div className="text-[10px] text-indigo-600 font-mono truncate">
-                    admin@stempact.org
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                    Pass: Admin@12345
-                  </div>
+                  <div className="text-[10px] text-indigo-600 font-mono truncate">admin@stempact.org</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setIdentifier('academic@stempact.org');
-                    setPassword('Academic@12345');
-                    handleLogin(undefined, 'academic@stempact.org', 'Academic@12345', 'admin');
-                  }}
-                  className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/60 text-left transition-all"
+                  onClick={() => handleLogin(undefined, 'academic@stempact.org', 'Academic123!')}
+                  className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/60 text-left transition-all"
                 >
-                  <div className="font-black text-purple-900 text-xs flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                  <div className="font-bold text-blue-900 text-xs flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                     <span>Academic Admin</span>
                   </div>
-                  <div className="text-[10px] text-purple-600 font-mono truncate">
-                    academic@stempact.org
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                    Pass: Academic@12345
-                  </div>
+                  <div className="text-[10px] text-blue-600 font-mono truncate">academic@stempact.org</div>
                 </button>
-              </div>
-            )}
 
-            {activePortal === 'instructor' && (
-              <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIdentifier('instructor@stempact.org');
-                    setPassword('Instructor@12345');
-                    handleLogin(undefined, 'instructor@stempact.org', 'Instructor@12345', 'instructor');
-                  }}
-                  className="w-full p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/60 text-left transition-all"
+                  onClick={() => handleLogin(undefined, 'admissions@stempact.org', 'Admissions123!')}
+                  className="p-2.5 rounded-xl border border-teal-200 bg-teal-50/60 hover:bg-teal-100/60 text-left transition-all"
                 >
-                  <div className="font-black text-emerald-900 text-xs flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
-                      Lead Instructor (Faculty Demo)
-                    </span>
-                    <span className="text-[10px] bg-emerald-200/80 text-emerald-800 px-2 py-0.5 rounded font-mono">
-                      STP-INS-001
-                    </span>
+                  <div className="font-bold text-teal-900 text-xs flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Admissions Admin</span>
                   </div>
-                  <div className="text-[10px] text-emerald-600 font-mono truncate mt-0.5">
-                    instructor@stempact.org • Pass: Instructor@12345
+                  <div className="text-[10px] text-teal-600 font-mono truncate">admissions@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'finance@stempact.org', 'Finance123!')}
+                  className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-emerald-900 text-xs flex items-center gap-1">
+                    <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Finance Admin</span>
                   </div>
+                  <div className="text-[10px] text-emerald-600 font-mono truncate">finance@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'coordinator@stempact.org', 'Coordinator123!')}
+                  className="p-2.5 rounded-xl border border-cyan-200 bg-cyan-50/60 hover:bg-cyan-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-cyan-900 text-xs flex items-center gap-1">
+                    <Compass className="w-3.5 h-3.5 text-cyan-600" />
+                    <span>Coordinator</span>
+                  </div>
+                  <div className="text-[10px] text-cyan-600 font-mono truncate">coordinator@stempact.org</div>
                 </button>
               </div>
             )}
 
-            {activePortal === 'student' && (
+            {/* Doorway 4: Ecosystem & Partners */}
+            {activePortal === 'ecosystem' && (
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIdentifier('student@stempact.org');
-                    setPassword('Student@12345');
-                    handleLogin(undefined, 'student@stempact.org', 'Student@12345', 'student');
-                  }}
-                  className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100/60 text-left transition-all"
+                  onClick={() => handleLogin(undefined, 'partner@stempact.org', 'Partner123!')}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 text-left transition-all"
                 >
-                  <div className="font-black text-blue-900 text-xs flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Student Demo</span>
+                  <div className="font-bold text-amber-900 text-xs flex items-center gap-1">
+                    <Briefcase className="w-3.5 h-3.5 text-amber-600" />
+                    <span>NGO / Corporate Partner</span>
                   </div>
-                  <div className="text-[10px] text-blue-600 font-mono truncate">
-                    student@stempact.org
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                    Pass: Student@12345
-                  </div>
+                  <div className="text-[10px] text-amber-600 font-mono truncate">partner@stempact.org</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setIdentifier('parent@stempact.org');
-                    setPassword('Parent@12345');
-                    handleLogin(undefined, 'parent@stempact.org', 'Parent@12345', 'student');
-                  }}
-                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 text-left transition-all"
+                  onClick={() => handleLogin(undefined, 'innovation@stempact.org', 'Innovation123!')}
+                  className="p-2.5 rounded-xl border border-orange-200 bg-orange-50/60 hover:bg-orange-100/60 text-left transition-all"
                 >
-                  <div className="font-black text-amber-900 text-xs flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Parent Demo</span>
+                  <div className="font-bold text-orange-900 text-xs flex items-center gap-1">
+                    <Lightbulb className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Innovation Manager</span>
                   </div>
-                  <div className="text-[10px] text-amber-600 font-mono truncate">
-                    parent@stempact.org
+                  <div className="text-[10px] text-orange-600 font-mono truncate">innovation@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'content@stempact.org', 'Content123!')}
+                  className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-left transition-all"
+                >
+                  <div className="font-bold text-slate-800 text-xs flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Content / LMS Mgr</span>
                   </div>
-                  <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                    Pass: Parent@12345
+                  <div className="text-[10px] text-slate-500 font-mono truncate">content@stempact.org</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLogin(undefined, 'marketing@stempact.org', 'Marketing123!')}
+                  className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100/60 text-left transition-all"
+                >
+                  <div className="font-bold text-rose-900 text-xs flex items-center gap-1">
+                    <Megaphone className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Marketing Manager</span>
                   </div>
+                  <div className="text-[10px] text-rose-600 font-mono truncate">marketing@stempact.org</div>
                 </button>
               </div>
             )}
           </div>
-
-          {/* Bottom Action: Enrollment registration link */}
-          {activePortal === 'student' && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-rose-50 border border-blue-200 text-center space-y-2">
-              <div className="text-xs font-bold text-slate-800">
-                New Student or Parent looking to enroll?
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Choose from our 50 accredited courses across 8 schools and register your account.
-              </p>
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all"
-              >
-                <span>Select Course & Register</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          )}
-
-          {activePortal !== 'student' && (
-            <div className="text-center text-xs text-slate-500">
-              Need account access? Staff and Faculty credentials are provisioned by{' '}
-              <span className="font-semibold text-slate-700">
-                STEMPACT Academy Administration
-              </span>
-              .
-            </div>
-          )}
         </Card>
       </div>
     </div>

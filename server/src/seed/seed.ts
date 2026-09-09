@@ -1,4 +1,4 @@
-import { PrismaClient, Role, ProgramStatus, CohortStatus, CertificateType, AttendanceStatus } from '@prisma/client';
+import { PrismaClient, Role, ProgramStatus, CohortStatus, CertificateType, AttendanceStatus, ApplicationStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { schoolsData, programsData } from './seedData.js';
 
@@ -8,18 +8,32 @@ async function main() {
   console.log('🌱 Starting STEMPACT ACADEMY database seeding...');
 
   // 1. Clean existing data
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE "Partner", "Testimonial", "BlogPost", "Event", "Announcement", "Certificate", "Payment", "Invoice", "StudentCompetency", "ProjectMember", "Project", "Submission", "Assignment", "Attendance", "ClassSession", "InstructorProfile", "ParentProfile", "StudentProfile", "Admission", "Placement", "AssessmentAttempt", "AssessmentQuestion", "Assessment", "Application", "Cohort", "Competency", "Lesson", "Module", "Course", "Program", "School", "User" CASCADE;`);
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE "PartnerProfile", "CoordinatorProfile", "SponsoredStudent", "Notification", "AuditLog", "CounselingRecord", "CompetitionTeam", "TeamMember", "Competition", "RolePermission", "Partner", "Testimonial", "BlogPost", "Event", "Announcement", "Certificate", "Payment", "Invoice", "StudentCompetency", "ProjectMember", "Project", "Submission", "Assignment", "Attendance", "ClassSession", "InstructorProfile", "ParentProfile", "StudentProfile", "Admission", "Placement", "AssessmentAttempt", "AssessmentQuestion", "Assessment", "Application", "Cohort", "Competency", "Lesson", "Module", "Course", "Program", "School", "User" CASCADE;`);
 
   console.log('🧹 Cleaned existing database tables.');
 
-  // 2. Seed Users & Passwords
-  const passwordHash = await bcrypt.hash('Stempact@2025', 10);
-  const adminPasswordHash = await bcrypt.hash('Admin@12345', 10);
+  // 2. Seed Users & Profiles across all 14 Institutional Personas
+  const adminHash = await bcrypt.hash('Admin123!', 10);
+  const academicHash = await bcrypt.hash('Academic123!', 10);
+  const financeHash = await bcrypt.hash('Finance123!', 10);
+  const admissionsHash = await bcrypt.hash('Admissions123!', 10);
+  const coordinatorHash = await bcrypt.hash('Coordinator123!', 10);
+  const instructorHash = await bcrypt.hash('Instructor123!', 10);
+  const studentHash = await bcrypt.hash('Student123!', 10);
+  const parentHash = await bcrypt.hash('Parent123!', 10);
+  const counselorHash = await bcrypt.hash('Counselor123!', 10);
+  const contentHash = await bcrypt.hash('Content123!', 10);
+  const innovationHash = await bcrypt.hash('Innovation123!', 10);
+  const marketingHash = await bcrypt.hash('Marketing123!', 10);
+  const partnerHash = await bcrypt.hash('Partner123!', 10);
+  const applicantHash = await bcrypt.hash('Applicant123!', 10);
 
+  // 1. Super Administrator
   const superAdmin = await prisma.user.create({
     data: {
       email: 'admin@stempact.org',
-      passwordHash: adminPasswordHash,
+      username: 'superadmin',
+      passwordHash: adminHash,
       firstName: 'Babatunde',
       lastName: 'Olatunji',
       phone: '+234 803 123 4567',
@@ -27,10 +41,12 @@ async function main() {
     },
   });
 
+  // 2. Academic Administrator
   const academicAdmin = await prisma.user.create({
     data: {
       email: 'academic@stempact.org',
-      passwordHash: await bcrypt.hash('Academic@12345', 10),
+      username: 'academic.admin',
+      passwordHash: academicHash,
       firstName: 'Dr. Folashade',
       lastName: 'Adeleke',
       phone: '+234 802 234 5678',
@@ -38,10 +54,12 @@ async function main() {
     },
   });
 
+  // 3. Finance Administrator
   const financeAdmin = await prisma.user.create({
     data: {
       email: 'finance@stempact.org',
-      passwordHash: await bcrypt.hash('Finance@12345', 10),
+      username: 'finance.admin',
+      passwordHash: financeHash,
       firstName: 'Oluwaseun',
       lastName: 'Balogun',
       phone: '+234 805 345 6789',
@@ -49,10 +67,48 @@ async function main() {
     },
   });
 
+  // 4. Admissions Administrator
+  const admissionsAdmin = await prisma.user.create({
+    data: {
+      email: 'admissions@stempact.org',
+      username: 'admissions.admin',
+      passwordHash: admissionsHash,
+      firstName: 'Kikelomo',
+      lastName: 'Adebayo',
+      phone: '+234 806 456 7891',
+      role: Role.ADMISSIONS_ADMIN,
+    },
+  });
+
+  // 5. Program Coordinator
+  const coordinatorUser = await prisma.user.create({
+    data: {
+      email: 'coordinator@stempact.org',
+      username: 'program.coord',
+      passwordHash: coordinatorHash,
+      firstName: 'Olumide',
+      lastName: 'Fagbemi',
+      phone: '+234 807 567 8912',
+      role: Role.PROGRAM_COORDINATOR,
+    },
+  });
+
+  await prisma.coordinatorProfile.create({
+    data: {
+      userId: coordinatorUser.id,
+      staffCode: 'STP-COORD-001',
+      department: 'Software Engineering & Junior STEM Programs',
+      assignedSchools: JSON.stringify(['CSE', 'KTS']),
+      assignedPrograms: JSON.stringify(['FSWD-01', 'AI-ML-01', 'KIDS-STEM-01']),
+    },
+  });
+
+  // 6. Faculty Instructor
   const instructorUser = await prisma.user.create({
     data: {
       email: 'instructor@stempact.org',
-      passwordHash: await bcrypt.hash('Instructor@12345', 10),
+      username: 'damilola.adeyemi',
+      passwordHash: instructorHash,
       firstName: 'Engr. Damilola',
       lastName: 'Adeyemi',
       phone: '+234 814 456 7890',
@@ -64,17 +120,19 @@ async function main() {
     data: {
       userId: instructorUser.id,
       staffCode: 'STP-FAC-001',
-      bio: 'Senior Embedded Systems & Full-Stack Engineer with 8+ years experience in IoT architectures and distributed systems. Passionate about empowering African youth through hands-on STEM education.',
+      bio: 'Senior Embedded Systems & Full-Stack Engineer with 8+ years experience in IoT architectures and distributed systems.',
       specialization: 'Full-Stack Software Engineering & IoT Systems',
       qualification: 'M.Sc. Computer Engineering (OAU, Ile-Ife)',
       assignedSchools: JSON.stringify(['CSE', 'RIOTH']),
     },
   });
 
+  // 7. Student Learner
   const studentUser = await prisma.user.create({
     data: {
       email: 'student@stempact.org',
-      passwordHash: await bcrypt.hash('Student@12345', 10),
+      username: 'toluwalase',
+      passwordHash: studentHash,
       firstName: 'Toluwalase',
       lastName: 'Ogunbiyi',
       phone: '+234 816 567 8901',
@@ -82,10 +140,12 @@ async function main() {
     },
   });
 
+  // 8. Parent / Guardian
   const parentUser = await prisma.user.create({
     data: {
       email: 'parent@stempact.org',
-      passwordHash: await bcrypt.hash('Parent@12345', 10),
+      username: 'funke.parent',
+      passwordHash: parentHash,
       firstName: 'Mrs. Funke',
       lastName: 'Ogunbiyi',
       phone: '+234 809 678 9012',
@@ -102,7 +162,97 @@ async function main() {
     },
   });
 
-  console.log('✅ Created administrative, instructor, parent, and student accounts.');
+  // 9. Student Counselor
+  const counselorUser = await prisma.user.create({
+    data: {
+      email: 'counselor@stempact.org',
+      username: 'counselor.support',
+      passwordHash: counselorHash,
+      firstName: 'Ayomide',
+      lastName: 'Olayinka',
+      phone: '+234 808 789 0123',
+      role: Role.COUNSELOR,
+    },
+  });
+
+  // 10. Content & LMS Manager
+  const contentUser = await prisma.user.create({
+    data: {
+      email: 'content@stempact.org',
+      username: 'content.lms',
+      passwordHash: contentHash,
+      firstName: 'Zainab',
+      lastName: 'Mustapha',
+      phone: '+234 811 890 1234',
+      role: Role.CONTENT_MANAGER,
+    },
+  });
+
+  // 11. Innovation & Competition Manager
+  const innovationUser = await prisma.user.create({
+    data: {
+      email: 'innovation@stempact.org',
+      username: 'innovation.mgr',
+      passwordHash: innovationHash,
+      firstName: 'Chukwudi',
+      lastName: 'Eze',
+      phone: '+234 813 901 2345',
+      role: Role.INNOVATION_MANAGER,
+    },
+  });
+
+  // 12. Marketing & Communications Manager
+  const marketingUser = await prisma.user.create({
+    data: {
+      email: 'marketing@stempact.org',
+      username: 'marketing.comms',
+      passwordHash: marketingHash,
+      firstName: 'Simisola',
+      lastName: 'Ajayi',
+      phone: '+234 815 012 3456',
+      role: Role.MARKETING_MANAGER,
+    },
+  });
+
+  // 13. Corporate / NGO Partner
+  const partnerUser = await prisma.user.create({
+    data: {
+      email: 'partner@stempact.org',
+      username: 'apex.csr',
+      passwordHash: partnerHash,
+      firstName: 'Apex CleanTech',
+      lastName: 'Foundation',
+      phone: '+234 802 987 6543',
+      role: Role.PARTNER,
+    },
+  });
+
+  const partnerProfile = await prisma.partnerProfile.create({
+    data: {
+      userId: partnerUser.id,
+      organizationName: 'Apex CleanTech & Renewable Energy Foundation',
+      partnerType: 'CORPORATE',
+      contactPhone: '+234 802 987 6543',
+      mouDetails: 'Sponsorship of 10 disadvantaged youth scholars in Southwest Nigeria with 100% tuition coverage, solar lab hardware toolkits, and internship placement upon completion.',
+      grantBudget: 1500000,
+      activeSponsorships: 1,
+    },
+  });
+
+  // 14. Prospective Applicant
+  const applicantUser = await prisma.user.create({
+    data: {
+      email: 'applicant@stempact.org',
+      username: 'candidate.john',
+      passwordHash: applicantHash,
+      firstName: 'John',
+      lastName: 'Adebisi',
+      phone: '+234 818 123 4567',
+      role: Role.APPLICANT,
+    },
+  });
+
+  console.log('✅ Created all 14 institutional persona accounts and profiles.');
 
   // 3. Seed Schools
   const schoolMap = new Map<string, string>();
@@ -941,6 +1091,153 @@ async function main() {
         content: 'Registration for the Ile-Ife CleanTech & Smart Energy Hackathon is now open to all students across CSE, RIOTH, and RETE schools.',
         targetAudience: 'PROGRAM',
         priority: 'NORMAL',
+      },
+    ],
+  });
+
+  // 19. Seed Applicant Flow
+  const allPrograms = await prisma.program.findMany();
+  const firstProgram = allPrograms[0];
+  const firstCohort = await prisma.cohort.findFirst({ where: { programId: firstProgram.id } });
+
+  const applicantApp = await prisma.application.create({
+    data: {
+      applicationNumber: 'APP-2025-0901',
+      userId: applicantUser.id,
+      programId: firstProgram.id,
+      cohortId: firstCohort?.id || null,
+      preferredSchedule: 'Hybrid (Weekday Evening & Weekend Lab)',
+      fullName: 'John Adebisi',
+      dateOfBirth: new Date(Date.now() - 19 * 365 * 24 * 3600 * 1000),
+      gender: 'Male',
+      phone: '+234 818 123 4567',
+      email: 'applicant@stempact.org',
+      address: 'Lagere Commercial District, Ile-Ife',
+      educationLevel: 'Undergraduate',
+      careerGoals: 'Full-Stack Software Architecture & Cloud Systems',
+      learningObjectives: 'Hands-on practical development with industry frameworks',
+      statementOfPurpose: 'Eager to build production web applications for Nigeria and beyond.',
+      status: ApplicationStatus.SUBMITTED,
+      consentAccepted: true,
+    },
+  });
+
+  // 20. Seed Counseling Records & Sponsored Students
+  const studentProf = await prisma.studentProfile.findFirst({ where: { userId: studentUser.id } });
+  if (studentProf) {
+    await prisma.counselingRecord.create({
+      data: {
+        studentId: studentProf.id,
+        counselorId: counselorUser.id,
+        category: 'ATTENDANCE_RISK',
+        riskLevel: 'MEDIUM',
+        summary: 'Missed 2 consecutive Monday lab sprints due to transport disruption from Lagere',
+        notes: 'Learner met with student support officer. Transport route has been rearranged with the academy shuttle bus.',
+        actionPlan: 'Assign to Thursday makeup workstation slot and monitor attendance weekly.',
+        parentNotified: true,
+        status: 'OPEN',
+      },
+    });
+
+    await prisma.sponsoredStudent.create({
+      data: {
+        partnerProfileId: partnerProfile.id,
+        studentId: studentProf.id,
+        scholarshipName: 'Apex CleanTech Future Leaders Scholarship',
+        coveragePercent: 100,
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  // 21. Seed Innovation Competitions & Hackathons
+  const comp = await prisma.competition.create({
+    data: {
+      title: 'Southwest AgriTech & Clean Energy Hackathon 2025',
+      slug: 'agritech-clean-energy-hackathon-2025',
+      category: 'HACKATHON',
+      description: 'Design and prototype smart IoT solar irrigation and automated crop disease detection nodes.',
+      rules: 'Teams must use open hardware (ESP32/Raspberry Pi) and build a real-time telemetry web portal.',
+      prizePool: '₦1,000,000 in Grants + Incubation',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 86400000),
+      registrationDeadline: new Date(Date.now() + 14 * 86400000),
+      status: 'ACTIVE',
+    },
+  });
+
+  if (studentProf) {
+    const squad = await prisma.competitionTeam.create({
+      data: {
+        competitionId: comp.id,
+        name: 'Team TerraSolar',
+        projectTitle: 'Automated Solar Irrigation & LoRa Soil Monitoring',
+        projectSummary: 'Distributed low-power sensors streaming soil moisture and inverter status to cloud dashboard.',
+        repositoryUrl: 'https://github.com/stempact/terrasolar-iot',
+        score: 88,
+        rank: 1,
+        feedback: 'Outstanding hardware prototype and responsive telemetry dashboard built in React.',
+      },
+    });
+
+    await prisma.teamMember.create({
+      data: {
+        teamId: squad.id,
+        studentId: studentProf.id,
+        role: 'Team Lead & Firmware Engineer',
+      },
+    });
+  }
+
+  // 22. Seed In-App Notifications
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: studentUser.id,
+        title: 'Welcome to STEMPACT Academy!',
+        message: 'Your enrollment is active. Explore your curriculum modules and class timetable.',
+        type: 'SUCCESS',
+        link: '/portal/student',
+      },
+      {
+        userId: studentUser.id,
+        title: 'New Coding Assignment Posted',
+        message: 'Sprint 01: Build a Responsive Component Architecture is now active in your classroom.',
+        type: 'INFO',
+        link: '/portal/student',
+      },
+      {
+        userId: applicantUser.id,
+        title: 'Application Registered • Next Step',
+        message: 'Your application APP-2025-0901 has been registered. Proceed to take your 15-question technical diagnostic test.',
+        type: 'INFO',
+        link: '/portal/applicant',
+      },
+    ],
+  });
+
+  // 23. Seed Audit Logs
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        userId: superAdmin.id,
+        userName: 'Babatunde Olatunji',
+        userRole: 'SUPER_ADMIN',
+        action: 'SYSTEM_INITIALIZATION',
+        resource: 'Platform',
+        resourceId: 'INIT-2025',
+        newValue: 'STEMPACT Academy SMS/LMS Initialized across 8 Schools & 50 Accredited Programs',
+        ipAddress: '127.0.0.1',
+      },
+      {
+        userId: academicAdmin.id,
+        userName: 'Dr. Folashade Adeleke',
+        userRole: 'ACADEMIC_ADMIN',
+        action: 'CURRICULUM_PUBLISHED',
+        resource: 'Program',
+        resourceId: firstProgram.id,
+        newValue: 'Syllabus and Assessment Rubrics ratified for Cohort 2025',
+        ipAddress: '127.0.0.1',
       },
     ],
   });

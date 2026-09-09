@@ -21,6 +21,13 @@ import * as paymentController from '../controllers/paymentController.js';
 import * as cmsController from '../controllers/cmsController.js';
 import * as adminStatsController from '../controllers/adminStatsController.js';
 import * as adminUserController from '../controllers/adminUserController.js';
+import * as notificationController from '../controllers/notificationController.js';
+import * as auditController from '../controllers/auditController.js';
+import * as counselorController from '../controllers/counselorController.js';
+import * as innovationController from '../controllers/innovationController.js';
+import * as partnerController from '../controllers/partnerController.js';
+import * as coordinatorController from '../controllers/coordinatorController.js';
+import * as applicantController from '../controllers/applicantController.js';
 
 const router = Router();
 
@@ -39,12 +46,12 @@ router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, R
 // 3. Cohorts
 router.get('/cohorts', cohortController.getCohorts);
 router.get('/cohorts/:id', cohortController.getCohortById);
-router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.createCohort);
-router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.updateCohort);
+router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.createCohort);
+router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.updateCohort);
 
 // 4. Applications
 router.post('/applications', applicationController.submitApplication);
-router.get('/applications', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), applicationController.getApplications);
+router.get('/applications', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), applicationController.getApplications);
 router.get('/applications/:id', applicationController.getApplicationById);
 
 // 5. Assessments
@@ -56,15 +63,18 @@ router.get('/placements/pending', authenticate, authorize(Role.SUPER_ADMIN, Role
 router.post('/placements/:placementId/review', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), placementController.reviewAndApprovePlacement);
 
 // 7. Admissions
-router.post('/admissions/issue', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), admissionController.issueAdmission);
-router.get('/admissions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), admissionController.getAdmissions);
+router.post('/admissions/issue', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.issueAdmission);
+router.get('/admissions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.getAdmissions);
 router.get('/admissions/:number', admissionController.getAdmissionByNumber);
 
-// 8. Portals: Student, Parent, Instructor
+// 8. Portals: Student, Parent, Instructor, Applicant, Coordinator, Partner
 router.get('/student/dashboard', authenticate, studentController.getStudentDashboard);
 router.get('/parent/dashboard', authenticate, parentController.getParentDashboard);
 router.get('/instructor/dashboard', authenticate, instructorController.getInstructorDashboard);
 router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR), instructorController.createClassSession);
+router.get('/applicant/dashboard', authenticate, applicantController.getApplicantDashboard);
+router.get('/coordinator/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), coordinatorController.getCoordinatorOverview);
+router.get('/partner/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PARTNER), partnerController.getPartnerOverview);
 
 // 9. Attendance
 router.post('/attendance/mark', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), attendanceController.markAttendance);
@@ -97,17 +107,37 @@ router.post('/payments/bank-transfers/:paymentId/reject', authenticate, authoriz
 
 // 14. CMS & Public Feeds
 router.get('/cms/content', cmsController.getCMSContent);
-router.post('/cms/announcements', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR), cmsController.createAnnouncement);
-router.post('/cms/events', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cmsController.createEvent);
-router.post('/cms/blog', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cmsController.createBlogPost);
+router.post('/cms/announcements', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR, Role.MARKETING_MANAGER), cmsController.createAnnouncement);
+router.post('/cms/events', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), cmsController.createEvent);
+router.post('/cms/blog', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), cmsController.createBlogPost);
 
 // 15. Admin Analytics
-router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN), adminStatsController.getAdminStats);
+router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminStatsController.getAdminStats);
 
-// 16. Admin & Instructor Management
+// 16. Admin & Staff Management
 router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);
 router.get('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.getAdmins);
-router.post('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN), adminUserController.createInstructor);
-router.get('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.ACADEMIC_ADMIN), adminUserController.getInstructors);
+router.post('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR), adminUserController.createInstructor);
+router.get('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN), adminUserController.getInstructors);
+
+// 17. In-App Notifications
+router.get('/notifications', authenticate, notificationController.getNotifications);
+router.patch('/notifications/:id/read', authenticate, notificationController.markRead);
+router.patch('/notifications/read-all', authenticate, notificationController.markAllRead);
+
+// 18. Audit Trail
+router.get('/audit/logs', authenticate, authorize(Role.SUPER_ADMIN), auditController.getAuditLogs);
+
+// 19. Counseling & Student Support
+router.get('/counselor/at-risk', authenticate, authorize(Role.SUPER_ADMIN, Role.COUNSELOR, Role.ACADEMIC_ADMIN), counselorController.getAtRiskStudents);
+router.get('/counselor/records', authenticate, authorize(Role.SUPER_ADMIN, Role.COUNSELOR), counselorController.getCounselingRecords);
+router.post('/counselor/records', authenticate, authorize(Role.SUPER_ADMIN, Role.COUNSELOR), counselorController.createCounselingRecord);
+router.patch('/counselor/records/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.COUNSELOR), counselorController.updateCounselingRecord);
+
+// 20. Innovation & Competitions
+router.get('/competitions', innovationController.getCompetitions);
+router.post('/competitions', authenticate, authorize(Role.SUPER_ADMIN, Role.INNOVATION_MANAGER), innovationController.createCompetition);
+router.post('/competitions/teams', authenticate, authorize(Role.SUPER_ADMIN, Role.INNOVATION_MANAGER), innovationController.createTeam);
+router.post('/competitions/teams/:teamId/score', authenticate, authorize(Role.SUPER_ADMIN, Role.INNOVATION_MANAGER), innovationController.scoreTeam);
 
 export default router;

@@ -1,10 +1,38 @@
-export type Role = 'SUPER_ADMIN' | 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN' | 'INSTRUCTOR' | 'STUDENT' | 'PARENT';
+export type Role =
+  | 'SUPER_ADMIN'
+  | 'ACADEMIC_ADMIN'
+  | 'FINANCE_ADMIN'
+  | 'ADMISSIONS_ADMIN'
+  | 'PROGRAM_COORDINATOR'
+  | 'COORDINATOR_ADMIN'
+  | 'INSTRUCTOR'
+  | 'STUDENT'
+  | 'PARENT'
+  | 'COUNSELOR'
+  | 'CONTENT_MANAGER'
+  | 'INNOVATION_MANAGER'
+  | 'MARKETING_MANAGER'
+  | 'PARTNER'
+  | 'APPLICANT';
+
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED' | 'ARCHIVED';
 
 export type ProgramStatus = 'DRAFT' | 'PUBLISHED' | 'UPCOMING' | 'OPEN_FOR_APPLICATION' | 'FULL' | 'CLOSED' | 'ARCHIVED';
 
 export type CohortStatus = 'DRAFT' | 'UPCOMING' | 'OPEN' | 'ALMOST_FULL' | 'FULL' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED';
 
-export type ApplicationStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'ASSESSMENT_PENDING' | 'ASSESSED' | 'PLACED' | 'ADMITTED' | 'ENROLLED' | 'REJECTED';
+export type ApplicationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'ASSESSMENT_PENDING'
+  | 'ASSESSED'
+  | 'PLACEMENT_PENDING'
+  | 'PLACED'
+  | 'ADMITTED'
+  | 'ENROLLED'
+  | 'REJECTED'
+  | 'WITHDRAWN';
 
 export type AttendanceStatus = 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
 
@@ -18,10 +46,13 @@ export interface User {
   lastName: string;
   phone?: string;
   role: Role;
+  status?: UserStatus;
   avatarUrl?: string;
   studentProfile?: StudentProfile;
   instructorProfile?: InstructorProfile;
   parentProfile?: ParentProfile;
+  coordinatorProfile?: CoordinatorProfile;
+  partnerProfile?: PartnerProfile;
 }
 
 export interface School {
@@ -391,3 +422,149 @@ export interface CreateInstructorData {
   assignedSchools?: string;
   password: string;
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT';
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId?: string;
+  userName?: string;
+  userRole?: string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  previousValue?: string;
+  newValue?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
+  user?: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+}
+
+export interface CounselingRecord {
+  id: string;
+  studentId: string;
+  counselorId?: string;
+  category: string;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  summary: string;
+  notes: string;
+  actionPlan?: string;
+  parentNotified: boolean;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'ESCALATED';
+  followUpDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  student?: {
+    id: string;
+    studentIdNumber: string;
+    currentLevel: string;
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+    };
+    cohort?: {
+      name: string;
+      program?: { name: string };
+    };
+  };
+  counselor?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+export interface Competition {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  description: string;
+  rules?: string;
+  prizePool?: string;
+  startDate: string;
+  endDate: string;
+  registrationDeadline: string;
+  status: string;
+  bannerUrl?: string;
+  teams?: CompetitionTeam[];
+}
+
+export interface CompetitionTeam {
+  id: string;
+  competitionId: string;
+  name: string;
+  projectTitle?: string;
+  projectSummary?: string;
+  repositoryUrl?: string;
+  demoUrl?: string;
+  score?: number;
+  rank?: number;
+  feedback?: string;
+  members?: TeamMember[];
+}
+
+export interface TeamMember {
+  id: string;
+  teamId: string;
+  studentId: string;
+  role: string;
+  student?: {
+    studentIdNumber: string;
+    user: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  };
+}
+
+export interface CoordinatorProfile {
+  id: string;
+  userId: string;
+  staffCode: string;
+  department: string;
+  assignedSchools: string;
+  assignedPrograms: string;
+}
+
+export interface PartnerProfile {
+  id: string;
+  userId: string;
+  organizationName: string;
+  partnerType: string;
+  contactPhone?: string;
+  mouDetails?: string;
+  grantBudget: number;
+  activeSponsorships: number;
+  sponsoredStudents?: SponsoredStudent[];
+}
+
+export interface SponsoredStudent {
+  id: string;
+  partnerProfileId: string;
+  studentId: string;
+  scholarshipName: string;
+  coveragePercent: number;
+  startDate: string;
+  status: string;
+  student?: StudentProfile;
+}
+

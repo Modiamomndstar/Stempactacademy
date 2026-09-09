@@ -158,4 +158,49 @@ export const api = {
   createAdmin: (data: any) => apiRequest('/admin/admins', { method: 'POST', body: JSON.stringify(data) }),
   getInstructors: () => apiRequest('/admin/instructors'),
   createInstructor: (data: any) => apiRequest('/admin/instructors', { method: 'POST', body: JSON.stringify(data) }),
+
+  // In-App Notifications
+  getNotifications: (limit?: number) => apiRequest(`/notifications${limit ? `?limit=${limit}` : ''}`),
+  markNotificationRead: (id: string) => apiRequest(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsRead: () => apiRequest('/notifications/read-all', { method: 'PATCH' }),
+
+  // Audit Logs
+  getAuditLogs: (params?: { limit?: number; offset?: number; search?: string; action?: string; resource?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.search) query.append('search', params.search);
+    if (params?.action) query.append('action', params.action);
+    if (params?.resource) query.append('resource', params.resource);
+    const qs = query.toString();
+    return apiRequest(`/audit/logs${qs ? `?${qs}` : ''}`);
+  },
+
+  // Counselor & Student Support
+  getCounselorAtRisk: () => apiRequest('/counselor/at-risk'),
+  getCounselingRecords: (studentId?: string, status?: string) => {
+    const query = new URLSearchParams();
+    if (studentId) query.append('studentId', studentId);
+    if (status) query.append('status', status);
+    const qs = query.toString();
+    return apiRequest(`/counselor/records${qs ? `?${qs}` : ''}`);
+  },
+  createCounselingRecord: (data: any) => apiRequest('/counselor/records', { method: 'POST', body: JSON.stringify(data) }),
+  updateCounselingRecord: (id: string, data: any) => apiRequest(`/counselor/records/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Innovation & Competitions
+  getCompetitions: () => apiRequest('/competitions'),
+  createCompetition: (data: any) => apiRequest('/competitions', { method: 'POST', body: JSON.stringify(data) }),
+  createCompetitionTeam: (data: any) => apiRequest('/competitions/teams', { method: 'POST', body: JSON.stringify(data) }),
+  scoreCompetitionTeam: (teamId: string, data: any) => apiRequest(`/competitions/teams/${teamId}/score`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Corporate & NGO Partner
+  getPartnerOverview: (partnerId?: string) => apiRequest(`/partner/overview${partnerId ? `?partnerId=${partnerId}` : ''}`),
+
+  // Program Coordinator
+  getCoordinatorOverview: () => apiRequest('/coordinator/overview'),
+
+  // Applicant Portal
+  getApplicantDashboard: () => apiRequest('/applicant/dashboard'),
 };
+
