@@ -30,6 +30,7 @@ import {
   GraduationCap,
   Copy,
   Key,
+  Building,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -40,6 +41,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [cohorts, setCohorts] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [bankTransfers, setBankTransfers] = useState<any[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -110,6 +112,7 @@ export const AdminDashboardPage: React.FC = () => {
         adminsRes,
         instructorsRes,
         certsRes,
+        transfersRes,
       ] = await Promise.all([
         api.getAdminStats(),
         api.getApplications(),
@@ -120,6 +123,7 @@ export const AdminDashboardPage: React.FC = () => {
         api.getAdmins().catch(() => ({ admins: [] })),
         api.getInstructors().catch(() => ({ instructors: [] })),
         api.getCertificates().catch(() => ({ certificates: [] })),
+        api.getBankTransfers().catch(() => ({ payments: [] })),
       ]);
 
       setStats(statsRes);
@@ -131,6 +135,7 @@ export const AdminDashboardPage: React.FC = () => {
       setAdmins(adminsRes.admins || []);
       setInstructors(instructorsRes.instructors || []);
       setCertificates(certsRes.certificates || []);
+      setBankTransfers(transfersRes.payments || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -209,6 +214,35 @@ export const AdminDashboardPage: React.FC = () => {
       setAnnouncementContent('');
     } catch (err: any) {
       alert(err.message || 'Failed to create announcement');
+    }
+  };
+
+  // Bank Transfer Actions
+  const handleApproveBankTransfer = async (paymentId: string) => {
+    setProcessingAction(true);
+    try {
+      await api.approveBankTransfer(paymentId);
+      setActionSuccess('Bank transfer payment verified & approved! Official receipt emitted.');
+      await loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve bank transfer');
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleRejectBankTransfer = async (paymentId: string) => {
+    const reason = window.prompt('Enter reason for rejecting this payment:', 'Payment could not be verified on bank statement');
+    if (!reason) return;
+    setProcessingAction(true);
+    try {
+      await api.rejectBankTransfer(paymentId, reason);
+      setActionSuccess('Bank transfer has been rejected.');
+      await loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject bank transfer');
+    } finally {
+      setProcessingAction(false);
     }
   };
 
@@ -779,34 +813,126 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
           </div>
         )}
 
-        {/* TAB 8: INVOICES */}
+        {/* TAB 8: REVENUE & BANK TRANSFERS */}
         {activeTab === 'invoices' && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-black text-slate-900">Tuition Revenue & Invoices</h2>
-            <div className="space-y-3">
-              {invoices.map((inv: any) => (
-                <Card key={inv.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-mono font-bold text-slate-500">{inv.invoiceNumber}</div>
-                    <div className="font-bold text-sm text-slate-900">{inv.title}</div>
-                    <div className="text-xs text-slate-500">
-                      Due: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Immediate'}
-                    </div>
-                  </div>
-                  <div className="text-right space-y-0.5">
-                    <span className="font-black text-slate-900 text-sm block">
-                      ₦{(inv.totalAmount || 0).toLocaleString()}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
-                  </div>
+          <div className="space-y-8">
+            {/* 1. Bank Transfer Verification Queue */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <Building className="w-5 h-5 text-emerald-600" />
+                    <span>Bank Transfer Verification Queue ({bankTransfers.filter(t => t.status === 'PENDING').length} Pending)</span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Review and verify student payment receipts/tellers against official bank statements.
+                  </p>
+                </div>
+              </div>
+
+              {bankTransfers.length === 0 ? (
+                <Card className="p-8 text-center text-slate-400 text-xs">
+                  No bank transfer submissions recorded.
                 </Card>
-              ))}
+              ) : (
+                <div className="space-y-3">
+                  {bankTransfers.map((tx: any) => (
+                    <Card key={tx.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-blue-600">{tx.paymentReference}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              tx.status === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : tx.status === 'PENDING'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-700">
+                          <strong>Payer:</strong> {tx.senderAccount || 'Student'} • <strong>Bank:</strong> {tx.senderBank || 'Access Bank'}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          Invoice: {tx.invoice?.invoiceNumber || tx.invoiceId} • Submitted: {new Date(tx.paidAt).toLocaleString()}
+                        </div>
+                        {tx.proofUrl && (
+                          <div className="pt-1">
+                            <a
+                              href={tx.proofUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1"
+                            >
+                              <span>View Uploaded Teller / Proof</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className="font-black text-slate-900 text-base block">₦{(tx.amount || 0).toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400">NGN Direct Deposit</span>
+                        </div>
+
+                        {tx.status === 'PENDING' && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleApproveBankTransfer(tx.id)}
+                              disabled={processingAction}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectBankTransfer(tx.id)}
+                              disabled={processingAction}
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Institutional Invoices Ledger */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <h2 className="text-lg font-black text-slate-900">All Academic Invoices ({invoices.length})</h2>
+              <div className="space-y-3">
+                {invoices.map((inv: any) => (
+                  <Card key={inv.id} className="p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-mono font-bold text-slate-500">{inv.invoiceNumber}</div>
+                      <div className="font-bold text-sm text-slate-900">{inv.title}</div>
+                      <div className="text-xs text-slate-500">
+                        Paid: ₦{(inv.amountPaid || 0).toLocaleString()} • Balance: ₦{(inv.balance || 0).toLocaleString()} • Due: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Immediate'}
+                      </div>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <span className="font-black text-slate-900 text-sm block">
+                        ₦{(inv.totalAmount || 0).toLocaleString()}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {inv.status}
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
         )}

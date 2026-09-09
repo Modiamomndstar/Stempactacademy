@@ -528,6 +528,12 @@ model Payment {
   status           PaymentStatus @default(PAID)
   paidAt           DateTime      @default(now())
   receiptUrl       String?
+  proofUrl         String?       // URL or path to uploaded bank transfer receipt/teller image
+  senderBank       String?       // Payer bank name
+  senderAccount    String?       // Payer account name or number
+  verifiedAt       DateTime?     // When finance admin/superadmin approved the transfer
+  verifiedBy       String?       // Admin who approved
+  rejectionReason  String?       // Reason if rejected
   metadata         String?       // JSON
 }
 

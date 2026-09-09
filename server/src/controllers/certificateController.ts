@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CertificateType } from '@prisma/client';
 import prisma from '../config/prisma.js';
+import { emailService } from '../services/emailService.js';
 
 export const verifyCertificate = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -94,6 +95,17 @@ export const issueCertificate = async (req: Request, res: Response): Promise<voi
         ]),
       },
     });
+
+    // Send official certificate notification email via Resend
+    if (student.user?.email) {
+      emailService.sendCertificateIssuedEmail({
+        to: student.user.email,
+        fullName: `${student.user.firstName} ${student.user.lastName}`,
+        programName: certificate.programName,
+        certificateNumber: certificate.certificateNumber,
+        verificationCode: certificate.verificationCode,
+      }).catch(err => console.error('Failed to send certificate email:', err));
+    }
 
     res.status(201).json({ message: 'Certificate issued successfully', certificate });
   } catch (error: any) {

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { paymentService } from '../services/paymentService.js';
+import { emailService } from '../services/emailService.js';
 
 export const issueAdmission = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -118,7 +119,7 @@ export const issueAdmission = async (req: Request, res: Response): Promise<void>
       ? await prisma.studentProfile.findUnique({ where: { userId } })
       : null;
 
-    await paymentService.createInvoiceForCohort({
+    const invoice = await paymentService.createInvoiceForCohort({
       studentId: studentProfile ? studentProfile.id : undefined,
       applicationId: application.id,
       cohortId: cohort.id,
@@ -128,6 +129,25 @@ export const issueAdmission = async (req: Request, res: Response): Promise<void>
       certificationFee: cohort.certificationFee,
       discountPercentage: cohort.discountPercentage,
     });
+
+    // Send official admission offer email with invoice breakdown via Resend
+    if (application.email) {
+      emailService.sendAdmissionOfferEmail({
+        to: application.email,
+        fullName: application.fullName,
+        admissionNumber,
+        studentIdNumber,
+        programName: approvedProgramName,
+        cohortName: cohort.name,
+        startDate: new Date(cohort.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        schedule: cohort.schedule,
+        trainingFee: cohort.trainingFee,
+        registrationFee: cohort.registrationFee,
+        certificationFee: cohort.certificationFee,
+        totalAmount: invoice.totalAmount,
+        invoiceNumber: invoice.invoiceNumber,
+      }).catch(err => console.error('Failed to send admission email:', err));
+    }
 
     // 4. Increment cohort enrollment count
     await prisma.cohort.update({

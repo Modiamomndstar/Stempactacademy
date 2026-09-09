@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ApplicationStatus, Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
+import { emailService } from '../services/emailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
 
@@ -114,6 +115,18 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
         cohort: true,
       },
     });
+
+    // Send application confirmation email with direct assessment link via Resend
+    if (application.email) {
+      emailService.sendApplicationReceivedEmail({
+        to: application.email,
+        fullName: application.fullName,
+        applicationNumber: application.applicationNumber,
+        programName: application.program?.name || 'STEMPACT Program',
+        programId: application.programId,
+        applicationId: application.id,
+      }).catch(err => console.error('Failed to send application email:', err));
+    }
 
     // 4. Generate Auth Token so applicant can immediately take assessment
     const token = jwt.sign(

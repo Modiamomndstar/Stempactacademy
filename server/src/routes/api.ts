@@ -84,9 +84,16 @@ router.get('/certificates/verify/:certNumber', certificateController.verifyCerti
 router.get('/certificates', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), certificateController.getCertificates);
 router.post('/certificates/issue', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), certificateController.issueCertificate);
 
-// 13. Payments & Invoices
+// 13. Payments, Gateways & Bank Transfers
 router.get('/payments/invoices', authenticate, paymentController.getInvoices);
 router.post('/payments/pay', authenticate, paymentController.payInvoice);
+router.post('/payments/initialize', authenticate, paymentController.initializeOnlinePayment);
+router.post('/payments/webhook/paystack', paymentController.paystackWebhook);
+router.post('/payments/webhook/flutterwave', paymentController.flutterwaveWebhook);
+router.post('/payments/bank-transfer', authenticate, paymentController.submitBankTransfer);
+router.get('/payments/bank-transfers', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.getBankTransfers);
+router.post('/payments/bank-transfers/:paymentId/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.approveBankTransfer);
+router.post('/payments/bank-transfers/:paymentId/reject', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.rejectBankTransfer);
 
 // 14. CMS & Public Feeds
 router.get('/cms/content', cmsController.getCMSContent);

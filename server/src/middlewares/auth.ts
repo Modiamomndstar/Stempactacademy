@@ -50,13 +50,14 @@ export const authorize = (...allowedRoles: Role[]) => {
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      res.status(403).json({
-        message: `Forbidden: Access restricted to [${allowedRoles.join(', ')}]. Your role is ${req.user.role}.`,
-      });
-      return;
+    // SUPER_ADMIN has omnipotent permission across all academic, finance, instructor, and administrative operations
+    if (req.user.role === Role.SUPER_ADMIN || allowedRoles.includes(req.user.role)) {
+      return next();
     }
 
-    next();
+    res.status(403).json({
+      message: `Forbidden: Access restricted to [${allowedRoles.join(', ')}]. Your role is ${req.user.role}.`,
+    });
+    return;
   };
 };

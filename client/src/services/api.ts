@@ -122,10 +122,27 @@ export const api = {
   getCertificates: () => apiRequest('/certificates'),
   issueCertificate: (data: any) => apiRequest('/certificates/issue', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Payments
+  // Payments, Gateways & Bank Transfers
   getInvoices: () => apiRequest('/payments/invoices'),
   payInvoice: (data: { invoiceId: string; amount: number; channel?: string; payerName?: string; payerEmail?: string }) =>
     apiRequest('/payments/pay', { method: 'POST', body: JSON.stringify(data) }),
+  initializePayment: (data: { invoiceId: string; amount: number; channel?: string; callbackUrl?: string }) =>
+    apiRequest('/payments/initialize', { method: 'POST', body: JSON.stringify(data) }),
+  submitBankTransfer: (data: {
+    invoiceId: string;
+    amount: number;
+    senderBank: string;
+    senderAccount?: string;
+    proofUrl?: string;
+    payerName?: string;
+    payerEmail?: string;
+  }) => apiRequest('/payments/bank-transfer', { method: 'POST', body: JSON.stringify(data) }),
+  getBankTransfers: (status?: string) =>
+    apiRequest(`/payments/bank-transfers${status ? `?status=${status}` : ''}`),
+  approveBankTransfer: (paymentId: string) =>
+    apiRequest(`/payments/bank-transfers/${paymentId}/approve`, { method: 'POST' }),
+  rejectBankTransfer: (paymentId: string, rejectionReason?: string) =>
+    apiRequest(`/payments/bank-transfers/${paymentId}/reject`, { method: 'POST', body: JSON.stringify({ rejectionReason }) }),
 
   // CMS
   getCMSContent: () => apiRequest('/cms/content'),

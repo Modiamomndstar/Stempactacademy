@@ -20,6 +20,9 @@ import {
   FileText,
   Send,
   MessageSquare,
+  Building,
+  Upload,
+  X,
 } from 'lucide-react';
 
 export const StudentDashboardPage: React.FC = () => {
@@ -30,6 +33,61 @@ export const StudentDashboardPage: React.FC = () => {
   const [submittingAssignment, setSubmittingAssignment] = useState<string | null>(null);
   const [submissionText, setSubmissionText] = useState<string>('');
   const [actionSuccess, setActionSuccess] = useState<string>('');
+
+  // Payment Checkout Modal State
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'PAYSTACK' | 'FLUTTERWAVE' | 'BANK_TRANSFER'>('PAYSTACK');
+  const [senderBank, setSenderBank] = useState<string>('Access Bank');
+  const [senderAccount, setSenderAccount] = useState<string>('');
+  const [tellerProofUrl, setTellerProofUrl] = useState<string>('');
+  const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+
+  const handleInitiatePayment = async () => {
+    if (!selectedInvoiceForPayment) return;
+    setPaymentProcessing(true);
+    try {
+      if (paymentMethod === 'BANK_TRANSFER') {
+        await api.submitBankTransfer({
+          invoiceId: selectedInvoiceForPayment.id,
+          amount: paymentAmount,
+          senderBank: senderBank || 'Access Bank',
+          senderAccount: senderAccount || 'Self',
+          proofUrl: tellerProofUrl || '/uploads/sample_teller.jpg',
+          payerName: data?.profile?.fullName,
+          payerEmail: user?.email,
+        });
+        setActionSuccess('Bank transfer submitted successfully! Our Finance Team will verify and issue your receipt within 24 hours.');
+        setSelectedInvoiceForPayment(null);
+      } else {
+        const res = await api.initializePayment({
+          invoiceId: selectedInvoiceForPayment.id,
+          amount: paymentAmount,
+          channel: paymentMethod,
+        });
+        if (res.authorizationUrl) {
+          window.location.href = res.authorizationUrl;
+          return;
+        } else {
+          await api.payInvoice({
+            invoiceId: selectedInvoiceForPayment.id,
+            amount: paymentAmount,
+            channel: paymentMethod,
+            payerName: data?.profile?.fullName,
+            payerEmail: user?.email,
+          });
+          setActionSuccess(`Payment of ₦${paymentAmount.toLocaleString()} recorded successfully via ${paymentMethod}!`);
+          setSelectedInvoiceForPayment(null);
+        }
+      }
+      const refreshed = await api.getStudentDashboard();
+      setData(refreshed.dashboard);
+    } catch (err: any) {
+      alert(err.message || 'Payment initiation failed');
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -520,6 +578,22 @@ export const StudentDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {inv.balance > 0 && (
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-xs text-slate-500">Supported: Paystack (Cards/USSD), Flutterwave, Direct Bank Transfer</span>
+                      <button
+                        onClick={() => {
+                          setSelectedInvoiceForPayment(inv);
+                          setPaymentAmount(inv.balance);
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        <span>Pay Tuition (₦{inv.balance.toLocaleString()})</span>
+                      </button>
+                    </div>
+                  )}
+
                   {inv.payments && inv.payments.length > 0 && (
                     <div className="pt-2 space-y-2">
                       <div className="text-xs font-bold text-slate-700">Official Payment Receipts:</div>
@@ -590,6 +664,203 @@ export const StudentDashboardPage: React.FC = () => {
         )}
       </div>
     </div>
+
+    {/* MODAL: TUITION PAYMENT CHECKOUT */}
+    {selectedInvoiceForPayment && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base">Pay Tuition & Lab Fees</h3>
+                <p className="text-xs text-slate-500">Invoice: {selectedInvoiceForPayment.invoiceNumber}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedInvoiceForPayment(null)}
+              className="p-1 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            {/* Payment Summary */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex justify-between text-slate-600">
+                <span>Invoice Title:</span>
+                <span className="font-semibold text-slate-800">{selectedInvoiceForPayment.title}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Outstanding Balance:</span>
+                <span className="font-bold text-slate-900 text-sm">₦{selectedInvoiceForPayment.balance.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Payment Amount Selection */}
+            <div className="space-y-2">
+              <label className="font-bold text-slate-800 block">Payment Amount (₦)</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentAmount(selectedInvoiceForPayment.balance)}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                    paymentAmount === selectedInvoiceForPayment.balance
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Full (₦{selectedInvoiceForPayment.balance.toLocaleString()})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentAmount(Math.round(selectedInvoiceForPayment.balance / 2))}
+                  className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                    paymentAmount === Math.round(selectedInvoiceForPayment.balance / 2)
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  50% Deposit (₦{Math.round(selectedInvoiceForPayment.balance / 2).toLocaleString()})
+                </button>
+              </div>
+              <input
+                type="number"
+                min="1000"
+                max={selectedInvoiceForPayment.balance}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                className="w-full p-2.5 rounded-xl border border-slate-200 font-bold text-sm text-slate-900"
+                placeholder="Or enter custom amount in ₦"
+              />
+            </div>
+
+            {/* Gateway Selection */}
+            <div className="space-y-2">
+              <label className="font-bold text-slate-800 block">Select Payment Channel</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('PAYSTACK')}
+                  className={`p-3 rounded-2xl border text-center transition-all ${
+                    paymentMethod === 'PAYSTACK'
+                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-bold shadow-xs'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-black text-sm">Paystack</div>
+                  <div className="text-[10px] text-slate-400">Card, USSD, Apple Pay</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('FLUTTERWAVE')}
+                  className={`p-3 rounded-2xl border text-center transition-all ${
+                    paymentMethod === 'FLUTTERWAVE'
+                      ? 'border-amber-600 bg-amber-50 text-amber-900 font-bold shadow-xs'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-black text-sm">Flutterwave</div>
+                  <div className="text-[10px] text-slate-400">Cards, Diaspora, Barter</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                  className={`p-3 rounded-2xl border text-center transition-all ${
+                    paymentMethod === 'BANK_TRANSFER'
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-bold shadow-xs'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-black text-sm">Bank Transfer</div>
+                  <div className="text-[10px] text-slate-400">Upload Teller Proof</div>
+                </button>
+              </div>
+            </div>
+
+            {/* If Bank Transfer: Show STEMPACT Bank Details & Upload Form */}
+            {paymentMethod === 'BANK_TRANSFER' && (
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                  <Building className="w-4 h-4 text-emerald-700" />
+                  <span>STEMPACT Academy Official Bank Accounts</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-emerald-100 text-xs space-y-1">
+                  <div><strong>Bank Name:</strong> Access Bank Plc</div>
+                  <div><strong>Account Name:</strong> STEMPACT ACADEMY INNOVATIONS LIMITED</div>
+                  <div><strong>Account Number:</strong> <span className="font-mono font-bold text-emerald-700">0123456789</span></div>
+                  <div><strong>Narration:</strong> {selectedInvoiceForPayment.invoiceNumber}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700">Your Bank Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. GTBank, Kuda, Zenith"
+                      value={senderBank}
+                      onChange={(e) => setSenderBank(e.target.value)}
+                      className="w-full p-2 rounded-lg border border-slate-200 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700">Sender Account Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Adeyemi Olumide"
+                      value={senderAccount}
+                      onChange={(e) => setSenderAccount(e.target.value)}
+                      className="w-full p-2 rounded-lg border border-slate-200 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Teller / Payment Reference</label>
+                  <input
+                    type="text"
+                    placeholder="Enter transaction reference or receipt image URL"
+                    value={tellerProofUrl}
+                    onChange={(e) => setTellerProofUrl(e.target.value)}
+                    className="w-full p-2 rounded-lg border border-slate-200 bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceForPayment(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleInitiatePayment}
+                disabled={paymentProcessing || paymentAmount <= 0}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-50 flex items-center gap-2 shadow-sm"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>
+                  {paymentProcessing
+                    ? 'Processing...'
+                    : paymentMethod === 'BANK_TRANSFER'
+                    ? 'Submit Bank Proof for Verification'
+                    : `Proceed to ${paymentMethod === 'PAYSTACK' ? 'Paystack' : 'Flutterwave'} (₦${paymentAmount.toLocaleString()})`}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   </PortalLayout>
   );
 };

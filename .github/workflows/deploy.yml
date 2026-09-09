@@ -1,0 +1,70 @@
+name: STEMPACT Academy CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-and-build:
+    name: Test, Validate & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      # --- BACKEND VALIDATION ---
+      - name: Install Backend Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Validate Prisma Schema & Generate Client
+        working-directory: ./server
+        run: |
+          npx prisma validate
+          npx prisma generate
+
+      - name: Compile Backend TypeScript
+        working-directory: ./server
+        run: npm run build
+
+      # --- FRONTEND VALIDATION ---
+      - name: Install Frontend Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Compile Frontend TypeScript & Vite Bundle
+        working-directory: ./client
+        run: npm run build
+
+  deploy-production:
+    name: Trigger Cloud Deployments
+    needs: validate-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Backend to Koyeb (if Hook Configured)
+        if: "${{ env.KOYEB_DEPLOY_HOOK != '' }}"
+        env:
+          KOYEB_DEPLOY_HOOK: ${{ secrets.KOYEB_DEPLOY_HOOK }}
+        run: |
+          curl -X POST "$KOYEB_DEPLOY_HOOK"
+
+      - name: Deploy Frontend to Vercel (if Hook Configured)
+        if: "${{ env.VERCEL_DEPLOY_HOOK != '' }}"
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          curl -X POST "$VERCEL_DEPLOY_HOOK"

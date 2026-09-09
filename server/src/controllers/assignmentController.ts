@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
+import { emailService } from '../services/emailService.js';
 
 export const createAssignment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -71,7 +72,22 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
         feedback,
         gradedAt: new Date(),
       },
+      include: {
+        assignment: true,
+        student: { include: { user: true } },
+      },
     });
+
+    if (submission.student?.user?.email) {
+      emailService.sendGradeReleasedEmail({
+        to: submission.student.user.email,
+        fullName: `${submission.student.user.firstName} ${submission.student.user.lastName}`,
+        assignmentTitle: submission.assignment.title,
+        grade: Number(grade),
+        maxPoints: submission.assignment.maxPoints,
+        feedback,
+      }).catch(err => console.error('Failed to send grade email:', err));
+    }
 
     res.status(200).json({ message: 'Submission graded successfully', submission });
   } catch (error: any) {

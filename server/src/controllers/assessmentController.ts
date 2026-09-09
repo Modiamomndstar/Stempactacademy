@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Role, ApplicationStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
+import { emailService } from '../services/emailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
 
@@ -314,6 +315,18 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       where: { id: application.id },
       data: { status: 'ASSESSED' },
     });
+
+    // Send assessment completed email via Resend
+    if (application.email) {
+      emailService.sendAssessmentCompletedEmail({
+        to: application.email,
+        fullName: application.fullName,
+        programName: progName,
+        score: percentage,
+        recommendedLevel,
+        recommendationReason,
+      }).catch(err => console.error('Failed to send assessment completed email:', err));
+    }
 
     res.status(200).json({
       message: 'Assessment completed successfully. Your results have been submitted to the Academic Board for review.',
