@@ -31,6 +31,8 @@ jobs:
 
       - name: Validate Prisma Schema & Generate Client
         working-directory: ./server
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test?schema=public"
         run: |
           npx prisma validate
           npx prisma generate
