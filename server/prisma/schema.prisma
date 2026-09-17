@@ -431,7 +431,7 @@ model Admission {
   letterPdfPath       String?
   orientationDate     DateTime?
   acceptanceDeadline  DateTime?
-  whatsappGroupUrl    String      @default("https://chat.whatsapp.com/stempact-community")
+  whatsappGroupUrl    String      @default("https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9")
   handbookUrl         String      @default("/resources/STEMPACT_Student_Handbook_2025.pdf")
   status              String      @default("ISSUED") // ISSUED, ACCEPTED, ENROLLED
   issuedAt            DateTime    @default(now())

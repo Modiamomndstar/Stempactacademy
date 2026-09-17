@@ -177,12 +177,12 @@ export const Footer: React.FC = () => {
               </div>
               <div className="pt-2">
                 <a
-                  href="https://wa.me/2348031234567"
+                  href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors"
                 >
-                  <span>Chat on WhatsApp</span>
+                  <span>WhatsApp Channel</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
               </div>

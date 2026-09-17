@@ -92,13 +92,13 @@ export const ContactPage: React.FC = () => {
 
               <div className="pt-2">
                 <a
-                  href="https://wa.me/2348031234567"
+                  href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Chat on WhatsApp (+234 803 123 4567)</span>
+                  <span>Join Our WhatsApp Channel</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
               </div>

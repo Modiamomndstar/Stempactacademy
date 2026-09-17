@@ -84,12 +84,12 @@ export const Navbar: React.FC = () => {
           </Link>
           <span className="text-slate-300">|</span>
           <a
-            href="https://wa.me/2348031234567"
+            href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-600 font-semibold"
           >
-            WhatsApp Admissions: +234 803 123 4567
+            WhatsApp Channel
           </a>
         </div>
       </div>

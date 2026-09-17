@@ -171,13 +171,13 @@ export const StudentDashboardPage: React.FC = () => {
         {/* Community & Fast WhatsApp Connect */}
         <div className="flex items-center gap-3">
           <a
-            href={cohort?.whatsappGroupUrl || 'https://chat.whatsapp.com/stempact-community'}
+            href={cohort?.whatsappGroupUrl || 'https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9'}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>Join Class WhatsApp Group</span>
+            <span>Join WhatsApp Community</span>
           </a>
           <button
             onClick={logout}

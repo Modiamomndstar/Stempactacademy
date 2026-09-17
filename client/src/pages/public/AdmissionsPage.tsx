@@ -158,12 +158,12 @@ export const AdmissionsPage: React.FC = () => {
               Our academic counselors in Ile-Ife can review your educational goals and recommend the optimal track.
             </p>
             <a
-              href="https://wa.me/2348031234567"
+              href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors"
             >
-              Chat with Admissions Counselor
+              Chat on WhatsApp Channel
             </a>
           </div>
         </div>

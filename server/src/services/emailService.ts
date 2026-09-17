@@ -118,7 +118,7 @@ class EmailService {
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} STEMPACT Academy Innovations Limited. All rights reserved.</p>
       <p>STEMPACT Main Hub, Ile-Ife, Osun State, Nigeria &bull; <a href="${this.clientUrl}">${this.clientUrl}</a></p>
-      <p>If you have any questions, reply to this email or reach us on WhatsApp: +234 810 000 0000</p>
+      <p>If you have any questions, reply to this email or join our WhatsApp Channel: <a href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9">STEMPACT WhatsApp Channel</a></p>
     </div>
   </div>
 </body>

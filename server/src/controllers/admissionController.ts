@@ -67,7 +67,7 @@ export const issueAdmission = async (req: Request, res: Response): Promise<void>
         letterPdfPath: `/letters/STEMPACT_Admission_${studentIdNumber}.pdf`,
         orientationDate: orientationDate ? new Date(orientationDate) : new Date(cohort.startDate.getTime() - 86400000 * 3),
         acceptanceDeadline: new Date(Date.now() + 86400000 * 7),
-        whatsappGroupUrl: 'https://chat.whatsapp.com/stempact-academy-2025',
+        whatsappGroupUrl: 'https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9',
         handbookUrl: '/resources/STEMPACT_Student_Handbook_2025.pdf',
         status: 'ISSUED',
       },

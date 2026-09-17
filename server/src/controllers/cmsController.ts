@@ -22,7 +22,7 @@ export const getCMSContent = async (req: Request, res: Response): Promise<void> 
         address: 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State, Nigeria',
         email: 'admissions@stempact.org',
         phone: '+234 803 123 4567',
-        whatsapp: 'https://wa.me/2348031234567',
+        whatsapp: 'https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9',
         workingHours: 'Mon - Fri: 8:00 AM - 6:00 PM, Sat: 9:00 AM - 4:00 PM',
       },
     });
