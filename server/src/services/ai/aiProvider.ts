@@ -1,6 +1,91 @@
 import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { IAIProvider, AIOptions, AIGenerationResult } from './types.js';
+
+export class GroqProvider implements IAIProvider {
+  name = 'groq';
+  private groq: Groq;
+  private defaultModel: string;
+
+  constructor(apiKey: string, model: string = 'llama-3.3-70b-versatile') {
+    this.groq = new Groq({ apiKey });
+    this.defaultModel = model;
+  }
+
+  async generateStructured<T>(prompt: string, schema: z.ZodType<T>, options?: AIOptions): Promise<AIGenerationResult<T>> {
+    const startTime = Date.now();
+    const model = this.defaultModel;
+
+    const systemPrompt = `${options?.systemInstruction || 'You are the Chief Academic Officer & Senior Curriculum Architect at STEMPACT Academy, an elite STEM, Digital Skills, and Entrepreneurship Institution in Ile-Ife, Nigeria.'}
+You MUST respond with valid JSON strictly adhering to the requested schema. Do NOT include any markdown code blocks, backticks, or extra prose. Return only raw JSON.`;
+
+    try {
+      const completion = await this.groq.chat.completions.create({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        model,
+        temperature: options?.temperature ?? 0.2,
+        response_format: { type: 'json_object' },
+      });
+
+      const rawText = completion.choices[0]?.message?.content || '{}';
+      const latencyMs = Date.now() - startTime;
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (err) {
+        const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      }
+
+      const validated = schema.parse(parsed);
+
+      return {
+        structured: validated,
+        rawText,
+        tokensPrompt: completion.usage?.prompt_tokens || 0,
+        tokensCompletion: completion.usage?.completion_tokens || 0,
+        costEstimate: 0,
+        model,
+        provider: this.name,
+        latencyMs,
+      };
+    } catch (error: any) {
+      console.error('[GroqProvider Error]:', error);
+      throw new Error(`Groq AI Structured Generation Failed: ${error.message}`);
+    }
+  }
+
+  async generateText(prompt: string, options?: AIOptions): Promise<{ text: string; tokensPrompt: number; tokensCompletion: number; latencyMs: number }> {
+    const startTime = Date.now();
+    const model = this.defaultModel;
+
+    try {
+      const completion = await this.groq.chat.completions.create({
+        messages: [
+          ...(options?.systemInstruction ? [{ role: 'system' as const, content: options.systemInstruction }] : []),
+          { role: 'user' as const, content: prompt },
+        ],
+        model,
+        temperature: options?.temperature ?? 0.7,
+      });
+
+      return {
+        text: completion.choices[0]?.message?.content || '',
+        tokensPrompt: completion.usage?.prompt_tokens || 0,
+        tokensCompletion: completion.usage?.completion_tokens || 0,
+        latencyMs: Date.now() - startTime,
+      };
+    } catch (error: any) {
+      console.error('[GroqProvider Text Error]:', error);
+      throw new Error(`Groq AI Generation Failed: ${error.message}`);
+    }
+  }
+}
 
 export class GeminiProvider implements IAIProvider {
   name = 'google-gemini';
@@ -316,16 +401,28 @@ let cachedProvider: IAIProvider | null = null;
 export const getAIProvider = (): IAIProvider => {
   if (cachedProvider) return cachedProvider;
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  const model = process.env.AI_MODEL || 'gemini-2.5-flash';
+  const preferred = (process.env.AI_PROVIDER || '').toLowerCase();
+  const groqApiKey = process.env.GROQ_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-  if (apiKey) {
-    console.log(`🧠 [AI Engine] Initialized Google Gemini Provider with model: ${model}`);
-    cachedProvider = new GeminiProvider(apiKey, model);
-  } else {
-    console.warn(`⚠️ [AI Engine] No GEMINI_API_KEY found in environment. Using MockProvider for deterministic offline testing.`);
-    cachedProvider = new MockProvider();
+  // 1. If Groq is preferred or GROQ_API_KEY is available (prioritizing Groq open-source AI)
+  if (groqApiKey && (preferred === 'groq' || !geminiApiKey || preferred === '')) {
+    const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    console.log(`⚡ [AI Engine] Initialized Groq Open-Source AI Provider with model: ${groqModel}`);
+    cachedProvider = new GroqProvider(groqApiKey, groqModel);
+    return cachedProvider;
   }
 
+  // 2. If Gemini is preferred or available
+  if (geminiApiKey && (preferred === 'gemini' || !groqApiKey)) {
+    const geminiModel = process.env.AI_MODEL || 'gemini-2.5-flash';
+    console.log(`🧠 [AI Engine] Initialized Google Gemini Provider with model: ${geminiModel}`);
+    cachedProvider = new GeminiProvider(geminiApiKey, geminiModel);
+    return cachedProvider;
+  }
+
+  // 3. Fallback to resilient offline MockProvider
+  console.warn(`⚠️ [AI Engine] Neither GROQ_API_KEY nor GEMINI_API_KEY detected in environment. Using MockProvider for deterministic offline operation.`);
+  cachedProvider = new MockProvider();
   return cachedProvider;
 };
