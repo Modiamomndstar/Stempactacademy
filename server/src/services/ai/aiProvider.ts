@@ -8,14 +8,14 @@ export class GroqProvider implements IAIProvider {
   private groq: Groq;
   private defaultModel: string;
 
-  constructor(apiKey: string, model: string = 'llama-3.3-70b-versatile') {
+  constructor(apiKey: string, model: string = 'openai/gpt-oss-120b') {
     this.groq = new Groq({ apiKey });
     this.defaultModel = model;
   }
 
   async generateStructured<T>(prompt: string, schema: z.ZodType<T>, options?: AIOptions): Promise<AIGenerationResult<T>> {
     const startTime = Date.now();
-    const model = this.defaultModel;
+    const model = options?.model || this.defaultModel;
 
     const systemPrompt = `${options?.systemInstruction || 'You are the Chief Academic Officer & Senior Curriculum Architect at STEMPACT Academy, an elite STEM, Digital Skills, and Entrepreneurship Institution in Ile-Ife, Nigeria.'}
 You MUST respond with valid JSON strictly adhering to the requested schema. Do NOT include any markdown code blocks, backticks, or extra prose. Return only raw JSON.`;
@@ -62,7 +62,7 @@ You MUST respond with valid JSON strictly adhering to the requested schema. Do N
 
   async generateText(prompt: string, options?: AIOptions): Promise<{ text: string; tokensPrompt: number; tokensCompletion: number; latencyMs: number }> {
     const startTime = Date.now();
-    const model = this.defaultModel;
+    const model = options?.model || this.defaultModel;
 
     try {
       const completion = await this.groq.chat.completions.create({
@@ -407,7 +407,7 @@ export const getAIProvider = (): IAIProvider => {
 
   // 1. If Groq is preferred or GROQ_API_KEY is available (prioritizing Groq open-source AI)
   if (groqApiKey && (preferred === 'groq' || !geminiApiKey || preferred === '')) {
-    const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    const groqModel = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
     console.log(`⚡ [AI Engine] Initialized Groq Open-Source AI Provider with model: ${groqModel}`);
     cachedProvider = new GroqProvider(groqApiKey, groqModel);
     return cachedProvider;

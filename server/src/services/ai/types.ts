@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AIActionType, WorkflowStatus } from '@prisma/client';
 
 export interface AIProviderConfig {
-  provider: 'google-gemini' | 'openai' | 'anthropic' | 'mock';
+  provider: 'groq' | 'google-gemini' | 'openai' | 'anthropic' | 'mock';
   apiKey?: string;
   model: string;
 }
@@ -11,6 +11,7 @@ export interface AIOptions {
   temperature?: number;
   maxTokens?: number;
   systemInstruction?: string;
+  model?: string;
 }
 
 export interface AIGenerationResult<T = any> {
