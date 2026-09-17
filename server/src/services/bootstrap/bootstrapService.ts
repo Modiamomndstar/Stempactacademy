@@ -84,175 +84,9 @@ export class BootstrapService {
 
     // 2. Ensure Super Admin
     await ensureSuperAdminFromEnv();
-    const superAdmin = await prisma.user.findFirst({ where: { role: Role.SUPER_ADMIN } });
 
-    // 3. Create Additional Administrative and Academic Personas
-    const defaultPasswordHash = await bcrypt.hash('Admin123!', 10);
-    const facultyPasswordHash = await bcrypt.hash('Instructor123!', 10);
-    const studentPasswordHash = await bcrypt.hash('Student123!', 10);
-
-    // Academic Admin
-    const academicAdmin = await prisma.user.upsert({
-      where: { email: 'academic@stempact.org' },
-      update: {},
-      create: {
-        email: 'academic@stempact.org',
-        username: 'academic.admin',
-        passwordHash: defaultPasswordHash,
-        firstName: 'Dr. Folashade',
-        lastName: 'Adeleke',
-        phone: '+234 802 234 5678',
-        role: Role.ACADEMIC_ADMIN,
-        isActive: true,
-      },
-    });
-
-    // Admissions Admin
-    await prisma.user.upsert({
-      where: { email: 'admissions@stempact.org' },
-      update: {},
-      create: {
-        email: 'admissions@stempact.org',
-        username: 'admissions.admin',
-        passwordHash: defaultPasswordHash,
-        firstName: 'Kikelomo',
-        lastName: 'Adebayo',
-        phone: '+234 806 456 7891',
-        role: Role.ADMISSIONS_ADMIN,
-        isActive: true,
-      },
-    });
-
-    // Finance Admin
-    await prisma.user.upsert({
-      where: { email: 'finance@stempact.org' },
-      update: {},
-      create: {
-        email: 'finance@stempact.org',
-        username: 'finance.admin',
-        passwordHash: defaultPasswordHash,
-        firstName: 'Oluwaseun',
-        lastName: 'Balogun',
-        phone: '+234 805 345 6789',
-        role: Role.FINANCE_ADMIN,
-        isActive: true,
-      },
-    });
-
-    // Program Coordinator
-    const coordinator = await prisma.user.upsert({
-      where: { email: 'coordinator@stempact.org' },
-      update: {},
-      create: {
-        email: 'coordinator@stempact.org',
-        username: 'program.coord',
-        passwordHash: defaultPasswordHash,
-        firstName: 'Olumide',
-        lastName: 'Fagbemi',
-        phone: '+234 807 567 8912',
-        role: Role.PROGRAM_COORDINATOR,
-        isActive: true,
-      },
-    });
-
-    await prisma.coordinatorProfile.upsert({
-      where: { userId: coordinator.id },
-      update: {},
-      create: {
-        userId: coordinator.id,
-        staffCode: 'STP-COORD-001',
-        department: 'Software Engineering & Junior STEM Programs',
-        assignedSchools: JSON.stringify(['CSE', 'SKT']),
-        assignedPrograms: JSON.stringify(['CSE-01', 'CSE-02', 'AIDM-01']),
-      },
-    });
-
-    // Instructor
-    const instructor = await prisma.user.upsert({
-      where: { email: 'instructor@stempact.org' },
-      update: {},
-      create: {
-        email: 'instructor@stempact.org',
-        username: 'damilola.adeyemi',
-        passwordHash: facultyPasswordHash,
-        firstName: 'Engr. Damilola',
-        lastName: 'Adeyemi',
-        phone: '+234 814 456 7890',
-        role: Role.INSTRUCTOR,
-        isActive: true,
-      },
-    });
-
-    await prisma.instructorProfile.upsert({
-      where: { userId: instructor.id },
-      update: {},
-      create: {
-        userId: instructor.id,
-        staffCode: 'INS-2026-001',
-        specialization: 'Full-Stack Software Architecture & Cloud Computing',
-        qualification: 'M.Sc Computer Engineering, Obafemi Awolowo University',
-        bio: 'Senior Software Engineer with 8+ years experience building fintech products and mentoring developers in Ile-Ife.',
-        assignedSchools: JSON.stringify(['School of Computing and Software Engineering']),
-      },
-    });
-
-    // Demo Student
-    const studentUser = await prisma.user.upsert({
-      where: { email: 'student@stempact.org' },
-      update: {},
-      create: {
-        email: 'student@stempact.org',
-        username: 'student.ayomide',
-        passwordHash: studentPasswordHash,
-        firstName: 'Ayomide',
-        lastName: 'Adekunle',
-        phone: '+234 809 123 4567',
-        role: Role.STUDENT,
-        isActive: true,
-      },
-    });
-
-    await prisma.studentProfile.upsert({
-      where: { userId: studentUser.id },
-      update: {},
-      create: {
-        userId: studentUser.id,
-        studentIdNumber: 'STP-2026-0001',
-        currentLevel: 'Foundation',
-        enrollmentDate: new Date(),
-        status: 'ACTIVE',
-      },
-    });
-
-    // Demo Parent
-    const parentUser = await prisma.user.upsert({
-      where: { email: 'parent@stempact.org' },
-      update: {},
-      create: {
-        email: 'parent@stempact.org',
-        username: 'parent.adekunle',
-        passwordHash: defaultPasswordHash,
-        firstName: 'Mrs. Funke',
-        lastName: 'Adekunle',
-        phone: '+234 803 987 6543',
-        role: Role.PARENT,
-        isActive: true,
-      },
-    });
-
-    await prisma.parentProfile.upsert({
-      where: { userId: parentUser.id },
-      update: {},
-      create: {
-        userId: parentUser.id,
-        relationship: 'Mother',
-        emergencyContact: '+234 803 987 6543',
-      },
-    });
-
-    // 4. Seed 8 Schools
+    // 3. Seed 8 Schools FIRST so academy structure is guaranteed
     const schoolMap = new Map<string, string>();
-
     for (const s of schoolsData) {
       const school = await prisma.school.upsert({
         where: { code: s.code },
@@ -276,7 +110,7 @@ export class BootstrapService {
     }
     console.log(`✔ ${schoolMap.size} STEM Schools seeded.`);
 
-    // 5. Seed 30+ Programs
+    // 4. Seed 30+ Programs & Starter Cohorts
     let programsCreated = 0;
     for (const p of programsData) {
       const schoolId = schoolMap.get(p.schoolCode);
@@ -358,15 +192,251 @@ export class BootstrapService {
     }
     console.log(`✔ ${programsCreated} Academic Programs & Cohorts seeded.`);
 
-    // 6. Seed Announcement
-    await prisma.announcement.create({
-      data: {
-        title: 'Welcome to STEMPACT Academy OS — 2026/2027 Academic Session',
-        content: 'Admissions and placement examinations are now open across all 8 Schools. Practical hands-on training commences in Ile-Ife campus labs and virtual classrooms.',
-        targetAudience: 'ALL',
-        priority: 'HIGH',
-      },
+    // 5. Seed Announcement
+    const existingAnnouncement = await prisma.announcement.findFirst({
+      where: { title: 'Welcome to STEMPACT Academy OS — 2026/2027 Academic Session' }
     });
+    if (!existingAnnouncement) {
+      await prisma.announcement.create({
+        data: {
+          title: 'Welcome to STEMPACT Academy OS — 2026/2027 Academic Session',
+          content: 'Admissions and placement examinations are now open across all 8 Schools. Practical hands-on training commences in Ile-Ife campus labs and virtual classrooms.',
+          targetAudience: 'ALL',
+          priority: 'HIGH',
+        },
+      });
+    }
+
+    // 6. Create Additional Administrative and Demo Personas (safely isolated)
+    try {
+      const defaultPasswordHash = await bcrypt.hash('Admin123!', 10);
+      const facultyPasswordHash = await bcrypt.hash('Instructor123!', 10);
+      const studentPasswordHash = await bcrypt.hash('Student123!', 10);
+
+      // Academic Admin
+      await prisma.user.upsert({
+        where: { email: 'academic@stempact.org' },
+        update: {},
+        create: {
+          email: 'academic@stempact.org',
+          username: 'academic.admin',
+          passwordHash: defaultPasswordHash,
+          firstName: 'Dr. Folashade',
+          lastName: 'Adeleke',
+          phone: '+234 802 234 5678',
+          role: Role.ACADEMIC_ADMIN,
+          isActive: true,
+        },
+      });
+
+      // Admissions Admin
+      await prisma.user.upsert({
+        where: { email: 'admissions@stempact.org' },
+        update: {},
+        create: {
+          email: 'admissions@stempact.org',
+          username: 'admissions.admin',
+          passwordHash: defaultPasswordHash,
+          firstName: 'Kikelomo',
+          lastName: 'Adebayo',
+          phone: '+234 806 456 7891',
+          role: Role.ADMISSIONS_ADMIN,
+          isActive: true,
+        },
+      });
+
+      // Finance Admin
+      await prisma.user.upsert({
+        where: { email: 'finance@stempact.org' },
+        update: {},
+        create: {
+          email: 'finance@stempact.org',
+          username: 'finance.admin',
+          passwordHash: defaultPasswordHash,
+          firstName: 'Oluwaseun',
+          lastName: 'Balogun',
+          phone: '+234 805 345 6789',
+          role: Role.FINANCE_ADMIN,
+          isActive: true,
+        },
+      });
+
+      // Program Coordinator
+      const coordinator = await prisma.user.upsert({
+        where: { email: 'coordinator@stempact.org' },
+        update: {},
+        create: {
+          email: 'coordinator@stempact.org',
+          username: 'program.coord',
+          passwordHash: defaultPasswordHash,
+          firstName: 'Olumide',
+          lastName: 'Fagbemi',
+          phone: '+234 807 567 8912',
+          role: Role.PROGRAM_COORDINATOR,
+          isActive: true,
+        },
+      });
+
+      const existingCoordinatorProfile = await prisma.coordinatorProfile.findFirst({
+        where: {
+          OR: [
+            { userId: coordinator.id },
+            { staffCode: 'STP-COORD-001' },
+          ],
+        },
+      });
+
+      if (existingCoordinatorProfile) {
+        await prisma.coordinatorProfile.update({
+          where: { id: existingCoordinatorProfile.id },
+          data: {
+            userId: coordinator.id,
+            staffCode: existingCoordinatorProfile.staffCode || 'STP-COORD-001',
+            department: 'Software Engineering & Junior STEM Programs',
+            assignedSchools: JSON.stringify(['CSE', 'SKT']),
+            assignedPrograms: JSON.stringify(['CSE-01', 'CSE-02', 'AIDM-01']),
+          },
+        });
+      } else {
+        await prisma.coordinatorProfile.create({
+          data: {
+            userId: coordinator.id,
+            staffCode: 'STP-COORD-001',
+            department: 'Software Engineering & Junior STEM Programs',
+            assignedSchools: JSON.stringify(['CSE', 'SKT']),
+            assignedPrograms: JSON.stringify(['CSE-01', 'CSE-02', 'AIDM-01']),
+          },
+        });
+      }
+
+      // Instructor
+      const instructor = await prisma.user.upsert({
+        where: { email: 'instructor@stempact.org' },
+        update: {},
+        create: {
+          email: 'instructor@stempact.org',
+          username: 'damilola.adeyemi',
+          passwordHash: facultyPasswordHash,
+          firstName: 'Engr. Damilola',
+          lastName: 'Adeyemi',
+          phone: '+234 814 456 7890',
+          role: Role.INSTRUCTOR,
+          isActive: true,
+        },
+      });
+
+      const existingInstructorProfile = await prisma.instructorProfile.findFirst({
+        where: {
+          OR: [
+            { userId: instructor.id },
+            { staffCode: 'INS-2026-001' },
+          ],
+        },
+      });
+
+      if (existingInstructorProfile) {
+        await prisma.instructorProfile.update({
+          where: { id: existingInstructorProfile.id },
+          data: {
+            userId: instructor.id,
+            staffCode: existingInstructorProfile.staffCode || 'INS-2026-001',
+            specialization: 'Full-Stack Software Architecture & Cloud Computing',
+            qualification: 'M.Sc Computer Engineering, Obafemi Awolowo University',
+            bio: 'Senior Software Engineer with 8+ years experience building fintech products and mentoring developers in Ile-Ife.',
+            assignedSchools: JSON.stringify(['School of Computing and Software Engineering']),
+          },
+        });
+      } else {
+        await prisma.instructorProfile.create({
+          data: {
+            userId: instructor.id,
+            staffCode: 'INS-2026-001',
+            specialization: 'Full-Stack Software Architecture & Cloud Computing',
+            qualification: 'M.Sc Computer Engineering, Obafemi Awolowo University',
+            bio: 'Senior Software Engineer with 8+ years experience building fintech products and mentoring developers in Ile-Ife.',
+            assignedSchools: JSON.stringify(['School of Computing and Software Engineering']),
+          },
+        });
+      }
+
+      // Demo Student
+      const studentUser = await prisma.user.upsert({
+        where: { email: 'student@stempact.org' },
+        update: {},
+        create: {
+          email: 'student@stempact.org',
+          username: 'student.ayomide',
+          passwordHash: studentPasswordHash,
+          firstName: 'Ayomide',
+          lastName: 'Adekunle',
+          phone: '+234 809 123 4567',
+          role: Role.STUDENT,
+          isActive: true,
+        },
+      });
+
+      const existingStudentProfile = await prisma.studentProfile.findFirst({
+        where: {
+          OR: [
+            { userId: studentUser.id },
+            { studentIdNumber: 'STP-2026-0001' },
+          ],
+        },
+      });
+
+      if (existingStudentProfile) {
+        await prisma.studentProfile.update({
+          where: { id: existingStudentProfile.id },
+          data: {
+            userId: studentUser.id,
+            currentLevel: 'Foundation',
+            status: 'ACTIVE',
+          },
+        });
+      } else {
+        await prisma.studentProfile.create({
+          data: {
+            userId: studentUser.id,
+            studentIdNumber: 'STP-2026-0001',
+            currentLevel: 'Foundation',
+            enrollmentDate: new Date(),
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      // Demo Parent
+      const parentUser = await prisma.user.upsert({
+        where: { email: 'parent@stempact.org' },
+        update: {},
+        create: {
+          email: 'parent@stempact.org',
+          username: 'parent.adekunle',
+          passwordHash: defaultPasswordHash,
+          firstName: 'Mrs. Funke',
+          lastName: 'Adekunle',
+          phone: '+234 803 987 6543',
+          role: Role.PARENT,
+          isActive: true,
+        },
+      });
+
+      const existingParentProfile = await prisma.parentProfile.findUnique({
+        where: { userId: parentUser.id },
+      });
+
+      if (!existingParentProfile) {
+        await prisma.parentProfile.create({
+          data: {
+            userId: parentUser.id,
+            relationship: 'Mother',
+            emergencyContact: '+234 803 987 6543',
+          },
+        });
+      }
+    } catch (personaErr: any) {
+      console.warn('⚠️ [BOOTSTRAP WARNING] Some demo personas could not be seeded:', personaErr.message);
+    }
 
     console.log('🎉 STEMPACT ACADEMY database seeded successfully!');
     return {

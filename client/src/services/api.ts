@@ -1,6 +1,17 @@
-const API_BASE = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` 
-  : '/api';
+const getApiBase = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return 'https://stempactacademy.onrender.com/api';
+    }
+  }
+  return '/api';
+};
+
+const API_BASE = getApiBase();
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('stempact_token');
