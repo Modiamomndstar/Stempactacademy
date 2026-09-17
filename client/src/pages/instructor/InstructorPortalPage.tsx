@@ -16,7 +16,10 @@ import {
   Check,
   X,
   FileText,
+  Sparkles,
 } from 'lucide-react';
+import { AILessonPlanModal } from '../../components/AILessonPlanModal';
+import { AIFeedbackModal } from '../../components/AIFeedbackModal';
 
 export const InstructorPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -36,6 +39,11 @@ export const InstructorPortalPage: React.FC = () => {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [gradeInput, setGradeInput] = useState<number>(90);
   const [feedbackInput, setFeedbackInput] = useState<string>('');
+
+  // AI Assistant States
+  const [showLessonPlanModal, setShowLessonPlanModal] = useState<boolean>(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
+  const [activeAiFeedbackSub, setActiveAiFeedbackSub] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchInstructor = async () => {
@@ -220,9 +228,19 @@ export const InstructorPortalPage: React.FC = () => {
         {/* TAB 2: MARK ATTENDANCE */}
         {activeTab === 'attendance' && (
           <Card className="p-8 space-y-6">
-            <div className="border-b border-slate-100 pb-4">
-              <h2 className="text-lg font-bold text-slate-900">Class Attendance Sheet</h2>
-              <p className="text-xs text-slate-500">Record present, late, or absent status for today's lab session.</p>
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Class Attendance Sheet</h2>
+                <p className="text-xs text-slate-500">Record present, late, or absent status for today's lab session.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLessonPlanModal(true)}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-700 to-emerald-700 text-white text-xs font-bold hover:from-teal-600 hover:to-emerald-600 flex items-center gap-1.5 shadow-sm transition self-start sm:self-auto"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-teal-200" />
+                <span>AI Lesson Plan Assistant</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -395,12 +413,23 @@ export const InstructorPortalPage: React.FC = () => {
                             />
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             onClick={() => handleGradeSubmission(sub.id)}
-                            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold text-xs"
+                            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
                           >
                             Save Grade & Feedback
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveAiFeedbackSub(sub);
+                              setShowFeedbackModal(true);
+                            }}
+                            className="px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs flex items-center gap-1.5 transition"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>AI Feedback Assistant</span>
                           </button>
                           <button
                             onClick={() => setSelectedSubmissionId(null)}
@@ -430,6 +459,36 @@ export const InstructorPortalPage: React.FC = () => {
         )}
       </div>
     </div>
+
+    {/* AI LESSON PLAN MODAL */}
+    <AILessonPlanModal
+      isOpen={showLessonPlanModal}
+      onClose={() => setShowLessonPlanModal(false)}
+      programTitle={currentCohort?.program?.name || currentCohort?.name}
+      defaultTopic={sessionTopic || sessionTitle}
+    />
+
+    {/* AI CONSTRUCTIVE FEEDBACK MODAL */}
+    <AIFeedbackModal
+      isOpen={showFeedbackModal}
+      onClose={() => {
+        setShowFeedbackModal(false);
+        setActiveAiFeedbackSub(null);
+      }}
+      submissionId={activeAiFeedbackSub?.id}
+      studentName={
+        activeAiFeedbackSub
+          ? `${activeAiFeedbackSub.student?.user?.firstName} ${activeAiFeedbackSub.student?.user?.lastName}`
+          : undefined
+      }
+      assignmentTitle={activeAiFeedbackSub?.assignment?.title}
+      submissionContent={activeAiFeedbackSub?.content}
+      onApplyFeedback={({ score, comments }) => {
+        setGradeInput(score);
+        setFeedbackInput(comments);
+        setShowFeedbackModal(false);
+      }}
+    />
   </PortalLayout>
   );
 };

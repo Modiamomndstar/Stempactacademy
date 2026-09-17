@@ -204,5 +204,27 @@ export const api = {
 
   // Applicant Portal
   getApplicantDashboard: () => apiRequest('/applicant/dashboard'),
+
+  // AI-Native Academy Operating System
+  generateProgram: (data: any) => apiRequest('/ai/generate-program', { method: 'POST', body: JSON.stringify(data) }),
+  generateCurriculum: (data: any) => apiRequest('/ai/generate-curriculum', { method: 'POST', body: JSON.stringify(data) }),
+  generateSyllabus: (data: any) => apiRequest('/ai/generate-syllabus', { method: 'POST', body: JSON.stringify(data) }),
+  generateAssessment: (data: any) => apiRequest('/ai/generate-assessment', { method: 'POST', body: JSON.stringify(data) }),
+  generateLessonPlan: (data: any) => apiRequest('/ai/generate-lesson-plan', { method: 'POST', body: JSON.stringify(data) }),
+  generateAssignment: (data: any) => apiRequest('/ai/generate-assignment', { method: 'POST', body: JSON.stringify(data) }),
+  runQualityCheck: (data: any) => apiRequest('/ai/quality-check', { method: 'POST', body: JSON.stringify(data) }),
+  generateFeedback: (data: any) => apiRequest('/ai/generate-feedback', { method: 'POST', body: JSON.stringify(data) }),
+  studentCopilot: (data: any) => apiRequest('/ai/student-copilot', { method: 'POST', body: JSON.stringify(data) }),
+  parentAssistant: (data: any) => apiRequest('/ai/parent-assistant', { method: 'POST', body: JSON.stringify(data) }),
+  adminAssistant: (data: any) => apiRequest('/ai/admin-assistant', { method: 'POST', body: JSON.stringify(data) }),
+  publishProgram: (data: any) => apiRequest('/ai/publish-program', { method: 'POST', body: JSON.stringify(data) }),
+  getAIGenerations: (params?: { entityType?: string; entityId?: string; actionType?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.entityType) query.append('entityType', params.entityType);
+    if (params?.entityId) query.append('entityId', params.entityId);
+    if (params?.actionType) query.append('actionType', params.actionType);
+    const qs = query.toString();
+    return apiRequest(`/ai/generations${qs ? `?${qs}` : ''}`);
+  },
 };
 

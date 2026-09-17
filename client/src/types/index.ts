@@ -17,7 +17,111 @@ export type Role =
 
 export type UserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED' | 'ARCHIVED';
 
-export type ProgramStatus = 'DRAFT' | 'PUBLISHED' | 'UPCOMING' | 'OPEN_FOR_APPLICATION' | 'FULL' | 'CLOSED' | 'ARCHIVED';
+export const AcademicLevel = {
+  LEVEL_0_ASSESSMENT: 'LEVEL_0_ASSESSMENT',
+  LEVEL_1_FOUNDATION: 'LEVEL_1_FOUNDATION',
+  LEVEL_2_INTERMEDIATE: 'LEVEL_2_INTERMEDIATE',
+  LEVEL_3_ADVANCED: 'LEVEL_3_ADVANCED',
+  LEVEL_4_SPECIALIST: 'LEVEL_4_SPECIALIST',
+  LEVEL_5_INNOVATION: 'LEVEL_5_INNOVATION',
+  LEVEL_6_ENTREPRENEURSHIP: 'LEVEL_6_ENTREPRENEURSHIP',
+} as const;
+export type AcademicLevel = (typeof AcademicLevel)[keyof typeof AcademicLevel];
+
+export interface ProgramDraft {
+  name: string;
+  code: string;
+  schoolCode: string;
+  academicLevel: number;
+  durationWeeks: number;
+  targetAudience: string;
+  description: string;
+  learningOutcomes: string[];
+  prerequisites: string[];
+  careerOutcomes: string[];
+  suggestedFeeNgn: number;
+  modules: {
+    weekNumber: number;
+    title: string;
+    description: string;
+    learningObjectives: string[];
+    practicalProjects: string[];
+  }[];
+}
+
+export interface QualityCheckResult {
+  alignmentScore: number;
+  completenessScore: number;
+  practicalBalanceScore: number;
+  rigorScore: number;
+  industryRelevanceScore: number;
+  suggestions: string[];
+  warnings: string[];
+}
+
+export interface LessonPlanDraft {
+  topic: string;
+  durationMinutes: number;
+  targetAudience: string;
+  objectives: string[];
+  materialsNeeded: string[];
+  agenda: {
+    timeMinutes: number;
+    activity: string;
+    details: string;
+  }[];
+  handsOnExercise: string;
+  formativeAssessment: string;
+  takeHomeAssignment?: string;
+}
+
+export interface FeedbackDraft {
+  strengths: string[];
+  areasForImprovement: string[];
+  suggestedScore: number;
+  encouragement: string;
+}
+
+export type WorkflowStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'IN_REVIEW'
+  | 'CHANGES_REQUESTED'
+  | 'APPROVED'
+  | 'PUBLISHED'
+  | 'REJECTED'
+  | 'ARCHIVED';
+
+export type AIActionType =
+  | 'PROGRAM_GENERATION'
+  | 'CURRICULUM_GENERATION'
+  | 'SYLLABUS_GENERATION'
+  | 'COURSE_GENERATION'
+  | 'MODULE_GENERATION'
+  | 'LESSON_PLAN_GENERATION'
+  | 'ASSESSMENT_GENERATION'
+  | 'ASSIGNMENT_GENERATION'
+  | 'PROJECT_GENERATION'
+  | 'QUALITY_CHECK'
+  | 'FEEDBACK_GENERATION'
+  | 'ADMISSION_LETTER_GENERATION'
+  | 'PROGRESS_ANALYSIS'
+  | 'STUDENT_COPILOT'
+  | 'PARENT_ASSISTANT'
+  | 'ADMIN_ASSISTANT';
+
+export type ProgramStatus =
+  | 'DRAFT'
+  | 'AI_GENERATED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'PUBLISHED'
+  | 'UPCOMING'
+  | 'OPEN_FOR_APPLICATION'
+  | 'FULL'
+  | 'CLOSED'
+  | 'ARCHIVED'
+  | 'REVISED';
 
 export type CohortStatus = 'DRAFT' | 'UPCOMING' | 'OPEN' | 'ALMOST_FULL' | 'FULL' | 'IN_PROGRESS' | 'COMPLETED' | 'CLOSED';
 
@@ -89,9 +193,14 @@ export interface Program {
   careerPathways: string;
   progressionPathway: string;
   status: ProgramStatus;
+  level?: AcademicLevel;
+  version?: number;
   isFeatured: boolean;
   cohorts?: Cohort[];
   courses?: Course[];
+  curricula?: Curriculum[];
+  syllabi?: Syllabus[];
+  capstoneProjects?: CapstoneProject[];
 }
 
 export interface Course {
@@ -145,6 +254,9 @@ export interface Cohort {
   certificationFee: number;
   discountPercentage: number;
   status: CohortStatus;
+  academicSessionId?: string;
+  academicSession?: AcademicSession;
+  syllabi?: Syllabus[];
   isRegistrationOpen?: boolean;
 }
 
@@ -567,4 +679,136 @@ export interface SponsoredStudent {
   status: string;
   student?: StudentProfile;
 }
+
+export interface AcademicSession {
+  id: string;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  createdAt?: string;
+  cohorts?: Cohort[];
+}
+
+export interface Curriculum {
+  id: string;
+  programId: string;
+  title: string;
+  level: AcademicLevel;
+  totalHours: number;
+  theoryPracticalRatio: string;
+  competencies?: any;
+  courseSequence?: any;
+  status: WorkflowStatus;
+  version: number;
+  createdAt?: string;
+}
+
+export interface Syllabus {
+  id: string;
+  programId: string;
+  cohortId?: string;
+  title: string;
+  weeklyOutline: any[];
+  contactHoursPerWeek: number;
+  status: WorkflowStatus;
+  version: number;
+  createdAt?: string;
+}
+
+export interface PracticalActivity {
+  id: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  objectives: string;
+  labSafetyNotes?: string;
+  requiredTools: string;
+  estimatedDurationMin: number;
+}
+
+export interface CapstoneProject {
+  id: string;
+  programId: string;
+  title: string;
+  problemStatement: string;
+  expectedOutputs: string;
+  evaluationRubric: any;
+  teamSizeMin: number;
+  teamSizeMax: number;
+  durationWeeks: number;
+}
+
+export interface AIGeneration {
+  id: string;
+  actionType: AIActionType;
+  promptContext: any;
+  rawOutput: string;
+  structuredOutput: any;
+  model: string;
+  provider: string;
+  tokensPrompt: number;
+  tokensCompletion: number;
+  costEstimate?: number;
+  status: WorkflowStatus;
+  requestedById: string;
+  approvedById?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  createdAt: string;
+}
+
+export interface AIAuditLog {
+  id: string;
+  userId: string;
+  userRole: Role;
+  action: AIActionType;
+  resourceType: string;
+  resourceId?: string;
+  inputSummary?: string;
+  model: string;
+  provider: string;
+  latencyMs: number;
+  approved: boolean;
+  createdAt: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  sourceUrl?: string;
+  isCanonical: boolean;
+  createdAt: string;
+}
+
+export interface StudentPortfolio {
+  id: string;
+  studentId: string;
+  bio?: string;
+  headline?: string;
+  isPublic: boolean;
+  customSlug?: string;
+  items?: PortfolioItem[];
+}
+
+export interface PortfolioItem {
+  id: string;
+  portfolioId: string;
+  title: string;
+  description: string;
+  problem: string;
+  solution: string;
+  techStack: string;
+  role: string;
+  demoUrl?: string;
+  repoUrl?: string;
+  mediaUrls: string[];
+  skillsDemonstrated: string[];
+  isVerifiedByInstructor: boolean;
+  completedAt?: string;
+}
+
 

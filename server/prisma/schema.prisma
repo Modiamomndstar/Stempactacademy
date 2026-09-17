@@ -33,14 +33,58 @@ enum UserStatus {
   ARCHIVED
 }
 
+enum AcademicLevel {
+  LEVEL_0_ASSESSMENT
+  LEVEL_1_FOUNDATION
+  LEVEL_2_INTERMEDIATE
+  LEVEL_3_ADVANCED
+  LEVEL_4_SPECIALIST
+  LEVEL_5_INNOVATION
+  LEVEL_6_ENTREPRENEURSHIP
+}
+
+enum WorkflowStatus {
+  DRAFT
+  PENDING_REVIEW
+  IN_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum AIActionType {
+  PROGRAM_GENERATION
+  CURRICULUM_GENERATION
+  SYLLABUS_GENERATION
+  COURSE_GENERATION
+  MODULE_GENERATION
+  LESSON_PLAN_GENERATION
+  ASSESSMENT_GENERATION
+  ASSIGNMENT_GENERATION
+  PROJECT_GENERATION
+  QUALITY_CHECK
+  FEEDBACK_GENERATION
+  ADMISSION_LETTER_GENERATION
+  PROGRESS_ANALYSIS
+  STUDENT_COPILOT
+  PARENT_ASSISTANT
+  ADMIN_ASSISTANT
+}
+
 enum ProgramStatus {
   DRAFT
+  AI_GENERATED
+  UNDER_REVIEW
+  APPROVED
   PUBLISHED
   UPCOMING
   OPEN_FOR_APPLICATION
   FULL
   CLOSED
   ARCHIVED
+  REVISED
 }
 
 enum CohortStatus {
@@ -127,6 +171,7 @@ model User {
   notifications      Notification[]
   auditLogs          AuditLog[]
   counselorRecords   CounselingRecord[]   @relation("CounselorRecords")
+  aiGenerations      AIGeneration[]       @relation("RequestedGenerations")
 }
 
 model School {
@@ -163,6 +208,8 @@ model Program {
   careerPathways       String
   progressionPathway   String
   status               ProgramStatus @default(OPEN_FOR_APPLICATION)
+  level                AcademicLevel @default(LEVEL_1_FOUNDATION)
+  version              Int           @default(1)
   isFeatured           Boolean       @default(false)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
@@ -173,6 +220,10 @@ model Program {
   competencyList       Competency[]
   assessments          Assessment[]
   projectsList         Project[]
+  curricula            Curriculum[]
+  syllabi              Syllabus[]
+  capstoneProjects     CapstoneProject[]
+  versions             ProgramVersion[]
 }
 
 model Course {
@@ -197,6 +248,7 @@ model Module {
   durationHours Int      @default(12)
   order         Int      @default(0)
   lessons       Lesson[]
+  practicalActivities PracticalActivity[]
 }
 
 model Lesson {
@@ -241,6 +293,8 @@ model Cohort {
   certificationFee    Float         @default(10000)
   discountPercentage  Float         @default(0)
   status              CohortStatus  @default(OPEN)
+  academicSessionId   String?
+  academicSession     AcademicSession? @relation(fields: [academicSessionId], references: [id], onDelete: SetNull)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -250,6 +304,7 @@ model Cohort {
   studentProfiles     StudentProfile[]
   assignments         Assignment[]
   projects            Project[]
+  syllabi             Syllabus[]
 }
 
 model Application {
@@ -406,6 +461,7 @@ model StudentProfile {
   counselingRecords CounselingRecord[]
   competitionTeams  TeamMember[]
   sponsorships      SponsoredStudent[]
+  portfolio         StudentPortfolio?
 }
 
 model ParentProfile {
@@ -774,4 +830,212 @@ model RolePermission {
 
   @@unique([role, permission])
 }
+
+model AcademicSession {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "SESS-2026-2027"
+  name        String   // e.g. "2026/2027 Academic Session"
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cohorts     Cohort[]
+}
+
+model ProgramVersion {
+  id             String         @id @default(uuid())
+  programId      String
+  program        Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  versionNumber  Int
+  changelog      String?
+  status         WorkflowStatus @default(DRAFT)
+  dataSnapshot   Json           // complete snapshot of courses, modules, outcomes
+  createdById    String
+  approvedById   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([programId, versionNumber])
+}
+
+model Curriculum {
+  id                   String            @id @default(uuid())
+  programId            String
+  program              Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title                String
+  level                AcademicLevel     @default(LEVEL_1_FOUNDATION)
+  totalHours           Int               @default(48)
+  theoryPracticalRatio String            @default("40:60")
+  competencies         Json?             // array of target competency codes & descriptions
+  courseSequence       Json?             // sequence of courses and prerequisite links
+  status               WorkflowStatus    @default(DRAFT)
+  version              Int               @default(1)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  versions             CurriculumVersion[]
+}
+
+model CurriculumVersion {
+  id            String         @id @default(uuid())
+  curriculumId  String
+  curriculum    Curriculum     @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  dataSnapshot  Json
+  status        WorkflowStatus @default(DRAFT)
+  changelog     String?
+  createdById   String
+  approvedById  String?
+  createdAt     DateTime       @default(now())
+}
+
+model Syllabus {
+  id                   String          @id @default(uuid())
+  programId            String
+  program              Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohortId             String?
+  cohort               Cohort?         @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  title                String
+  weeklyOutline        Json            // array of week-by-week lessons, practicals, assessments
+  contactHoursPerWeek  Int             @default(6)
+  status               WorkflowStatus  @default(DRAFT)
+  version              Int             @default(1)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  versions             SyllabusVersion[]
+}
+
+model SyllabusVersion {
+  id            String         @id @default(uuid())
+  syllabusId    String
+  syllabus      Syllabus       @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  weeklyOutline Json
+  status        WorkflowStatus @default(DRAFT)
+  changelog     String?
+  createdAt     DateTime       @default(now())
+}
+
+model PracticalActivity {
+  id                   String   @id @default(uuid())
+  moduleId             String
+  module               Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title                String
+  description          String
+  objectives           String
+  labSafetyNotes       String?  // for solar/hardware/lab safety
+  requiredTools        String   // comma-separated tools/components
+  estimatedDurationMin Int      @default(90)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model CapstoneProject {
+  id               String   @id @default(uuid())
+  programId        String
+  program          Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title            String
+  problemStatement String
+  expectedOutputs  String
+  evaluationRubric Json     // scoring criteria, deliverables, weighting
+  teamSizeMin      Int      @default(1)
+  teamSizeMax      Int      @default(4)
+  durationWeeks    Int      @default(4)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AIGeneration {
+  id                String         @id @default(uuid())
+  actionType        AIActionType
+  promptContext     Json           // user requirements, parameters, constraints
+  rawOutput         String         @db.Text
+  structuredOutput  Json           // validated JSON response
+  model             String         @default("gemini-2.5-flash")
+  provider          String         @default("google-gemini")
+  tokensPrompt      Int            @default(0)
+  tokensCompletion  Int            @default(0)
+  costEstimate      Float?         @default(0)
+  status            WorkflowStatus @default(DRAFT)
+  requestedById     String
+  requestedBy       User           @relation("RequestedGenerations", fields: [requestedById], references: [id], onDelete: Cascade)
+  approvedById      String?
+  reviewedAt        DateTime?
+  reviewNotes       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model AIAuditLog {
+  id           String       @id @default(uuid())
+  userId       String
+  userRole     Role
+  action       AIActionType
+  resourceType String       // PROGRAM, CURRICULUM, SYLLABUS, ASSESSMENT, etc.
+  resourceId   String?
+  inputSummary String?
+  model        String
+  provider     String       @default("google-gemini")
+  latencyMs    Int          @default(0)
+  approved     Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+}
+
+model KnowledgeDocument {
+  id          String           @id @default(uuid())
+  title       String
+  category    String           // "POLICY", "CURRICULUM_STANDARDS", "RUBRICS", "HANDBOOK"
+  content     String           @db.Text
+  sourceUrl   String?
+  isCanonical Boolean          @default(true)
+  createdById String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  chunks      KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id         String            @id @default(uuid())
+  documentId String
+  document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  text       String            @db.Text
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+}
+
+model StudentPortfolio {
+  id         String          @id @default(uuid())
+  studentId  String          @unique
+  student    StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  bio        String?
+  headline   String?         // e.g. "Junior AI Engineer & Full-Stack Developer"
+  isPublic   Boolean         @default(false)
+  customSlug String?         @unique
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  items      PortfolioItem[]
+}
+
+model PortfolioItem {
+  id                     String           @id @default(uuid())
+  portfolioId            String
+  portfolio              StudentPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  title                  String
+  description            String
+  problem                String
+  solution               String
+  techStack              String           // comma-separated or JSON
+  role                   String           @default("Lead Developer")
+  demoUrl                String?
+  repoUrl                String?
+  mediaUrls              String[]
+  skillsDemonstrated     String[]
+  isVerifiedByInstructor Boolean          @default(false)
+  completedAt            DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+}
+
 

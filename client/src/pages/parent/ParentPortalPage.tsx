@@ -13,12 +13,16 @@ import {
   CreditCard,
   Bell,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
+import { ParentAssistantModal } from '../../components/ParentAssistantModal';
 
 export const ParentPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showGuardianAi, setShowGuardianAi] = useState<boolean>(false);
+  const [selectedWardForAi, setSelectedWardForAi] = useState<string>('Your Ward');
 
   useEffect(() => {
     const fetchParentDashboard = async () => {
@@ -61,12 +65,24 @@ export const ParentPortalPage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={logout}
-          className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
-        >
-          Sign Out
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setSelectedWardForAi(wards?.[0]?.fullName || 'Your Child');
+              setShowGuardianAi(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-200" />
+            <span>Ask AI Guardian</span>
+          </button>
+          <button
+            onClick={logout}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Wards Overview Cards */}
@@ -179,6 +195,13 @@ export const ParentPortalPage: React.FC = () => {
         ))}
       </div>
     </div>
+
+    {/* AI PARENT GUARDIAN MODAL */}
+    <ParentAssistantModal
+      isOpen={showGuardianAi}
+      onClose={() => setShowGuardianAi(false)}
+      wardName={selectedWardForAi}
+    />
   </PortalLayout>
   );
 };

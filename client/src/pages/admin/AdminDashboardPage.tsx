@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
+import { AIProgramGeneratorModal } from '../../components/AIProgramGeneratorModal';
 import {
   TrendingUp,
   Users,
@@ -102,6 +103,7 @@ export const AdminDashboardPage: React.FC = () => {
   });
   const [createdInstructorCard, setCreatedInstructorCard] = useState<any | null>(null);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
+  const [showAIProgramModal, setShowAIProgramModal] = useState(false);
 
   const loadAllData = async () => {
     try {
@@ -380,6 +382,13 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
             >
               <Plus className="w-4 h-4" />
               <span>New Instructor</span>
+            </button>
+            <button
+              onClick={() => setShowAIProgramModal(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-200" />
+              <span>AI Curriculum Architect</span>
             </button>
           </div>
         </div>
@@ -790,7 +799,19 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
         {/* TAB 7: PROGRAMS */}
         {activeTab === 'programs' && (
           <div className="space-y-6">
-            <h2 className="text-lg font-black text-slate-900">Academic Programs Catalog</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">Academic Programs Catalog</h2>
+                <p className="text-xs text-slate-500">Live programs, curriculum modules, and admissions availability.</p>
+              </div>
+              <button
+                onClick={() => setShowAIProgramModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 self-start sm:self-auto"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>Architect Program with AI</span>
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {programs.map((p: any) => (
                 <Card key={p.id} className="p-5 space-y-3">
@@ -1568,6 +1589,13 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
           </div>
         </div>
       )}
+
+      {/* AI PROGRAM ARCHITECT MODAL */}
+      <AIProgramGeneratorModal
+        isOpen={showAIProgramModal}
+        onClose={() => setShowAIProgramModal(false)}
+        onProgramCreated={loadAllData}
+      />
     </PortalLayout>
   );
 };

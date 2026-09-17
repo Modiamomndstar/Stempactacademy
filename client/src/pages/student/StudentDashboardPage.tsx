@@ -23,7 +23,9 @@ import {
   Building,
   Upload,
   X,
+  Sparkles,
 } from 'lucide-react';
+import { StudentCopilotModal } from '../../components/StudentCopilotModal';
 
 export const StudentDashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -42,6 +44,7 @@ export const StudentDashboardPage: React.FC = () => {
   const [senderAccount, setSenderAccount] = useState<string>('');
   const [tellerProofUrl, setTellerProofUrl] = useState<string>('');
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const [showCopilot, setShowCopilot] = useState<boolean>(false);
 
   const handleInitiatePayment = async () => {
     if (!selectedInvoiceForPayment) return;
@@ -861,6 +864,24 @@ export const StudentDashboardPage: React.FC = () => {
         </div>
       </div>
     )}
+
+    {/* Floating Learning Copilot Trigger */}
+    <button
+      type="button"
+      onClick={() => setShowCopilot(true)}
+      className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 hover:from-emerald-500 hover:to-cyan-600 text-white font-bold text-xs shadow-2xl hover:shadow-emerald-500/30 flex items-center gap-2.5 transition-all transform hover:scale-105 border border-white/20"
+    >
+      <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+      <span>Ask Learning Copilot</span>
+    </button>
+
+    {/* Socratic Learning Copilot Modal */}
+    <StudentCopilotModal
+      isOpen={showCopilot}
+      onClose={() => setShowCopilot(false)}
+      programName={data?.cohort?.program?.name || 'STEMPACT Academy'}
+      currentTopic={data?.cohort?.name}
+    />
   </PortalLayout>
   );
 };
