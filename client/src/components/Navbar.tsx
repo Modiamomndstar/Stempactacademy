@@ -334,10 +334,10 @@ export const Navbar: React.FC = () => {
           ) : (
             <div className="flex items-center gap-2">
               <Link
-                to="/portal/login"
+                to="/login"
                 className="px-3.5 py-2 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 text-xs font-semibold transition-colors"
               >
-                Portal Login
+                Student Portal
               </Link>
             </div>
           )}
@@ -449,10 +449,10 @@ export const Navbar: React.FC = () => {
               </div>
             ) : (
               <Link
-                to="/portal/login"
+                to="/login"
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-900 text-sm font-semibold"
               >
-                <span>Portal Login (Student / Parent / Staff)</span>
+                <span>Student & Parent Portal</span>
               </Link>
             )}
 

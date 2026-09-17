@@ -13,22 +13,35 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
  */
 export const ensureSuperAdminFromEnv = async (): Promise<void> => {
   try {
-    const superEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@stempact.org';
-    const superPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin@12345';
-    const superUsername = process.env.SUPER_ADMIN_USERNAME || 'superadmin';
-    const superFirstName = process.env.SUPER_ADMIN_FIRSTNAME || 'Super';
-    const superLastName = process.env.SUPER_ADMIN_LASTNAME || 'Admin';
+    const rawEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@stempact.org';
+    const rawPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin@12345';
+    const rawUsername = process.env.SUPER_ADMIN_USERNAME || 'superadmin';
+    const rawFirstName = process.env.SUPER_ADMIN_FIRSTNAME || 'Super';
+    const rawLastName = process.env.SUPER_ADMIN_LASTNAME || 'Admin';
+
+    // Strip any accidental wrapping quotes and trim
+    const superEmail = rawEmail.replace(/["']/g, '').trim().toLowerCase();
+    const superPassword = rawPassword.replace(/["']/g, '').trim();
+    const superUsername = rawUsername.replace(/["']/g, '').trim().toLowerCase();
+    const superFirstName = rawFirstName.replace(/["']/g, '').trim();
+    const superLastName = rawLastName.replace(/["']/g, '').trim();
+
+    console.log(`[BOOT] Ensuring Super Admin account for: ${superEmail} (username: ${superUsername})`);
 
     const existingSuper = await prisma.user.findFirst({
       where: {
-        OR: [{ email: superEmail }, { role: Role.SUPER_ADMIN }],
+        OR: [
+          { email: { equals: superEmail, mode: 'insensitive' } },
+          { username: { equals: superUsername, mode: 'insensitive' } },
+          { role: Role.SUPER_ADMIN },
+        ],
       },
     });
 
     const passwordHash = await bcrypt.hash(superPassword, 10);
 
     if (!existingSuper) {
-      await prisma.user.create({
+      const created = await prisma.user.create({
         data: {
           email: superEmail,
           username: superUsername,
@@ -39,22 +52,22 @@ export const ensureSuperAdminFromEnv = async (): Promise<void> => {
           isActive: true,
         },
       });
-      console.log(`[BOOT] Initialized Super Admin from .env: ${superEmail}`);
+      console.log(`✔ [BOOT] Created Super Admin successfully: ${created.email} (ID: ${created.id})`);
     } else {
-      // Sync credentials if needed
-      await prisma.user.update({
+      const updated = await prisma.user.update({
         where: { id: existingSuper.id },
         data: {
           email: superEmail,
-          username: existingSuper.username || superUsername,
+          username: superUsername,
           passwordHash,
           role: Role.SUPER_ADMIN,
+          isActive: true,
         },
       });
-      console.log(`[BOOT] Verified Super Admin account: ${superEmail}`);
+      console.log(`✔ [BOOT] Synchronized Super Admin credentials: ${updated.email} (ID: ${updated.id})`);
     }
-  } catch (error) {
-    console.error('[BOOT ERROR] Failed to ensure Super Admin from .env:', error);
+  } catch (error: any) {
+    console.error('❌ [BOOT ERROR] Failed to ensure Super Admin from .env:', error.message || error);
   }
 };
 
@@ -247,9 +260,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Optional portal gate role validation
     if (portal === 'admin') {
-      const adminRoles: Role[] = [Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN];
+      const adminRoles: Role[] = [
+        Role.SUPER_ADMIN,
+        Role.COORDINATOR_ADMIN,
+        Role.ACADEMIC_ADMIN,
+        Role.FINANCE_ADMIN,
+        Role.ADMISSIONS_ADMIN,
+        Role.CONTENT_MANAGER,
+        Role.MARKETING_MANAGER,
+        Role.COUNSELOR,
+        Role.INNOVATION_MANAGER,
+        Role.PROGRAM_COORDINATOR,
+      ];
       if (!adminRoles.includes(user.role)) {
-        res.status(403).json({ message: 'Access denied. You must be an Administrator to log in through the Staff Portal.' });
+        res.status(403).json({ message: 'Access denied. You must be an authorized Institutional Administrator to log in through the Staff Gateway.' });
         return;
       }
     } else if (portal === 'instructor') {
@@ -258,8 +282,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         return;
       }
     } else if (portal === 'student') {
-      if (user.role !== Role.STUDENT && user.role !== Role.PARENT && user.role !== Role.SUPER_ADMIN) {
-        res.status(403).json({ message: 'Please log in through your appropriate Staff or Faculty portal.' });
+      const studentRoles: Role[] = [Role.STUDENT, Role.PARENT, Role.APPLICANT, Role.PARTNER];
+      if (!studentRoles.includes(user.role) && user.role !== Role.SUPER_ADMIN) {
+        res.status(403).json({ message: 'Staff and Faculty accounts must sign in via their dedicated administrative portals at /admin/login.' });
         return;
       }
     }

@@ -26,6 +26,8 @@ import { CertificateVerifyPage } from './pages/public/CertificateVerifyPage';
 
 // Auth & Registration Pages
 import { LoginPage } from './pages/auth/LoginPage';
+import { AdminLoginPage } from './pages/auth/AdminLoginPage';
+import { InstructorLoginPage } from './pages/auth/InstructorLoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 
 // Authenticated Role Portals
@@ -98,10 +100,13 @@ const AppShell: React.FC = () => {
       <Route path="/verify/:certNumber" element={<CertificateVerifyPage />} />
 
       {/* 2. Authentication Gates */}
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/portal/login" element={<LoginPage />} />
-      <Route path="/portal/admin/login" element={<LoginPage />} />
-      <Route path="/portal/instructor/login" element={<LoginPage />} />
       <Route path="/portal/student/login" element={<LoginPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/portal/admin/login" element={<AdminLoginPage />} />
+      <Route path="/instructor/login" element={<InstructorLoginPage />} />
+      <Route path="/portal/instructor/login" element={<InstructorLoginPage />} />
 
       {/* 3. Authenticated Role Portals (Render Dedicated Role Sidebars via PortalLayout) */}
       {/* Administration (Super Admin, Academic Admin, Finance Admin, Admissions Admin) */}

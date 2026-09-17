@@ -29,6 +29,7 @@ import * as partnerController from '../controllers/partnerController.js';
 import * as coordinatorController from '../controllers/coordinatorController.js';
 import * as applicantController from '../controllers/applicantController.js';
 import * as aiController from '../controllers/aiController.js';
+import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
 
@@ -155,5 +156,24 @@ router.post('/ai/parent-assistant', authenticate, authorize(Role.SUPER_ADMIN, Ro
 router.post('/ai/admin-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR), aiController.adminAssistant);
 router.post('/ai/generations/:id/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
+
+// 22. Database Bootstrap & System Health Diagnostics
+router.get('/bootstrap/status', async (req, res) => {
+  try {
+    const status = await BootstrapService.getStatus();
+    res.json({ status: 'OK', data: status });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/bootstrap/seed', async (req, res) => {
+  try {
+    const result = await BootstrapService.seedAll(true);
+    res.json({ status: 'OK', result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;
