@@ -48,8 +48,8 @@ router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, R
 // 3. Cohorts
 router.get('/cohorts', cohortController.getCohorts);
 router.get('/cohorts/:id', cohortController.getCohortById);
-router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.createCohort);
-router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.updateCohort);
+router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.createCohort);
+router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.updateCohort);
 
 // 4. Applications
 router.post('/applications', applicationController.submitApplication);

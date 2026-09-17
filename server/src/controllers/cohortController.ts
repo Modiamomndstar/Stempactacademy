@@ -80,20 +80,48 @@ export const getCohortById = async (req: Request, res: Response): Promise<void> 
 export const updateCohort = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, maxCapacity, currentEnrollment, trainingFee, discountPercentage } = req.body;
+    const {
+      name,
+      status,
+      maxCapacity,
+      currentEnrollment,
+      trainingFee,
+      registrationFee,
+      certificationFee,
+      discountPercentage,
+      schedule,
+      mode,
+      location,
+      startDate,
+      endDate,
+      applicationDeadline,
+      level,
+      instructorName,
+    } = req.body;
 
     const cohort = await prisma.cohort.update({
       where: { id },
       data: {
+        ...(name && { name }),
         ...(status && { status: status as CohortStatus }),
         ...(maxCapacity !== undefined && { maxCapacity: Number(maxCapacity) }),
         ...(currentEnrollment !== undefined && { currentEnrollment: Number(currentEnrollment) }),
         ...(trainingFee !== undefined && { trainingFee: Number(trainingFee) }),
+        ...(registrationFee !== undefined && { registrationFee: Number(registrationFee) }),
+        ...(certificationFee !== undefined && { certificationFee: Number(certificationFee) }),
         ...(discountPercentage !== undefined && { discountPercentage: Number(discountPercentage) }),
+        ...(schedule && { schedule }),
+        ...(mode && { mode }),
+        ...(location && { location }),
+        ...(startDate && { startDate: new Date(startDate) }),
+        ...(endDate && { endDate: new Date(endDate) }),
+        ...(applicationDeadline && { applicationDeadline: new Date(applicationDeadline) }),
+        ...(level && { level }),
+        ...(instructorName && { instructorName }),
       },
     });
 
-    res.status(200).json({ message: 'Cohort updated successfully', cohort });
+    res.status(200).json({ message: 'Cohort pricing and configuration updated successfully', cohort });
   } catch (error: any) {
     console.error('updateCohort error:', error);
     res.status(500).json({ message: 'Failed to update cohort' });
