@@ -142,18 +142,37 @@ router.post('/competitions', authenticate, authorize(Role.SUPER_ADMIN, Role.INNO
 router.post('/competitions/teams', authenticate, authorize(Role.SUPER_ADMIN, Role.INNOVATION_MANAGER), innovationController.createTeam);
 router.post('/competitions/teams/:teamId/score', authenticate, authorize(Role.SUPER_ADMIN, Role.INNOVATION_MANAGER), innovationController.scoreTeam);
 
-// 21. STEMPACT AI Engine Endpoints
+// 21. STEMPACT AI Engine Endpoints (with dual-route compatibility for client and backend aliases)
+router.post('/ai/generate-program', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.generateProgram);
 router.post('/ai/programs/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.generateProgram);
+
+router.post('/ai/generate-curriculum', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.generateCurriculum);
 router.post('/ai/curriculum/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.generateCurriculum);
+
+router.post('/ai/generate-syllabus', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR, Role.INSTRUCTOR), aiController.generateSyllabus);
 router.post('/ai/syllabus/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR, Role.INSTRUCTOR), aiController.generateSyllabus);
+
+router.post('/ai/generate-lesson-plan', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateLessonPlan);
 router.post('/ai/lessons/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateLessonPlan);
+
+router.post('/ai/generate-assessment', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN, Role.INSTRUCTOR), aiController.generateAssessment);
 router.post('/ai/assessments/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN, Role.INSTRUCTOR), aiController.generateAssessment);
+
+router.post('/ai/generate-assignment', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateAssignment);
 router.post('/ai/assignments/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateAssignment);
+
 router.post('/ai/quality-check', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.runQualityCheck);
-router.post('/ai/feedback/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR), aiController.generateFeedback);
-router.post('/ai/learning-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.STUDENT), aiController.studentCopilot);
-router.post('/ai/parent-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.PARENT), aiController.parentAssistant);
+
+router.post('/ai/generate-feedback', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateFeedback);
+router.post('/ai/feedback/generate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.generateFeedback);
+
+router.post('/ai/student-copilot', authenticate, authorize(Role.SUPER_ADMIN, Role.STUDENT, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.studentCopilot);
+router.post('/ai/learning-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.STUDENT, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), aiController.studentCopilot);
+
+router.post('/ai/parent-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.PARENT, Role.ACADEMIC_ADMIN), aiController.parentAssistant);
 router.post('/ai/admin-assistant', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR), aiController.adminAssistant);
+
+router.post('/ai/publish-program', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
 router.post('/ai/generations/:id/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
 
