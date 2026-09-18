@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
 import { AIProgramGeneratorModal } from '../../components/AIProgramGeneratorModal';
+import { CohortAnalysisModal } from '../../components/CohortAnalysisModal';
 import {
   TrendingUp,
   Users,
@@ -63,6 +64,34 @@ export const AdminDashboardPage: React.FC = () => {
     | 'cms'
     | 'audit'
   >('analytics');
+
+  const [programSchoolFilter, setProgramSchoolFilter] = useState('');
+  const [programStatusFilter, setProgramStatusFilter] = useState('');
+  const [programPriceMinFilter, setProgramPriceMinFilter] = useState('');
+  const [programPriceMaxFilter, setProgramPriceMaxFilter] = useState('');
+
+  const [cohortYearFilter, setCohortYearFilter] = useState('');
+  const [cohortStatusFilter, setCohortStatusFilter] = useState('');
+  const [selectedCohortAnalysis, setSelectedCohortAnalysis] = useState<string | null>(null);
+
+  // Computed filtered arrays
+  const filteredPrograms = programs.filter(p => {
+    if (programSchoolFilter && p.school?.code !== programSchoolFilter) return false;
+    if (programStatusFilter && p.status !== programStatusFilter) return false;
+    if (programPriceMinFilter || programPriceMaxFilter) {
+      const min = programPriceMinFilter ? Number(programPriceMinFilter) : 0;
+      const max = programPriceMaxFilter ? Number(programPriceMaxFilter) : Infinity;
+      const hasMatchingCohort = p.cohorts?.some((c: any) => c.trainingFee >= min && c.trainingFee <= max);
+      if (!hasMatchingCohort) return false;
+    }
+    return true;
+  });
+
+  const filteredCohorts = cohorts.filter(c => {
+    if (cohortStatusFilter && c.status !== cohortStatusFilter) return false;
+    if (cohortYearFilter && c.academicSession?.name !== cohortYearFilter) return false;
+    return true;
+  });
 
   // Modal / Review States
   const [actionSuccess, setActionSuccess] = useState<string>('');
@@ -831,9 +860,30 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                 </p>
               </div>
             </div>
+            
+            <div className="flex flex-wrap gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <input
+                type="text"
+                placeholder="Filter by Academic Year (e.g. 2025/2026)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
+                value={cohortYearFilter}
+                onChange={(e) => setCohortYearFilter(e.target.value)}
+              />
+              <select
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500"
+                value={cohortStatusFilter}
+                onChange={(e) => setCohortStatusFilter(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {cohorts.map((c: any) => {
+              {filteredCohorts.map((c: any) => {
                 const trainingFee = c.trainingFee || 65000;
                 const regFee = c.registrationFee || 5000;
                 const certFee = c.certificationFee || 10000;
@@ -842,7 +892,11 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                 const totalInvoiced = netTuition + regFee + certFee;
 
                 return (
-                  <Card key={c.id} className="p-5 space-y-4 hover:border-slate-300 transition-colors">
+                  <Card 
+                    key={c.id} 
+                    className="p-6 space-y-4 hover:border-blue-300 cursor-pointer transition-colors"
+                    onClick={() => setSelectedCohortAnalysis(c.id)}
+                  >
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="text-[10px] font-mono text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded inline-block mb-1">
@@ -943,8 +997,44 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                 <span>Architect Program with AI</span>
               </button>
             </div>
+            
+            {/* Filter Bar */}
+            <div className="flex flex-wrap gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <input
+                type="text"
+                placeholder="Filter by School Code (e.g. SENG)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
+                value={programSchoolFilter}
+                onChange={(e) => setProgramSchoolFilter(e.target.value)}
+              />
+              <select
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500"
+                value={programStatusFilter}
+                onChange={(e) => setProgramStatusFilter(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="OPEN_FOR_APPLICATION">Open</option>
+                <option value="CLOSED">Closed</option>
+                <option value="DRAFT">Draft</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Min Price (₦)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
+                value={programPriceMinFilter}
+                onChange={(e) => setProgramPriceMinFilter(e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="Max Price (₦)"
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
+                value={programPriceMaxFilter}
+                onChange={(e) => setProgramPriceMaxFilter(e.target.value)}
+              />
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {programs.map((p: any) => (
+              {filteredPrograms.map((p: any) => (
                 <Card key={p.id} className="p-5 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
@@ -1952,6 +2042,12 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
         isOpen={showAIProgramModal}
         onClose={() => setShowAIProgramModal(false)}
         onProgramCreated={loadAllData}
+      />
+
+      <CohortAnalysisModal 
+        isOpen={!!selectedCohortAnalysis}
+        onClose={() => setSelectedCohortAnalysis(null)}
+        cohortId={selectedCohortAnalysis || ''}
       />
     </PortalLayout>
   );

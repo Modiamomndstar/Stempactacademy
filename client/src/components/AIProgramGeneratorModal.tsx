@@ -76,11 +76,11 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 my-8 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 my-8 flex flex-col max-h-[90vh]">
         {/* If draft generated, show AI Generation Workspace directly */}
         {generatedDraft ? (
-          <div className="p-4">
+          <div className="p-4 overflow-y-auto">
             <AIGenerationWorkspace
               initialDraft={generatedDraft}
               generationId={generationId}

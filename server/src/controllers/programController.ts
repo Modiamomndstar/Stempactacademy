@@ -4,7 +4,7 @@ import prisma from '../config/prisma.js';
 
 export const getPrograms = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { schoolCode, schoolId, status, search, featured } = req.query;
+    const { schoolCode, schoolId, status, search, featured, minPrice, maxPrice } = req.query;
 
     const where: any = {};
 
@@ -30,6 +30,17 @@ export const getPrograms = async (req: Request, res: Response): Promise<void> =>
         { tools: { contains: q, mode: 'insensitive' } },
         { competencies: { contains: q, mode: 'insensitive' } },
       ];
+    }
+    
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.cohorts = {
+        some: {
+          trainingFee: {
+            ...(minPrice !== undefined && { gte: Number(minPrice) }),
+            ...(maxPrice !== undefined && { lte: Number(maxPrice) }),
+          }
+        }
+      };
     }
 
     const programs = await prisma.program.findMany({

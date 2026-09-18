@@ -33,9 +33,11 @@ export const Card: React.FC<{
   children: React.ReactNode;
   className?: string;
   hoverable?: boolean;
-}> = ({ children, className = '', hoverable = false }) => {
+  onClick?: () => void;
+}> = ({ children, className = '', hoverable = false, onClick }) => {
   return (
     <div
+      onClick={onClick}
       className={`bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden ${
         hoverable ? 'transition-all duration-200 hover:shadow-md hover:border-blue-300 transform hover:-translate-y-0.5' : ''
       } ${className}`}

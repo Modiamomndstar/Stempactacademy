@@ -72,6 +72,7 @@ export const api = {
     return apiRequest(`/cohorts${query ? `?${query}` : ''}`);
   },
   getCohortById: (id: string) => apiRequest(`/cohorts/${id}`),
+  getCohortAnalysis: (id: string) => apiRequest(`/cohorts/${id}/analysis`),
   createCohort: (data: any) => apiRequest('/cohorts', { method: 'POST', body: JSON.stringify(data) }),
   updateCohort: (id: string, data: any) => apiRequest(`/cohorts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 

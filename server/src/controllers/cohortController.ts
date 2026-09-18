@@ -4,7 +4,7 @@ import prisma from '../config/prisma.js';
 
 export const getCohorts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, programId, openOnly } = req.query;
+    const { status, programId, openOnly, academicYear, academicSessionId } = req.query;
 
     const where: any = {};
 
@@ -17,6 +17,12 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
     if (programId) {
       where.programId = String(programId);
     }
+    
+    if (academicSessionId) {
+      where.academicSessionId = String(academicSessionId);
+    } else if (academicYear) {
+      where.academicSession = { name: String(academicYear) };
+    }
 
     const cohorts = await prisma.cohort.findMany({
       where,
@@ -24,6 +30,7 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
         program: {
           include: { school: true },
         },
+        academicSession: true,
       },
       orderBy: { startDate: 'asc' },
     });
@@ -38,6 +45,76 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
   } catch (error: any) {
     console.error('getCohorts error:', error);
     res.status(500).json({ message: 'Failed to fetch cohorts' });
+  }
+};
+
+export const getCohortAnalysis = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const cohort = await prisma.cohort.findFirst({
+      where: { OR: [{ id }, { cohortCode: id }] },
+      include: {
+        program: true,
+        studentProfiles: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true, email: true, phone: true }
+            },
+            invoices: true,
+            attendances: true
+          }
+        },
+      }
+    });
+
+    if (!cohort) {
+      res.status(404).json({ message: 'Cohort not found' });
+      return;
+    }
+
+    const students = cohort.studentProfiles.map(sp => {
+      const totalInvoiced = sp.invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      const totalPaid = sp.invoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
+      return {
+        id: sp.id,
+        name: `${sp.user.firstName} ${sp.user.lastName}`,
+        email: sp.user.email,
+        phone: sp.user.phone,
+        enrollmentDate: sp.enrollmentDate,
+        status: sp.status,
+        attendanceRate: sp.attendanceRate,
+        financials: {
+          totalInvoiced,
+          totalPaid,
+          balance: totalInvoiced - totalPaid,
+          status: totalPaid >= totalInvoiced ? 'PAID' : (totalPaid > 0 ? 'PARTIAL' : 'UNPAID')
+        }
+      };
+    });
+
+    const totalRevenue = students.reduce((sum, s) => sum + s.financials.totalPaid, 0);
+    const totalOutstanding = students.reduce((sum, s) => sum + s.financials.balance, 0);
+
+    res.status(200).json({
+      cohortInfo: {
+        id: cohort.id,
+        name: cohort.name,
+        code: cohort.cohortCode,
+        capacity: cohort.maxCapacity,
+        enrolled: cohort.currentEnrollment,
+        status: cohort.status,
+      },
+      analytics: {
+        totalRevenue,
+        totalOutstanding,
+        fillRate: (cohort.currentEnrollment / cohort.maxCapacity) * 100,
+        activeStudents: students.filter(s => s.status === 'ACTIVE').length
+      },
+      students
+    });
+  } catch (error: any) {
+    console.error('getCohortAnalysis error:', error);
+    res.status(500).json({ message: 'Failed to fetch cohort analysis' });
   }
 };
 
