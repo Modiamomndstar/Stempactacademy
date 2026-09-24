@@ -4,8 +4,7 @@ import { Role, ApplicationStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { emailService } from '../services/emailService.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
+import { getJwtSecret } from '../config/jwt.js';
 
 export const getAssessmentForProgram = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -117,12 +116,12 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    // Extract user from token if present
+    // Extract user from token if present or req.user
     let authUser = req.user;
     if (!authUser && req.headers.authorization?.startsWith('Bearer ')) {
       try {
         const token = req.headers.authorization.split(' ')[1];
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const decoded = jwt.verify(token, getJwtSecret()) as any;
         if (decoded?.id) {
           const u = await prisma.user.findUnique({
             where: { id: decoded.id },
@@ -133,8 +132,13 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
           }
         }
       } catch (tokenErr) {
-        // Continue gracefully
+        // Continue to check
       }
+    }
+
+    if (!authUser) {
+      res.status(401).json({ message: 'Authentication required. Please log in or submit your application first.' });
+      return;
     }
 
     // 1. Fetch assessment
@@ -148,7 +152,7 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    // 2. Resolve Application record
+    // 2. Resolve Application record and verify ownership
     let application: any = null;
 
     if (applicationId && applicationId !== 'demo-applicant-session') {
@@ -156,54 +160,53 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
         where: { id: applicationId },
         include: { program: true },
       });
-    }
 
-    // If not found by ID, look up application for authenticated user matching programId or latest application
-    if (!application && authUser) {
+      if (!application) {
+        res.status(404).json({ message: 'Application record not found.' });
+        return;
+      }
+
+      // Verify that authUser owns this application or is authorized staff
+      const isOwner =
+        (application.userId && application.userId === authUser.id) ||
+        (application.email && application.email.toLowerCase() === authUser.email.toLowerCase());
+      const staffRoles: Role[] = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN];
+      const isStaff = staffRoles.includes(authUser.role);
+
+      if (!isOwner && !isStaff) {
+        res.status(403).json({
+          message: 'Forbidden: You are not authorized to submit assessments for this application.',
+        });
+        return;
+      }
+    } else {
+      // Look up application for authenticated user matching programId or latest application
       if (programId) {
         application = await prisma.application.findFirst({
-          where: { userId: authUser.id, programId: String(programId) },
+          where: {
+            OR: [{ userId: authUser.id }, { email: authUser.email }],
+            programId: String(programId),
+          },
           include: { program: true },
           orderBy: { createdAt: 'desc' },
         });
       }
       if (!application) {
         application = await prisma.application.findFirst({
-          where: { userId: authUser.id },
+          where: {
+            OR: [{ userId: authUser.id }, { email: authUser.email }],
+          },
           include: { program: true },
           orderBy: { createdAt: 'desc' },
         });
       }
-    }
 
-    // If still no application exists, generate an application session automatically
-    if (!application) {
-      const appCount = await prisma.application.count();
-      const prefix = authUser ? 'APP' : 'APP-GUEST';
-      const applicationNumber = `${prefix}-${new Date().getFullYear()}-${String(appCount + 1).padStart(4, '0')}`;
-      const targetProgId = programId ? String(programId) : assessment.programId;
-
-      application = await prisma.application.create({
-        data: {
-          applicationNumber,
-          userId: authUser ? authUser.id : null,
-          programId: targetProgId,
-          preferredSchedule: 'Hybrid (Weekend & Evening)',
-          fullName: authUser ? `${authUser.firstName} ${authUser.lastName}` : 'Guest Applicant',
-          dateOfBirth: new Date(Date.now() - 18 * 365 * 24 * 3600 * 1000),
-          gender: 'Unspecified',
-          phone: (authUser as any)?.phone || '0000000000',
-          email: authUser?.email || `guest_${Date.now()}@stempact.org`,
-          address: 'Ile-Ife, Osun State',
-          educationLevel: 'High School / Undergraduate',
-          careerGoals: 'Practical STEM Mastery & Real-World Impact',
-          learningObjectives: 'Hands-on Technical Excellence',
-          statementOfPurpose: 'Placement Diagnostic Assessment completed.',
-          status: ApplicationStatus.SUBMITTED,
-          consentAccepted: true,
-        },
-        include: { program: true },
-      });
+      if (!application) {
+        res.status(400).json({
+          message: 'No active application found for your account. Please submit an application before taking the placement assessment.',
+        });
+        return;
+      }
     }
 
     const questions = await prisma.assessmentQuestion.findMany({

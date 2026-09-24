@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { api } from '../../services/api';
+import { api, setAuthToken } from '../../services/api';
 import { School, Program, Cohort } from '../../types';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import {
@@ -124,6 +124,9 @@ export const ApplicationWizardPage: React.FC = () => {
 
     try {
       const response = await api.submitApplication(formData);
+      if (response && response.token) {
+        setAuthToken(response.token);
+      }
       setSuccessData(response);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to submit application. Please check all fields.');
@@ -710,14 +713,16 @@ export const ApplicationWizardPage: React.FC = () => {
             {/* Portal Password */}
             <div className="space-y-1.5 text-xs">
               <label className="font-semibold text-slate-700">
-                Create Portal Password (for logging into Student Dashboard)
+                Create Portal Password (required to access Applicant Portal & Student Dashboard) *
               </label>
               <input
                 type="password"
                 name="password"
-                placeholder="Minimum 8 characters (or leave blank to use default temporary key)"
+                placeholder="Minimum 8 characters"
                 value={formData.password}
                 onChange={handleChange}
+                required
+                minLength={8}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500"
               />
             </div>

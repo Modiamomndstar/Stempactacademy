@@ -4,16 +4,54 @@ import dotenv from 'dotenv';
 import apiRouter from './routes/api.js';
 import { BootstrapService } from './services/bootstrap/bootstrapService.js';
 
+import { getJwtSecret } from './config/jwt.js';
+
 dotenv.config();
+
+// Validate security configuration on startup
+try {
+  getJwtSecret();
+} catch (configErr: any) {
+  console.error('[STARTUP SECURITY ERROR]', configErr.message);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Allowed Origins for CORS
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'https://stempactacademy.com',
+  'https://www.stempactacademy.com',
+  'https://stempactacademy.onrender.com',
+];
+
+const envOrigins = [process.env.CLIENT_URL, process.env.CORS_ORIGIN]
+  .filter(Boolean)
+  .flatMap((val) => (val as string).split(',').map((o) => o.trim()))
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
 // Middleware
 app.use(
   cors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // Allow non-browser requests (e.g. mobile apps, curl, server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS policy: origin ${origin} is not allowed`));
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-paystack-signature', 'verif-hash'],
   })
 );
 app.use(express.json({ limit: '10mb' }));
@@ -46,9 +84,11 @@ app.use('/api', apiRouter);
 // Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled server error:', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+  const status = err.status || (err.message && err.message.includes('CORS policy') ? 403 : 500);
+  const isProd = process.env.NODE_ENV === 'production';
+  res.status(status).json({
+    message: isProd && status === 500 ? 'Internal Server Error' : (err.message || 'Internal Server Error'),
+    error: isProd ? undefined : err.stack,
   });
 });
 

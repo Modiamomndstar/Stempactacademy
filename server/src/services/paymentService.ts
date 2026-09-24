@@ -244,22 +244,44 @@ export class PaymentService {
   }
 
   /**
-   * Helper to verify Paystack HMAC Webhook Signature
+   * Helper to verify Paystack HMAC Webhook Signature (Fail Closed)
    */
   verifyPaystackSignature(rawBody: string, signature: string): boolean {
-    const secret = process.env.PAYSTACK_SECRET_KEY || '';
-    if (!secret) return true; // in test mode
-    const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-    return hash === signature;
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    if (!secret || secret.trim() === '' || !signature || typeof signature !== 'string') {
+      console.warn('[SECURITY] Paystack webhook verification rejected: Missing secret key or signature.');
+      return false;
+    }
+    try {
+      const hash = crypto.createHmac('sha512', secret.trim()).update(rawBody).digest('hex');
+      const hashBuf = Buffer.from(hash, 'utf8');
+      const sigBuf = Buffer.from(signature.trim(), 'utf8');
+      if (hashBuf.length !== sigBuf.length) return false;
+      return crypto.timingSafeEqual(hashBuf, sigBuf);
+    } catch (err) {
+      console.error('[SECURITY] Paystack signature verification exception:', err);
+      return false;
+    }
   }
 
   /**
-   * Helper to verify Flutterwave Secret Hash Webhook
+   * Helper to verify Flutterwave Secret Hash Webhook (Fail Closed)
    */
   verifyFlutterwaveSignature(verifHash: string): boolean {
-    const secretHash = process.env.FLUTTERWAVE_SECRET_HASH || '';
-    if (!secretHash) return true;
-    return verifHash === secretHash;
+    const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+    if (!secretHash || secretHash.trim() === '' || !verifHash || typeof verifHash !== 'string') {
+      console.warn('[SECURITY] Flutterwave webhook verification rejected: Missing secret hash or verification header.');
+      return false;
+    }
+    try {
+      const expectedBuf = Buffer.from(secretHash.trim(), 'utf8');
+      const receivedBuf = Buffer.from(verifHash.trim(), 'utf8');
+      if (expectedBuf.length !== receivedBuf.length) return false;
+      return crypto.timingSafeEqual(expectedBuf, receivedBuf);
+    } catch (err) {
+      console.error('[SECURITY] Flutterwave hash verification exception:', err);
+      return false;
+    }
   }
 
   /**

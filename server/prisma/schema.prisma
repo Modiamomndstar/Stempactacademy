@@ -305,6 +305,7 @@ model Cohort {
   assignments         Assignment[]
   projects            Project[]
   syllabi             Syllabus[]
+  enrollments         StudentCohortEnrollment[]
 }
 
 model Application {
@@ -346,6 +347,7 @@ model Application {
   placement           Placement?
   admission           Admission?
   invoices            Invoice[]
+  financialClearances FinancialClearance[]
 }
 
 model Assessment {
@@ -462,6 +464,9 @@ model StudentProfile {
   competitionTeams  TeamMember[]
   sponsorships      SponsoredStudent[]
   portfolio         StudentPortfolio?
+  enrollments         StudentCohortEnrollment[]
+  financialClearances FinancialClearance[]
+  guardianRelations   StudentGuardianRelation[]
 }
 
 model ParentProfile {
@@ -472,6 +477,7 @@ model ParentProfile {
   emergencyContact String?
   address          String?
   students         StudentProfile[]
+  guardianRelations StudentGuardianRelation[]
 }
 
 model InstructorProfile {
@@ -1038,4 +1044,100 @@ model PortfolioItem {
   updatedAt              DateTime         @updatedAt
 }
 
+// ==========================================
+// PHASE 2: DATABASE FOUNDATION ADDITIVE MODELS
+// ==========================================
 
+enum EnrollmentStatus {
+  ENROLLED
+  ACTIVE
+  DEFERRED
+  COMPLETED
+  WITHDRAWN
+  SUSPENDED
+}
+
+enum FinancialClearanceStatus {
+  PENDING
+  PARTIAL
+  CLEARED
+  WAIVED
+  REVOKED
+}
+
+enum GuardianRelationshipType {
+  FATHER
+  MOTHER
+  GUARDIAN
+  SPONSOR
+  OTHER
+}
+
+model StudentCohortEnrollment {
+  id                    String              @id @default(uuid())
+  studentId             String
+  student               StudentProfile      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  cohortId              String
+  cohort                Cohort              @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  enrollmentDate        DateTime            @default(now())
+  status                EnrollmentStatus    @default(ENROLLED)
+  financialClearanceId  String?             @unique
+  financialClearance    FinancialClearance? @relation(fields: [financialClearanceId], references: [id], onDelete: SetNull)
+  completionDate        DateTime?
+  withdrawalReason      String?
+  withdrawnAt           DateTime?
+  deferralReason        String?
+  deferredAt            DateTime?
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@unique([studentId, cohortId])
+  @@index([studentId])
+  @@index([cohortId])
+  @@index([status])
+  @@index([enrollmentDate])
+}
+
+model FinancialClearance {
+  id                         String                    @id @default(uuid())
+  studentId                  String?
+  student                    StudentProfile?           @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  applicationId              String?
+  application                Application?              @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  status                     FinancialClearanceStatus  @default(PENDING)
+  amountRequired             Float
+  amountPaid                 Float                     @default(0)
+  minimumRequiredPercentage  Float                     @default(50.0)
+  clearancePercentage        Float                     @default(0)
+  clearedBy                  String?
+  clearedAt                  DateTime?
+  notes                      String?
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+
+  enrollment                 StudentCohortEnrollment?
+
+  @@index([studentId])
+  @@index([applicationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model StudentGuardianRelation {
+  id                           String                   @id @default(uuid())
+  studentId                    String
+  student                      StudentProfile           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parentId                     String
+  parent                       ParentProfile            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  relationshipType             GuardianRelationshipType @default(GUARDIAN)
+  isPrimary                    Boolean                  @default(false)
+  canAccessAcademicRecords     Boolean                  @default(true)
+  canReceiveBillingInformation Boolean                  @default(true)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+
+  @@unique([studentId, parentId])
+  @@index([studentId])
+  @@index([parentId])
+}

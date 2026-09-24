@@ -4,17 +4,19 @@ import jwt from 'jsonwebtoken';
 import { Role, ApplicationStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
 
 /**
  * Ensures Super Admin account is provisioned directly from .env variables
  */
 export const ensureSuperAdminFromEnv = async (): Promise<void> => {
   try {
+    const isProd = process.env.NODE_ENV === 'production';
     const rawEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@stempact.org';
-    const rawPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin@12345';
+    const rawPassword = process.env.SUPER_ADMIN_PASSWORD || (!isProd ? 'Admin@Dev2025!' : '');
+    if (isProd && (!rawPassword || rawPassword === 'Admin@Dev2025!' || rawPassword.length < 12)) {
+      throw new Error('FATAL SECURITY: In production, SUPER_ADMIN_PASSWORD must be explicitly provided and at least 12 characters.');
+    }
     const rawUsername = process.env.SUPER_ADMIN_USERNAME || 'superadmin';
     const rawFirstName = process.env.SUPER_ADMIN_FIRSTNAME || 'Super';
     const rawLastName = process.env.SUPER_ADMIN_LASTNAME || 'Admin';
@@ -196,7 +198,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         firstName: result.user.firstName,
         lastName: result.user.lastName,
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: JWT_EXPIRES_IN as any }
     );
 
@@ -289,14 +291,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const standardMatch = await bcrypt.compare(password, user.passwordHash);
-    const demoPasswords = [
-      'Admin123!', 'Admin@12345', 'Academic123!', 'Academic@12345', 'Finance123!', 'Finance@12345',
-      'Admissions123!', 'Coordinator123!', 'Instructor123!', 'Instructor@12345', 'Student123!',
-      'Student@12345', 'Parent123!', 'Parent@12345', 'Counselor123!', 'Content123!', 'Innovation123!',
-      'Marketing123!', 'Partner123!', 'Applicant123!', 'Stempact@2025'
-    ];
-    const isMatch = standardMatch || demoPasswords.includes(password);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       res.status(401).json({ message: 'Invalid credentials. Incorrect password.' });
       return;
@@ -311,7 +306,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: JWT_EXPIRES_IN as any }
     );
 

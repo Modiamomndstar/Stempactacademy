@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 import { ApplicationStatus, Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { emailService } from '../services/emailService.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
+import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
+import { AuthRequest } from '../middlewares/auth.js';
 
 export const submitApplication = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -59,8 +59,13 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
     // 1. Create or find User account for applicant
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      const userPassword = password || 'Stempact@2025';
-      const passwordHash = await bcrypt.hash(userPassword, 10);
+      if (!password || typeof password !== 'string' || password.trim().length < 8) {
+        res.status(400).json({
+          message: 'A secure password of at least 8 characters is required for your applicant portal account.',
+        });
+        return;
+      }
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
       const [first, ...rest] = fullName.trim().split(' ');
       user = await prisma.user.create({
         data: {
@@ -131,8 +136,8 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
     // 4. Generate Auth Token so applicant can immediately take assessment
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      getJwtSecret(),
+      { expiresIn: JWT_EXPIRES_IN as any }
     );
 
     res.status(201).json({
@@ -199,8 +204,13 @@ export const getApplications = async (req: Request, res: Response): Promise<void
   }
 };
 
-export const getApplicationById = async (req: Request, res: Response): Promise<void> => {
+export const getApplicationById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
     const { id } = req.params;
     const application = await prisma.application.findFirst({
       where: {
@@ -217,6 +227,26 @@ export const getApplicationById = async (req: Request, res: Response): Promise<v
 
     if (!application) {
       res.status(404).json({ message: 'Application not found' });
+      return;
+    }
+
+    const staffRoles: Role[] = [
+      Role.SUPER_ADMIN,
+      Role.ACADEMIC_ADMIN,
+      Role.ADMISSIONS_ADMIN,
+      Role.COORDINATOR_ADMIN,
+      Role.PROGRAM_COORDINATOR,
+      Role.FINANCE_ADMIN,
+      Role.COUNSELOR,
+    ];
+
+    const isStaff = staffRoles.includes(req.user.role);
+    const isOwner =
+      (application.userId && application.userId === req.user.id) ||
+      (application.email && application.email.toLowerCase() === req.user.email.toLowerCase());
+
+    if (!isStaff && !isOwner) {
+      res.status(403).json({ message: 'Access denied: You are not authorized to view this application.' });
       return;
     }
 

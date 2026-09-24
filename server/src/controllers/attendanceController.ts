@@ -68,7 +68,51 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
 
 export const getAttendanceForCohort = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
     const { cohortId } = req.params;
+
+    const staffRoles = [
+      'SUPER_ADMIN',
+      'ACADEMIC_ADMIN',
+      'INSTRUCTOR',
+      'COORDINATOR_ADMIN',
+      'PROGRAM_COORDINATOR',
+      'COUNSELOR',
+    ];
+
+    if (!staffRoles.includes(req.user.role)) {
+      // If student, allow viewing only their own attendance records in this cohort
+      if (req.user.role === 'STUDENT') {
+        const student = await prisma.studentProfile.findUnique({
+          where: { userId: req.user.id },
+        });
+
+        if (!student || student.currentCohortId !== cohortId) {
+          res.status(403).json({ message: 'Access denied: You are not enrolled in this cohort.' });
+          return;
+        }
+
+        const sessions = await prisma.classSession.findMany({
+          where: { cohortId },
+          include: {
+            attendances: {
+              where: { studentId: student.id },
+            },
+          },
+          orderBy: { date: 'desc' },
+        });
+
+        res.status(200).json({ sessions });
+        return;
+      }
+
+      res.status(403).json({ message: 'Access denied: Viewing full cohort attendance roster requires instructor or administrator privileges.' });
+      return;
+    }
 
     const sessions = await prisma.classSession.findMany({
       where: { cohortId },

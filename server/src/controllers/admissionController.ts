@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { paymentService } from '../services/paymentService.js';
 import { emailService } from '../services/emailService.js';
+import { AuthRequest } from '../middlewares/auth.js';
 
 export const issueAdmission = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -195,15 +196,24 @@ export const getAdmissions = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getAdmissionByNumber = async (req: Request, res: Response): Promise<void> => {
+export const getAdmissionByNumber = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
     const { number } = req.params;
     const admission = await prisma.admission.findFirst({
       where: {
         OR: [{ admissionNumber: number }, { studentIdNumber: number }, { id: number }],
       },
       include: {
-        application: true,
+        application: {
+          include: {
+            user: { select: { id: true, email: true, firstName: true, lastName: true } },
+          },
+        },
         cohort: {
           include: { program: { include: { school: true } } },
         },
@@ -212,6 +222,39 @@ export const getAdmissionByNumber = async (req: Request, res: Response): Promise
 
     if (!admission) {
       res.status(404).json({ message: 'Admission record not found' });
+      return;
+    }
+
+    const staffRoles: Role[] = [
+      Role.SUPER_ADMIN,
+      Role.ACADEMIC_ADMIN,
+      Role.ADMISSIONS_ADMIN,
+      Role.FINANCE_ADMIN,
+      Role.COORDINATOR_ADMIN,
+      Role.PROGRAM_COORDINATOR,
+      Role.INSTRUCTOR,
+    ];
+
+    const isStaff = staffRoles.includes(req.user.role);
+    const isOwner =
+      (admission.application?.userId && admission.application.userId === req.user.id) ||
+      (admission.application?.email && admission.application.email.toLowerCase() === req.user.email.toLowerCase());
+
+    let isParent = false;
+    if (req.user.role === Role.PARENT) {
+      const parentProfile = await prisma.parentProfile.findUnique({
+        where: { userId: req.user.id },
+        include: { students: { select: { studentIdNumber: true, userId: true } } },
+      });
+      if (parentProfile) {
+        isParent = parentProfile.students.some(
+          (s) => s.studentIdNumber === admission.studentIdNumber || s.userId === admission.application?.userId
+        );
+      }
+    }
+
+    if (!isStaff && !isOwner && !isParent) {
+      res.status(403).json({ message: 'Access denied: You are not authorized to view this admission record.' });
       return;
     }
 

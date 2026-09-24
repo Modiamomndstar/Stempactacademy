@@ -2,8 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { Role, UserStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'stempact_academy_super_secret_jwt_key_2025';
+import { getJwtSecret } from '../config/jwt.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -93,7 +92,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: Role };
+    const decoded = jwt.verify(token, getJwtSecret()) as { id: string; email: string; role: Role };
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },

@@ -55,11 +55,11 @@ router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.FINA
 // 4. Applications
 router.post('/applications', applicationController.submitApplication);
 router.get('/applications', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), applicationController.getApplications);
-router.get('/applications/:id', applicationController.getApplicationById);
+router.get('/applications/:id', authenticate, applicationController.getApplicationById);
 
 // 5. Assessments
 router.get('/assessments', assessmentController.getAssessmentForProgram);
-router.post('/assessments/attempt', assessmentController.submitAssessmentAttempt);
+router.post('/assessments/attempt', authenticate, assessmentController.submitAssessmentAttempt);
 
 // 6. Placements (Academic Board Approval Workflow)
 router.get('/placements/pending', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR), placementController.getPendingPlacements);
@@ -68,7 +68,7 @@ router.post('/placements/:placementId/review', authenticate, authorize(Role.SUPE
 // 7. Admissions
 router.post('/admissions/issue', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.issueAdmission);
 router.get('/admissions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.getAdmissions);
-router.get('/admissions/:number', admissionController.getAdmissionByNumber);
+router.get('/admissions/:number', authenticate, admissionController.getAdmissionByNumber);
 
 // 8. Portals: Student, Parent, Instructor, Applicant, Coordinator, Partner
 router.get('/student/dashboard', authenticate, studentController.getStudentDashboard);

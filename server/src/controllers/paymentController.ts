@@ -113,9 +113,9 @@ export const paystackWebhook = async (req: Request, res: Response): Promise<void
     const signature = req.headers['x-paystack-signature'] as string;
     const rawBody = (req as any).rawBody || JSON.stringify(req.body);
 
-    if (signature && !paymentService.verifyPaystackSignature(rawBody, signature)) {
-      console.warn('Invalid Paystack Webhook Signature received');
-      res.status(400).send('Invalid signature');
+    if (!signature || !paymentService.verifyPaystackSignature(rawBody, signature)) {
+      console.warn('[SECURITY] Invalid or missing Paystack Webhook Signature');
+      res.status(401).json({ message: 'Invalid or missing webhook signature' });
       return;
     }
 
@@ -153,9 +153,9 @@ export const flutterwaveWebhook = async (req: Request, res: Response): Promise<v
   try {
     const verifHash = req.headers['verif-hash'] as string;
 
-    if (verifHash && !paymentService.verifyFlutterwaveSignature(verifHash)) {
-      console.warn('Invalid Flutterwave Webhook Secret Hash');
-      res.status(401).send('Invalid secret hash');
+    if (!verifHash || !paymentService.verifyFlutterwaveSignature(verifHash)) {
+      console.warn('[SECURITY] Invalid or missing Flutterwave Webhook Secret Hash');
+      res.status(401).json({ message: 'Invalid or missing secret hash' });
       return;
     }
 
@@ -299,17 +299,71 @@ export const rejectBankTransfer = async (req: AuthRequest, res: Response): Promi
  */
 export const payInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { invoiceId, amount, channel, payerName, payerEmail } = req.body;
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
 
-    const name = payerName || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Applicant / Sponsor');
-    const email = payerEmail || (req.user ? req.user.email : 'billing@stempact.org');
+    const { invoiceId, amount, channel, payerName, payerEmail } = req.body;
+    if (!invoiceId || !amount) {
+      res.status(400).json({ message: 'invoiceId and amount are required' });
+      return;
+    }
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        student: { include: { user: true } },
+        application: true,
+      },
+    });
+
+    if (!invoice) {
+      res.status(404).json({ message: 'Invoice not found' });
+      return;
+    }
+
+    const isFinanceStaff = req.user.role === Role.SUPER_ADMIN || req.user.role === Role.FINANCE_ADMIN;
+    const isOwner =
+      (invoice.student?.userId && invoice.student.userId === req.user.id) ||
+      (invoice.application?.userId && invoice.application.userId === req.user.id) ||
+      (invoice.application?.email && invoice.application.email.toLowerCase() === req.user.email.toLowerCase());
+
+    if (!isFinanceStaff && !isOwner) {
+      res.status(403).json({ message: 'Access denied: You are not authorized to make payments for this invoice.' });
+      return;
+    }
+
+    // In production, normal users cannot directly record arbitrary successful payments via /pay.
+    // They must use initialized payment gateways (Paystack/Flutterwave) or submit a bank transfer proof.
+    // Only Finance Administrators can record manual cash/direct payments in production.
+    if (process.env.NODE_ENV === 'production' && !isFinanceStaff) {
+      res.status(403).json({
+        message: 'Direct payment recording is reserved for Finance Administration. Please complete payment via Paystack, Flutterwave, or Bank Transfer.',
+      });
+      return;
+    }
+
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      res.status(400).json({ message: 'Invalid payment amount' });
+      return;
+    }
+
+    if (numericAmount > invoice.balance) {
+      res.status(400).json({ message: `Payment amount exceeds invoice balance of ₦${invoice.balance.toLocaleString()}` });
+      return;
+    }
+
+    const name = payerName || `${req.user.firstName} ${req.user.lastName}`;
+    const email = payerEmail || req.user.email;
     const reference = `PAY-STP-DIR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const result = await paymentService.recordSuccessfulPayment({
       invoiceId,
-      amount: Number(amount),
+      amount: numericAmount,
       reference,
-      channel: channel || 'TEST',
+      channel: (isFinanceStaff && channel) ? channel : 'TEST',
       payerName: name,
       payerEmail: email,
     });
