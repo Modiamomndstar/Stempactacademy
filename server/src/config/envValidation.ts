@@ -51,6 +51,22 @@ export function validateEnvironment(): EnvValidationResult {
     warnings.push('AI WARNING: Neither GEMINI_API_KEY nor GROQ_API_KEY is configured. System is operating with high-reliability deterministic MockProvider.');
   }
 
+  // 5. Client Frontend URL (CLIENT_URL) Validation
+  const clientUrl = process.env.CLIENT_URL;
+  if (isProduction) {
+    if (!clientUrl || clientUrl.trim() === '') {
+      errors.push('CRITICAL: CLIENT_URL must be explicitly configured in production mode (e.g. https://stempactacademy.com).');
+    } else if (clientUrl.includes('localhost') || clientUrl.includes('127.0.0.1')) {
+      errors.push(`CRITICAL: CLIENT_URL cannot point to localhost or loopback in production mode. Received: "${clientUrl}".`);
+    } else if (!clientUrl.startsWith('https://')) {
+      warnings.push(`PRODUCTION WARNING: CLIENT_URL should use secure HTTPS protocol. Received: "${clientUrl}".`);
+    }
+  } else {
+    if (!clientUrl) {
+      warnings.push('DEVELOPMENT WARNING: CLIENT_URL is unset; falling back to default http://localhost:3000.');
+    }
+  }
+
   const isValid = errors.length === 0;
 
   if (!isValid && isProduction) {

@@ -202,7 +202,7 @@ router.patch('/ai/drafts/:generationId/review', authenticate, authorize(Role.SUP
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
 
 // 22. Database Bootstrap & System Health Diagnostics
-router.get('/bootstrap/status', async (req, res) => {
+router.get('/bootstrap/status', authenticate, authorize(Role.SUPER_ADMIN), async (req, res) => {
   try {
     const status = await BootstrapService.getStatus();
     res.json({ status: 'OK', data: status });
@@ -211,7 +211,13 @@ router.get('/bootstrap/status', async (req, res) => {
   }
 });
 
-router.post('/bootstrap/seed', async (req, res) => {
+router.post('/bootstrap/seed', authenticate, authorize(Role.SUPER_ADMIN), async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({
+      message: 'Forced database re-seeding is strictly disabled in production mode.',
+    });
+    return;
+  }
   try {
     const result = await BootstrapService.seedAll(true);
     res.json({ status: 'OK', result });

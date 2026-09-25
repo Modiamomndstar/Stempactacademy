@@ -1,8 +1,43 @@
-node_modules
-.git
-.gitignore
+# ==========================================
+# STEMPACT ACADEMY - ROOT DOCKERIGNORE
+# ==========================================
+
+# Dependency directories
+node_modules/
+*/node_modules/
+
+# Environment files and credentials
 .env
-uploads
-client/node_modules
-server/node_modules
-server/uploads
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.example
+!.env.production.example
+
+# Local build artifacts and caches
+dist/
+build/
+.npm/
+*.tsbuildinfo
+.turbo/
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Git and OS metadata
+.git/
+.github/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Documentation & Brain Artifacts
+*.md
+!README.md
+brain/

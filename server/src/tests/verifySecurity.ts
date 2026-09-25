@@ -1,7 +1,11 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { Role } from '@prisma/client';
+import { authenticate, authorize } from '../middlewares/auth';
 import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt';
+import { validateEnvironment } from '../config/envValidation';
 import { paymentService } from '../services/paymentService';
+import { emailService } from '../services/emailService';
 import fs from 'fs';
 import path from 'path';
 
@@ -173,6 +177,149 @@ async function runSecurityVerification() {
 
   assert(attendanceContent.includes('staffRoles.includes(req.user.role)'), 'attendanceController.ts differentiates staff/instructors from students');
   assert(attendanceContent.includes("req.user.role === 'STUDENT'") && attendanceContent.includes('studentId: student.id'), 'attendanceController.ts scopes attendance queries to own student ID for students');
+
+  // Test 8: Production Bootstrap & Diagnostics Route Protection
+  console.log('\n8. Bootstrap Diagnostics & Seed Route Protection:');
+  const apiRoutesContent = readSource('routes/api.ts');
+  assert(
+    apiRoutesContent.includes("router.get('/bootstrap/status', authenticate, authorize(Role.SUPER_ADMIN)"),
+    'api.ts strictly guards GET /api/bootstrap/status with authenticate and Role.SUPER_ADMIN'
+  );
+  assert(
+    apiRoutesContent.includes("router.post('/bootstrap/seed', authenticate, authorize(Role.SUPER_ADMIN)"),
+    'api.ts strictly guards POST /api/bootstrap/seed with authenticate and Role.SUPER_ADMIN'
+  );
+  assert(
+    apiRoutesContent.includes("process.env.NODE_ENV === 'production'") &&
+      apiRoutesContent.includes('Forced database re-seeding is strictly disabled in production mode'),
+    'api.ts strictly disables forced re-seeding in production mode'
+  );
+
+  // 8.1 Functional Middleware Pipeline Verification for GET /api/bootstrap/status:
+  // A. Unauthenticated request: missing Authorization header -> 401
+  let unauthStatus = 0;
+  let unauthJson: any = null;
+  let unauthNextCalled: boolean = false;
+  const mockUnauthReq: any = { headers: {} };
+  const mockUnauthRes: any = {
+    status(code: number) {
+      unauthStatus = code;
+      return this;
+    },
+    json(data: any) {
+      unauthJson = data;
+      return this;
+    },
+  };
+  await authenticate(mockUnauthReq, mockUnauthRes, () => {
+    unauthNextCalled = true;
+  });
+  assert(
+    unauthStatus === 401 && !unauthNextCalled,
+    'unauthenticated GET /api/bootstrap/status is blocked with 401 Unauthorized'
+  );
+  assert(
+    !unauthJson?.data?.superAdminEmail && !unauthJson?.superAdminEmail && !unauthJson?.data?.schoolCount,
+    'unauthenticated request receives NO sensitive internal database diagnostics or superAdminEmail'
+  );
+
+  // B. Authenticated non-SUPER_ADMIN user (e.g. STUDENT) -> 403 Forbidden
+  let nonAdminStatus = 0;
+  let nonAdminNextCalled: boolean = false;
+  const mockStudentReq: any = {
+    user: { id: 'usr-student-1', role: Role.STUDENT, email: 'student@example.com' },
+  };
+  const mockNonAdminRes: any = {
+    status(code: number) {
+      nonAdminStatus = code;
+      return this;
+    },
+    json(data: any) {
+      return this;
+    },
+  };
+  authorize(Role.SUPER_ADMIN)(mockStudentReq, mockNonAdminRes, () => {
+    nonAdminNextCalled = true;
+  });
+  assert(
+    nonAdminStatus === 403 && !nonAdminNextCalled,
+    'authenticated non-SUPER_ADMIN user is blocked from GET /api/bootstrap/status with 403 Forbidden'
+  );
+
+  // C. Authorized SUPER_ADMIN user -> Allowed (next() called)
+  let superAdminNextCalled: boolean = false;
+  const mockSuperAdminReq: any = {
+    user: { id: 'usr-admin-1', role: Role.SUPER_ADMIN, email: 'admin@stempact.org' },
+  };
+  const mockSuperAdminRes: any = {
+    status(code: number) {
+      return this;
+    },
+    json(data: any) {
+      return this;
+    },
+  };
+  authorize(Role.SUPER_ADMIN)(mockSuperAdminReq, mockSuperAdminRes, () => {
+    superAdminNextCalled = true;
+  });
+  assert(
+    superAdminNextCalled,
+    'authorized SUPER_ADMIN is granted access to GET /api/bootstrap/status'
+  );
+
+  // Test 9: Production CLIENT_URL Fail-Closed Security
+  console.log('\n9. Production CLIENT_URL Fail-Closed Security:');
+  const savedEnv = process.env.NODE_ENV;
+  const savedClientUrl = process.env.CLIENT_URL;
+  const savedDb = process.env.DATABASE_URL;
+  const savedJwt = process.env.JWT_SECRET;
+  try {
+    process.env.NODE_ENV = 'production';
+    process.env.DATABASE_URL = 'postgresql://user:pass@neon.tech/stempact?sslmode=require';
+    process.env.JWT_SECRET = 'stempact_production_super_jwt_secret_key_2026_safe';
+
+    // 9.1 Missing CLIENT_URL in production
+    delete process.env.CLIENT_URL;
+    let missingClientUrlThrew = false;
+    try {
+      validateEnvironment();
+    } catch {
+      missingClientUrlThrew = true;
+    }
+    assert(missingClientUrlThrew, 'validateEnvironment() fails closed in production when CLIENT_URL is missing');
+
+    // 9.2 Localhost CLIENT_URL in production
+    process.env.CLIENT_URL = 'http://localhost:3000';
+    let localhostClientUrlThrew = false;
+    try {
+      validateEnvironment();
+    } catch {
+      localhostClientUrlThrew = true;
+    }
+    assert(localhostClientUrlThrew, 'validateEnvironment() fails closed in production when CLIENT_URL points to localhost');
+
+    let emailLocalhostThrew = false;
+    try {
+      emailService.getClientUrl();
+    } catch {
+      emailLocalhostThrew = true;
+    }
+    assert(emailLocalhostThrew, 'emailService.getClientUrl() throws fatal error in production when CLIENT_URL is localhost');
+
+    // 9.3 Valid remote CLIENT_URL in production
+    process.env.CLIENT_URL = 'https://stempactacademy.com';
+    const validProdEnv = validateEnvironment();
+    assert(validProdEnv.isValid === true, 'validateEnvironment() passes in production with valid remote HTTPS CLIENT_URL');
+    assert(emailService.getClientUrl() === 'https://stempactacademy.com', 'emailService.getClientUrl() resolves authoritative production URL');
+  } finally {
+    process.env.NODE_ENV = savedEnv;
+    if (savedClientUrl) process.env.CLIENT_URL = savedClientUrl;
+    else delete process.env.CLIENT_URL;
+    if (savedDb) process.env.DATABASE_URL = savedDb;
+    else delete process.env.DATABASE_URL;
+    if (savedJwt) process.env.JWT_SECRET = savedJwt;
+    else delete process.env.JWT_SECRET;
+  }
 
   console.log('\n====================================================');
   console.log(`RESULTS: ${passed} PASSED, ${failed} FAILED`);

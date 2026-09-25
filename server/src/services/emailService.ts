@@ -18,12 +18,26 @@ export interface EmailDispatchResult {
 class EmailService {
   private apiKey: string;
   private fromEmail: string;
-  private clientUrl: string;
 
   constructor() {
     this.apiKey = process.env.RESEND_API_KEY || '';
     this.fromEmail = process.env.RESEND_FROM_EMAIL || 'STEMPACT Academy <admissions@stempactacademy.com>';
-    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  }
+
+  /**
+   * Authoritative frontend client URL resolution with production fail-closed security
+   */
+  public getClientUrl(): string {
+    const rawClientUrl = process.env.CLIENT_URL || '';
+    if (process.env.NODE_ENV === 'production') {
+      if (!rawClientUrl || rawClientUrl.includes('localhost') || rawClientUrl.includes('127.0.0.1')) {
+        throw new Error(
+          '[FATAL SECURITY CONFIGURATION] In production mode, CLIENT_URL must be explicitly configured with a valid remote domain and cannot point to localhost.'
+        );
+      }
+      return rawClientUrl.replace(/\/$/, '');
+    }
+    return rawClientUrl || 'http://localhost:3000';
   }
 
   /**
@@ -117,7 +131,7 @@ class EmailService {
     </div>
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} STEMPACT Academy Innovations Limited. All rights reserved.</p>
-      <p>STEMPACT Main Hub, Ile-Ife, Osun State, Nigeria &bull; <a href="${this.clientUrl}">${this.clientUrl}</a></p>
+      <p>STEMPACT Main Hub, Ile-Ife, Osun State, Nigeria &bull; <a href="${this.getClientUrl()}">${this.getClientUrl()}</a></p>
       <p>If you have any questions, reply to this email or join our WhatsApp Channel: <a href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9">STEMPACT WhatsApp Channel</a></p>
     </div>
   </div>
@@ -136,7 +150,7 @@ class EmailService {
     programId: string;
     applicationId: string;
   }) {
-    const assessmentUrl = `${this.clientUrl}/assessment?programId=${params.programId}&applicationId=${params.applicationId}`;
+    const assessmentUrl = `${this.getClientUrl()}/assessment?programId=${params.programId}&applicationId=${params.applicationId}`;
     const subject = `Application Received: ${params.programName} [${params.applicationNumber}]`;
     const content = `
       <p>Dear <strong>${params.fullName}</strong>,</p>
@@ -200,7 +214,7 @@ class EmailService {
     totalAmount: number;
     invoiceNumber: string;
   }) {
-    const portalUrl = `${this.clientUrl}/portal/student/login`;
+    const portalUrl = `${this.getClientUrl()}/portal/student/login`;
     const subject = `Official Admission Offer: ${params.programName} [${params.admissionNumber}]`;
     const formatNaira = (val: number) => `₦${val.toLocaleString()}`;
     const content = `
@@ -266,7 +280,7 @@ class EmailService {
       <p>${params.remainingBalance === 0 ? 'Your invoice is fully cleared. You have complete access to all lab facilities, curriculum modules, and mentoring sessions.' : 'Your payment has been credited to your installment plan. Thank you!'}</p>
 
       <div style="text-align: center;">
-        <a href="${this.clientUrl}/portal/student" class="btn">Go to Student Dashboard &rarr;</a>
+        <a href="${this.getClientUrl()}/portal/student" class="btn">Go to Student Dashboard &rarr;</a>
       </div>
     `;
     return this.send({ to: params.to, subject, html: this.wrapTemplate('Official Payment Receipt', content) });
@@ -295,7 +309,7 @@ class EmailService {
       </div>
 
       <div style="text-align: center;">
-        <a href="${this.clientUrl}/portal/student" class="btn">View Gradebook &rarr;</a>
+        <a href="${this.getClientUrl()}/portal/student" class="btn">View Gradebook &rarr;</a>
       </div>
     `;
     return this.send({ to: params.to, subject, html: this.wrapTemplate('Grade Released', content) });
@@ -311,7 +325,7 @@ class EmailService {
     certificateNumber: string;
     verificationCode: string;
   }) {
-    const verifyUrl = `${this.clientUrl}/verify/${params.certificateNumber}`;
+    const verifyUrl = `${this.getClientUrl()}/verify/${params.certificateNumber}`;
     const subject = `Official Certificate Issued: ${params.programName} [${params.certificateNumber}]`;
     const content = `
       <p>Dear <strong>${params.fullName}</strong>,</p>
