@@ -71,15 +71,46 @@ export const getProgramByCode = async (req: Request, res: Response): Promise<voi
       },
       include: {
         school: true,
+        versions: {
+          orderBy: { versionNumber: 'desc' },
+          include: {
+            curriculumVersion: {
+              include: {
+                curriculum: true,
+                courses: {
+                  include: {
+                    modules: {
+                      include: { lessons: true, practicalActivities: true },
+                      orderBy: { order: 'asc' },
+                    },
+                  },
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+          },
+        },
+        curricula: {
+          include: {
+            versions: { orderBy: { versionNumber: 'desc' } },
+          },
+        },
+        // Legacy compatibility courses (direct Program.courses)
         courses: {
           include: {
             modules: {
               include: { lessons: true },
+              orderBy: { order: 'asc' },
             },
           },
           orderBy: { order: 'asc' },
         },
         cohorts: {
+          include: {
+            academicSession: true,
+            programVersion: true,
+            curriculumVersion: true,
+          },
           orderBy: { startDate: 'asc' },
         },
         competencyList: true,

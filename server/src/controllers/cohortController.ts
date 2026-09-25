@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CohortStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
+import { identifierService } from '../services/identifierService.js';
 
 export const getCohorts = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -31,6 +32,8 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
           include: { school: true },
         },
         academicSession: true,
+        programVersion: true,
+        curriculumVersion: true,
       },
       orderBy: { startDate: 'asc' },
     });
@@ -210,6 +213,9 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
     const {
       name,
       programId,
+      programVersionId,
+      curriculumVersionId,
+      academicSessionId,
       level,
       startDate,
       endDate,
@@ -225,14 +231,38 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
       discountPercentage,
     } = req.body;
 
-    const count = await prisma.cohort.count();
-    const cohortCode = `STP-${new Date().getFullYear()}-C${count + 1}`;
+    const cohortCode = await identifierService.generateCohortCode({ year: new Date().getFullYear() });
+
+    // 1. Resolve default active academic session if not explicitly provided
+    let resolvedSessionId = academicSessionId;
+    if (!resolvedSessionId) {
+      const activeSession = await prisma.academicSession.findFirst({ where: { isCurrent: true } });
+      if (activeSession) resolvedSessionId = activeSession.id;
+    }
+
+    // 2. Resolve default canonical programVersion and curriculumVersion if not explicitly provided
+    let resolvedProgramVersionId = programVersionId;
+    let resolvedCurriculumVersionId = curriculumVersionId;
+    if (!resolvedProgramVersionId && programId) {
+      const activeVersion = await prisma.programVersion.findFirst({
+        where: { programId, isCurrent: true },
+      });
+      if (activeVersion) {
+        resolvedProgramVersionId = activeVersion.id;
+        if (!resolvedCurriculumVersionId) {
+          resolvedCurriculumVersionId = activeVersion.curriculumVersionId;
+        }
+      }
+    }
 
     const cohort = await prisma.cohort.create({
       data: {
         cohortCode,
         name,
         programId,
+        programVersionId: resolvedProgramVersionId || null,
+        curriculumVersionId: resolvedCurriculumVersionId || null,
+        academicSessionId: resolvedSessionId || null,
         level: level || 'Level 1',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -247,6 +277,12 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
         certificationFee: Number(certificationFee) || 10000,
         discountPercentage: Number(discountPercentage) || 0,
         status: CohortStatus.OPEN,
+      },
+      include: {
+        program: { include: { school: true } },
+        academicSession: true,
+        programVersion: true,
+        curriculumVersion: true,
       },
     });
 

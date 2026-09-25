@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CertificateType } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { emailService } from '../services/emailService.js';
+import { identifierService } from '../services/identifierService.js';
 
 export const verifyCertificate = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -73,10 +74,9 @@ export const issueCertificate = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const count = await prisma.certificate.count();
     const year = new Date().getFullYear();
-    const certificateNumber = `STP-${year + 2}-${String(count + 1).padStart(4, '0')}`;
-    const verificationCode = `STP-VERIFY-${Math.floor(100000 + Math.random() * 900000)}`;
+    const certificateNumber = await identifierService.generateCertificateNumber({ year: year + 2 });
+    const verificationCode = identifierService.generateCertificateVerificationCode();
 
     const certificate = await prisma.certificate.create({
       data: {

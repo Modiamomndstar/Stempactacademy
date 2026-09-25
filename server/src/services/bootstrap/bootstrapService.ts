@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Role, ProgramStatus, CohortStatus } from '@prisma/client';
 import { schoolsData, programsData } from '../../seed/seedData.js';
 import { ensureSuperAdminFromEnv } from '../../controllers/authController.js';
+import { academicService } from '../academicService.js';
 
 export interface BootstrapStatus {
   schoolCount: number;
@@ -436,6 +437,14 @@ export class BootstrapService {
       }
     } catch (personaErr: any) {
       console.warn('⚠️ [BOOTSTRAP WARNING] Some demo personas could not be seeded:', personaErr.message);
+    }
+
+    // 5. Establish canonical academic hierarchy (ProgramVersion, Curriculum, CurriculumVersion, Course links)
+    try {
+      await academicService.ensureBaselineAcademicHierarchy();
+      console.log('✔ Canonical academic architecture ensured for all programs and cohorts.');
+    } catch (acadErr: any) {
+      console.warn('⚠️ [BOOTSTRAP WARNING] Canonical academic hierarchy initialization warning:', acadErr.message);
     }
 
     console.log('🎉 STEMPACT ACADEMY database seeded successfully!');

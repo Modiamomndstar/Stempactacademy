@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { PaymentStatus, InvoiceStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { emailService } from './emailService.js';
+import { identifierService } from './identifierService.js';
+import { financialClearanceService } from './financialClearanceService.js';
 
 export interface PaymentInitParams {
   invoiceId: string;
@@ -37,7 +39,7 @@ export class PaystackAdapter implements PaymentGatewayAdapter {
   }
 
   async initializePayment(params: PaymentInitParams): Promise<{ authorizationUrl: string; reference: string }> {
-    const reference = `PAY-STP-PSTK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reference = identifierService.generatePaymentReference('PSTK');
 
     if (!this.secretKey || this.secretKey.trim() === '' || this.secretKey.startsWith('placeholder')) {
       // Graceful fallback for local development & staging sandbox
@@ -136,7 +138,7 @@ export class FlutterwaveAdapter implements PaymentGatewayAdapter {
   }
 
   async initializePayment(params: PaymentInitParams): Promise<{ authorizationUrl: string; reference: string }> {
-    const reference = `PAY-STP-FLW-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reference = identifierService.generatePaymentReference('FLW');
 
     if (!this.secretKey || this.secretKey.trim() === '' || this.secretKey.startsWith('placeholder')) {
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
@@ -314,20 +316,33 @@ export class PaymentService {
   async createInvoiceForCohort(params: {
     studentId?: string;
     applicationId?: string;
+    admissionId?: string;
     cohortId?: string;
     title: string;
     trainingFee: number;
     registrationFee: number;
     certificationFee: number;
     discountPercentage?: number;
+    discountAmount?: number;
+    scholarshipAmount?: number;
+    sponsorAmount?: number;
+    baseAmount?: number;
+    payerType?: string;
+    payerName?: string;
+    payerEmail?: string;
+    sponsorOrganization?: string;
+    adjustmentsJson?: string;
     dueDateDays?: number;
   }) {
+    const rawBase = params.baseAmount || (params.trainingFee + params.registrationFee + params.certificationFee);
     const discount = params.discountPercentage || 0;
-    const discountAmount = (params.trainingFee * discount) / 100;
-    const discountedTrainingFee = params.trainingFee - discountAmount;
-    const total = discountedTrainingFee + params.registrationFee + params.certificationFee;
+    const computedDiscount = params.discountAmount !== undefined ? params.discountAmount : ((params.trainingFee * discount) / 100);
+    const scholarship = params.scholarshipAmount || 0;
+    const sponsor = params.sponsorAmount || 0;
+    const totalAdjustments = computedDiscount + scholarship + sponsor;
+    const total = Math.max(0, rawBase - totalAdjustments);
 
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const invoiceNumber = await identifierService.generateInvoiceNumber();
 
     const items = [
       { item: 'Academic Training & Lab Access', amount: params.trainingFee },
@@ -335,8 +350,14 @@ export class PaymentService {
       { item: 'Official Certification & Assessment', amount: params.certificationFee },
     ];
 
-    if (discount > 0) {
-      items.push({ item: `Academic Merit Discount (${discount}%)`, amount: -discountAmount });
+    if (computedDiscount > 0) {
+      items.push({ item: `Fee Discount / Concession`, amount: -computedDiscount });
+    }
+    if (scholarship > 0) {
+      items.push({ item: `Academic Scholarship Award`, amount: -scholarship });
+    }
+    if (sponsor > 0) {
+      items.push({ item: `Direct Sponsorship Coverage`, amount: -sponsor });
     }
 
     const dueDate = new Date();
@@ -347,15 +368,129 @@ export class PaymentService {
         invoiceNumber,
         studentId: params.studentId,
         applicationId: params.applicationId,
+        admissionId: params.admissionId,
+        cohortId: params.cohortId,
         title: params.title,
+        baseAmount: rawBase,
+        discountAmount: computedDiscount,
+        scholarshipAmount: scholarship,
+        sponsorAmount: sponsor,
+        adjustmentsJson: params.adjustmentsJson || (totalAdjustments > 0 ? JSON.stringify({
+          discount: computedDiscount,
+          scholarship,
+          sponsor,
+          sponsorOrganization: params.sponsorOrganization,
+        }) : null),
+        payerType: params.payerType || 'STUDENT',
+        payerName: params.payerName,
+        payerEmail: params.payerEmail,
+        sponsorOrganization: params.sponsorOrganization,
         totalAmount: total,
         amountPaid: 0,
         balance: total,
         dueDate,
-        status: InvoiceStatus.UNPAID,
+        status: total === 0 ? InvoiceStatus.PAID : InvoiceStatus.UNPAID,
         items: JSON.stringify(items),
       },
     });
+  }
+
+  /**
+   * Apply an audited financial adjustment (scholarship, discount, sponsor coverage) to an invoice.
+   */
+  async applyFinancialAdjustment(params: {
+    invoiceId: string;
+    adjustmentType: 'SCHOLARSHIP' | 'DISCOUNT' | 'SPONSORSHIP';
+    amount: number;
+    reason: string;
+    sponsorDetails?: { name?: string; organization?: string };
+    staffUser?: { id: string; role: string; name?: string };
+  }) {
+    const { invoiceId, adjustmentType, amount, reason, sponsorDetails, staffUser } = params;
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+    });
+
+    if (!invoice) {
+      throw new Error('Invoice not found.');
+    }
+
+    if (amount <= 0) {
+      throw new Error('Adjustment amount must be greater than zero.');
+    }
+
+    const base = invoice.baseAmount || invoice.totalAmount;
+    let newDiscount = invoice.discountAmount;
+    let newScholarship = invoice.scholarshipAmount;
+    let newSponsor = invoice.sponsorAmount;
+
+    if (adjustmentType === 'DISCOUNT') {
+      newDiscount += amount;
+    } else if (adjustmentType === 'SCHOLARSHIP') {
+      newScholarship += amount;
+    } else if (adjustmentType === 'SPONSORSHIP') {
+      newSponsor += amount;
+    }
+
+    const totalAdjustments = newDiscount + newScholarship + newSponsor;
+    const newTotalAmount = Math.max(0, base - totalAdjustments);
+    const newBalance = Math.max(0, newTotalAmount - invoice.amountPaid);
+    const newStatus =
+      newBalance === 0
+        ? InvoiceStatus.PAID
+        : invoice.amountPaid > 0
+        ? InvoiceStatus.PARTIALLY_PAID
+        : InvoiceStatus.UNPAID;
+
+    // Parse previous adjustments audit
+    let history: any[] = [];
+    try {
+      if (invoice.adjustmentsJson) {
+        const parsed = JSON.parse(invoice.adjustmentsJson);
+        history = Array.isArray(parsed.history) ? parsed.history : [];
+      }
+    } catch {
+      history = [];
+    }
+
+    history.push({
+      adjustmentType,
+      amount,
+      reason,
+      appliedBy: staffUser ? { id: staffUser.id, role: staffUser.role, name: staffUser.name } : 'SYSTEM',
+      appliedAt: new Date().toISOString(),
+      sponsorDetails,
+    });
+
+    const updatedInvoice = await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        baseAmount: base,
+        discountAmount: newDiscount,
+        scholarshipAmount: newScholarship,
+        sponsorAmount: newSponsor,
+        sponsorOrganization: sponsorDetails?.organization || invoice.sponsorOrganization,
+        totalAmount: newTotalAmount,
+        balance: newBalance,
+        status: newStatus,
+        adjustmentsJson: JSON.stringify({
+          discount: newDiscount,
+          scholarship: newScholarship,
+          sponsor: newSponsor,
+          history,
+        }),
+      },
+    });
+
+    // Authoritative financial clearance re-evaluation
+    await financialClearanceService.evaluateFinancialClearance({
+      applicationId: updatedInvoice.applicationId || undefined,
+      admissionId: updatedInvoice.admissionId || undefined,
+      studentId: updatedInvoice.studentId || undefined,
+    });
+
+    return updatedInvoice;
   }
 
   /**
@@ -366,8 +501,10 @@ export class PaymentService {
     amount: number;
     reference: string;
     channel: 'PAYSTACK' | 'FLUTTERWAVE' | 'BANK_TRANSFER' | 'TEST';
+    payerType?: string;
     payerName?: string;
     payerEmail?: string;
+    notes?: string;
     metadata?: any;
   }) {
     const invoice = await prisma.invoice.findUnique({
@@ -398,6 +535,9 @@ export class PaymentService {
             status: PaymentStatus.PAID,
             paidAt: new Date(),
             amount: params.amount,
+            payerType: params.payerType || existingPayment.payerType || 'STUDENT',
+            payerName: params.payerName || existingPayment.payerName,
+            notes: params.notes || existingPayment.notes,
           },
         })
       : await prisma.payment.create({
@@ -407,12 +547,17 @@ export class PaymentService {
             amount: params.amount,
             currency: 'NGN',
             channel: params.channel,
+            payerType: params.payerType || 'STUDENT',
+            payerName: params.payerName,
+            notes: params.notes,
             status: PaymentStatus.PAID,
             paidAt: new Date(),
             receiptUrl: `/receipts/${params.reference}.pdf`,
             metadata: JSON.stringify({
               payerName: params.payerName,
               payerEmail: params.payerEmail,
+              payerType: params.payerType,
+              notes: params.notes,
               ...params.metadata,
             }),
           },
@@ -436,6 +581,17 @@ export class PaymentService {
         status: newStatus,
       },
     });
+
+    // Authoritative financial clearance re-evaluation
+    try {
+      await financialClearanceService.evaluateFinancialClearance({
+        applicationId: invoice.applicationId || undefined,
+        admissionId: invoice.admissionId || undefined,
+        studentId: invoice.studentId || undefined,
+      });
+    } catch (clearanceErr) {
+      console.error('Failed to update financial clearance after payment:', clearanceErr);
+    }
 
     // Send payment confirmation email via Resend
     const recipientEmail =
@@ -484,7 +640,7 @@ export class PaymentService {
       throw new Error('Invoice not found');
     }
 
-    const reference = `PAY-STP-BNK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reference = identifierService.generatePaymentReference('BNK');
 
     const payment = await prisma.payment.create({
       data: {
@@ -561,6 +717,17 @@ export class PaymentService {
         status: newStatus,
       },
     });
+
+    // Authoritative financial clearance re-evaluation
+    try {
+      await financialClearanceService.evaluateFinancialClearance({
+        applicationId: invoice.applicationId || undefined,
+        admissionId: invoice.admissionId || undefined,
+        studentId: invoice.studentId || undefined,
+      });
+    } catch (clearanceErr) {
+      console.error('Failed to update financial clearance after bank transfer approval:', clearanceErr);
+    }
 
     // Send receipt email
     const metadata = payment.metadata ? JSON.parse(payment.metadata) : {};

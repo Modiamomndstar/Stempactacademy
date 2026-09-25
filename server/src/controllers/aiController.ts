@@ -15,6 +15,8 @@ import {
   StudentFeedbackSchema,
 } from '../services/ai/types.js';
 import { WorkflowEngine } from '../services/workflow/workflowEngine.js';
+import { aiGovernanceService } from '../services/ai/aiGovernance.js';
+import { sanitizePromptInput } from '../services/ai/aiSanitizer.js';
 
 // ---------------------------------------------------------------------------
 // 1. PROGRAM GENERATOR
@@ -460,7 +462,9 @@ Highlight strengths, specific areas of growth, and recommended review modules.`;
 // ---------------------------------------------------------------------------
 export const studentCopilot = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { question, activeModuleTitle, programContext } = req.body;
+    const { activeModuleTitle, programContext } = req.body;
+    const rawQuestion = req.body.question || '';
+    const { sanitized: question } = sanitizePromptInput(rawQuestion);
 
     // Resolve student context if available
     let programName = 'STEMPACT Technical Program';
@@ -506,7 +510,8 @@ Your goal is to guide the student toward understanding without giving away answe
 // ---------------------------------------------------------------------------
 export const parentAssistant = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { question } = req.body;
+    const rawQuestion = req.body.question || '';
+    const { sanitized: question } = sanitizePromptInput(rawQuestion);
 
     const parent = await prisma.parentProfile.findFirst({
       where: { userId: req.user!.id },
@@ -562,7 +567,8 @@ Never disclose information about any other student. Focus on progress, attendanc
 // ---------------------------------------------------------------------------
 export const adminAssistant = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { query } = req.body;
+    const rawQuery = req.body.query || '';
+    const { sanitized: query } = sanitizePromptInput(rawQuery);
 
     // Fetch live summary stats to ground the assistant
     const [totalStudents, totalCohorts, totalPrograms, pendingApplications] = await Promise.all([
@@ -642,3 +648,41 @@ export const getAIGenerations = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({ message: error.message || 'Failed to fetch AI history.' });
   }
 };
+
+// ---------------------------------------------------------------------------
+// 14. HUMAN-IN-THE-LOOP DRAFT REVIEW & APPROVAL
+// ---------------------------------------------------------------------------
+export const reviewDraft = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+    const { generationId } = req.params;
+    const { action, notes, overrideOutput } = req.body;
+
+    if (!action || !['APPROVE', 'REJECT', 'REQUEST_REVISION'].includes(action)) {
+      res.status(400).json({ message: "action must be 'APPROVE', 'REJECT', or 'REQUEST_REVISION'" });
+      return;
+    }
+
+    const updated = await aiGovernanceService.reviewAIDraft({
+      generationId,
+      reviewerId: req.user.id,
+      reviewerRole: req.user.role,
+      action,
+      notes,
+      overrideOutput,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `AI generation draft ${action.toLowerCase()}d successfully.`,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('[reviewDraft error]:', error);
+    res.status(400).json({ message: error.message || 'Failed to review draft' });
+  }
+};
+

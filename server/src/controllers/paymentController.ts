@@ -3,6 +3,8 @@ import prisma from '../config/prisma.js';
 import { paymentService } from '../services/paymentService.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { Role } from '@prisma/client';
+import { identifierService } from '../services/identifierService.js';
+import { financialClearanceService } from '../services/financialClearanceService.js';
 
 /**
  * Fetch invoices filtered by student, application, or status
@@ -357,7 +359,7 @@ export const payInvoice = async (req: AuthRequest, res: Response): Promise<void>
 
     const name = payerName || `${req.user.firstName} ${req.user.lastName}`;
     const email = payerEmail || req.user.email;
-    const reference = `PAY-STP-DIR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reference = identifierService.generatePaymentReference('DIR');
 
     const result = await paymentService.recordSuccessfulPayment({
       invoiceId,
@@ -379,3 +381,153 @@ export const payInvoice = async (req: AuthRequest, res: Response): Promise<void>
     res.status(500).json({ message: error.message || 'Payment processing failed' });
   }
 };
+
+/**
+ * Grant audited financial waiver (SUPER_ADMIN or FINANCE_ADMIN only)
+ * POST /api/payments/waivers
+ */
+export const grantFinancialWaiver = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const { admissionId, reason, waiverAmount } = req.body;
+    if (!admissionId || !reason) {
+      res.status(400).json({ message: 'admissionId and reason are required for financial waiver' });
+      return;
+    }
+
+    const clearance = await financialClearanceService.grantFinancialWaiver({
+      admissionId,
+      staffUser: req.user,
+      reason,
+      waiverAmount: waiverAmount !== undefined ? Number(waiverAmount) : undefined,
+    });
+
+    res.status(200).json({
+      message: 'Financial clearance waiver granted successfully.',
+      clearance,
+    });
+  } catch (error: any) {
+    console.error('grantFinancialWaiver error:', error);
+    if (error.message?.includes('Access denied')) {
+      res.status(403).json({ message: error.message });
+      return;
+    }
+    res.status(400).json({ message: error.message || 'Failed to grant financial waiver' });
+  }
+};
+
+/**
+ * Get authoritative financial clearance state for an admission or application
+ * GET /api/payments/clearance/:admissionId
+ */
+export const getFinancialClearance = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { admissionId } = req.params;
+    const result = await financialClearanceService.evaluateFinancialClearance({ admissionId });
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('getFinancialClearance error:', error);
+    res.status(500).json({ message: error.message || 'Failed to evaluate financial clearance' });
+  }
+};
+
+/**
+ * Approve management payment arrangement for an admission offer
+ * POST /api/payments/arrangements
+ * Authorized: SUPER_ADMIN, FINANCE_ADMIN
+ */
+export const approvePaymentArrangement = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const {
+      admissionId,
+      planType,
+      requiredInitialPayment,
+      installmentSchedule,
+      fundingSource,
+      sponsorName,
+      notes,
+    } = req.body;
+
+    if (!admissionId || !planType) {
+      res.status(400).json({ message: 'admissionId and planType are required.' });
+      return;
+    }
+
+    const result = await financialClearanceService.approvePaymentArrangement({
+      admissionId,
+      staffUser: req.user,
+      planType,
+      requiredInitialPayment: requiredInitialPayment !== undefined ? Number(requiredInitialPayment) : undefined,
+      installmentSchedule,
+      fundingSource,
+      sponsorName,
+      notes,
+    });
+
+    res.status(200).json({
+      message: 'Payment arrangement approved successfully.',
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('approvePaymentArrangement error:', error);
+    if (error.message?.includes('Access denied')) {
+      res.status(403).json({ message: error.message });
+      return;
+    }
+    res.status(400).json({ message: error.message || 'Failed to approve payment arrangement' });
+  }
+};
+
+/**
+ * Apply audited financial adjustment (scholarship, discount, sponsor coverage)
+ * POST /api/payments/adjustments
+ * Authorized: SUPER_ADMIN, FINANCE_ADMIN
+ */
+export const applyFinancialAdjustment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const authorizedRoles: Role[] = [Role.SUPER_ADMIN, Role.FINANCE_ADMIN];
+    if (!authorizedRoles.includes(req.user.role)) {
+      res.status(403).json({ message: 'Access denied: Only Finance Administration or Super Admin can apply financial adjustments.' });
+      return;
+    }
+
+    const { invoiceId, adjustmentType, amount, reason, sponsorDetails } = req.body;
+    if (!invoiceId || !adjustmentType || !amount || !reason) {
+      res.status(400).json({ message: 'invoiceId, adjustmentType, amount, and reason are required.' });
+      return;
+    }
+
+    const invoice = await paymentService.applyFinancialAdjustment({
+      invoiceId,
+      adjustmentType,
+      amount: Number(amount),
+      reason,
+      sponsorDetails,
+      staffUser: req.user,
+    });
+
+    res.status(200).json({
+      message: 'Financial adjustment applied successfully.',
+      invoice,
+    });
+  } catch (error: any) {
+    console.error('applyFinancialAdjustment error:', error);
+    res.status(400).json({ message: error.message || 'Failed to apply financial adjustment' });
+  }
+};
+
+

@@ -6,10 +6,13 @@ import { BootstrapService } from './services/bootstrap/bootstrapService.js';
 
 import { getJwtSecret } from './config/jwt.js';
 
+import { validateEnvironment } from './config/envValidation.js';
+
 dotenv.config();
 
-// Validate security configuration on startup
+// Validate security & environment configuration on startup
 try {
+  validateEnvironment();
   getJwtSecret();
 } catch (configErr: any) {
   console.error('[STARTUP SECURITY ERROR]', configErr.message);

@@ -5,6 +5,7 @@ import { Role, ApplicationStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
+import { identifierService } from '../services/identifierService.js';
 
 /**
  * Ensures Super Admin account is provisioned directly from .env variables
@@ -111,7 +112,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const allowedRegistrationRoles = [Role.STUDENT, Role.PARENT];
+    const allowedRegistrationRoles = [Role.STUDENT, Role.PARENT, Role.APPLICANT];
     const userRole = role && allowedRegistrationRoles.includes(role) ? role : Role.STUDENT;
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -134,8 +135,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
       // If student profile
       if (userRole === Role.STUDENT) {
-        const studentCount = await tx.studentProfile.count();
-        const studentIdNumber = `STP-${new Date().getFullYear()}-${String(studentCount + 1).padStart(4, '0')}`;
+        const studentIdNumber = await identifierService.generateStudentIdNumber({ tx });
         
         await tx.studentProfile.create({
           data: {
@@ -147,8 +147,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
         // If enrolled directly for a program, generate an application record
         if (programId) {
-          const appCount = await tx.application.count();
-          const applicationNumber = `APP-${new Date().getFullYear()}-${String(appCount + 1).padStart(4, '0')}`;
+          const applicationNumber = await identifierService.generateApplicationNumber({ tx });
 
           appRecord = await tx.application.create({
             data: {

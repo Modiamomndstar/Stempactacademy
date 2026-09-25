@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.js';
 import { AttendanceStatus, CertificateType } from '@prisma/client';
+import { PlacementService } from '../placementService.js';
 
 export interface ScheduleConflictCheck {
   hasConflict: boolean;
@@ -149,43 +150,18 @@ export class RulesEngine {
 
   /**
    * Deterministic Placement Evaluation Rules
-   * Maps diagnostic assessment scores directly to Levels 0 through 6
+   * Canonical delegation to PlacementService (Single Source of Truth)
    */
   static evaluateDiagnosticPlacement(scorePercentage: number, experienceYears: number = 0): {
     recommendedLevel: string;
     levelCode: string;
     rationale: string;
   } {
-    if (scorePercentage >= 85 || experienceYears >= 3) {
-      return {
-        recommendedLevel: 'Level 4 — Specialist / Production Engineering',
-        levelCode: 'LEVEL_4_SPECIALIST',
-        rationale: 'Demonstrated mastery in systems architecture and independent problem solving.',
-      };
-    } else if (scorePercentage >= 70 || experienceYears >= 1) {
-      return {
-        recommendedLevel: 'Level 3 — Advanced Engineering',
-        levelCode: 'LEVEL_3_ADVANCED',
-        rationale: 'Strong algorithmic reasoning and working familiarity with core engineering frameworks.',
-      };
-    } else if (scorePercentage >= 50) {
-      return {
-        recommendedLevel: 'Level 2 — Intermediate Hands-On',
-        levelCode: 'LEVEL_2_INTERMEDIATE',
-        rationale: 'Sound digital literacy and fundamental syntax; benefits from supervised lab sprints.',
-      };
-    } else if (scorePercentage >= 30) {
-      return {
-        recommendedLevel: 'Level 1 — Foundation Bootcamp',
-        levelCode: 'LEVEL_1_FOUNDATION',
-        rationale: 'Eager learner; best served by structured foundations in computational logic and syntax.',
-      };
-    } else {
-      return {
-        recommendedLevel: 'Level 0 — Assessment & Digital Literacy',
-        levelCode: 'LEVEL_0_ASSESSMENT',
-        rationale: 'Recommended for prerequisite digital literacy and computational thinking orientation.',
-      };
-    }
+    const res = PlacementService.evaluatePlacementRecommendation(scorePercentage, { experienceYears });
+    return {
+      recommendedLevel: res.recommendedLevel,
+      levelCode: res.levelCode,
+      rationale: res.rationale,
+    };
   }
 }

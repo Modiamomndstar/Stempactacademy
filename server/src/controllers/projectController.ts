@@ -86,3 +86,87 @@ export const createProject = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({ message: 'Failed to create project' });
   }
 };
+
+export const updateProjectEvidence = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const { projectId } = req.params;
+    const { githubUrl, liveDemoUrl, thumbnail, description, skills, tools } = req.body;
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        members: {
+          include: { student: true },
+        },
+      },
+    });
+
+    if (!project) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+
+    const isStaff = ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'INSTRUCTOR'].includes(req.user.role as any);
+    const isMember = project.members.some((m) => m.student.userId === req.user?.id);
+
+    if (!isStaff && !isMember) {
+      res.status(403).json({ message: 'Access denied: You are not a member or instructor of this project.' });
+      return;
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...(githubUrl !== undefined && { githubUrl }),
+        ...(liveDemoUrl !== undefined && { liveDemoUrl }),
+        ...(thumbnail !== undefined && { thumbnail }),
+        ...(description !== undefined && { description }),
+        ...(skills !== undefined && { skills }),
+        ...(tools !== undefined && { tools }),
+      },
+      include: {
+        members: { include: { student: { include: { user: true } } } },
+      },
+    });
+
+    res.status(200).json({ message: 'Project evidence updated successfully', project: updated });
+  } catch (error: any) {
+    console.error('updateProjectEvidence error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update project evidence' });
+  }
+};
+
+export const evaluateProject = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+
+    const { projectId } = req.params;
+    const { score, feedback, status } = req.body;
+
+    if (score === undefined || score === null) {
+      res.status(400).json({ message: 'score is required' });
+      return;
+    }
+
+    const { academicDeliveryService } = await import('../services/academicDeliveryService.js');
+    const evaluated = await academicDeliveryService.evaluateProject({
+      projectId,
+      score: Number(score),
+      feedback: feedback || '',
+      status: status || 'COMPLETED',
+    });
+
+    res.status(200).json({ message: 'Project evaluated successfully', project: evaluated });
+  } catch (error: any) {
+    console.error('evaluateProject error:', error);
+    res.status(500).json({ message: error.message || 'Failed to evaluate project' });
+  }
+};

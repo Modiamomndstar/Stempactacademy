@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
+import { identifierService } from '../services/identifierService.js';
 
 // 1. Create an Admin Account (SUPER_ADMIN only)
 export const createAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -147,8 +148,7 @@ export const createInstructor = async (req: AuthRequest, res: Response): Promise
     const passwordHash = await bcrypt.hash(password, 10);
     const assignedUsername = username || email.split('@')[0];
 
-    const instructorCount = await prisma.instructorProfile.count();
-    const staffCode = `STP-INS-${String(instructorCount + 1).padStart(3, '0')}`;
+    const staffCode = await identifierService.generateInstructorStaffCode();
 
     const instructor = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({

@@ -6,6 +6,7 @@ import prisma from '../config/prisma.js';
 import { emailService } from '../services/emailService.js';
 import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
 import { AuthRequest } from '../middlewares/auth.js';
+import { identifierService } from '../services/identifierService.js';
 
 export const submitApplication = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -34,6 +35,12 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
       parentEmail,
       parentRelationship,
       consentAccepted,
+      requestedPaymentPlan,
+      fundingSourcePreference,
+      sponsorshipDetails,
+      scholarshipRequested,
+      financialAssistanceReason,
+      financialNotes,
       password, // applicant chooses password or default
     } = req.body;
 
@@ -74,15 +81,13 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
           firstName: first || fullName,
           lastName: rest.join(' ') || 'Learner',
           phone,
-          role: Role.STUDENT,
+          role: Role.APPLICANT,
         },
       });
     }
 
-    // 2. Generate unique Application ID
-    const count = await prisma.application.count();
-    const year = new Date().getFullYear();
-    const applicationNumber = `APP-${year}-${String(count + 1).padStart(4, '0')}`;
+    // 2. Generate unique collision-safe Application ID
+    const applicationNumber = await identifierService.generateApplicationNumber();
 
     // 3. Create Application Record
     const application = await prisma.application.create({
@@ -113,6 +118,12 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
         parentEmail: requiresParentalConsent ? parentEmail : null,
         parentRelationship: requiresParentalConsent ? parentRelationship : null,
         consentAccepted: Boolean(consentAccepted),
+        requestedPaymentPlan: requestedPaymentPlan || null,
+        fundingSourcePreference: fundingSourcePreference || null,
+        sponsorshipDetails: sponsorshipDetails || null,
+        scholarshipRequested: Boolean(scholarshipRequested),
+        financialAssistanceReason: financialAssistanceReason || null,
+        financialNotes: financialNotes || null,
         status: ApplicationStatus.ASSESSMENT_PENDING,
       },
       include: {

@@ -67,14 +67,26 @@ router.post('/placements/:placementId/review', authenticate, authorize(Role.SUPE
 
 // 7. Admissions
 router.post('/admissions/issue', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.issueAdmission);
-router.get('/admissions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.getAdmissions);
+router.get('/admissions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN, Role.FINANCE_ADMIN), admissionController.getAdmissions);
 router.get('/admissions/:number', authenticate, admissionController.getAdmissionByNumber);
+router.post('/admissions/:admissionId/accept', authenticate, admissionController.acceptAdmission);
+router.post('/admissions/:admissionId/decline', authenticate, admissionController.declineAdmission);
+router.post('/admissions/:admissionId/withdraw', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.withdrawAdmission);
+router.get('/admissions/:admissionId/eligibility', authenticate, admissionController.checkEligibility);
+router.post('/admissions/:admissionId/enroll', authenticate, admissionController.enrollStudent);
+router.get('/admissions/:admissionId/document', authenticate, admissionController.getAdmissionDocument);
+router.post('/admissions/:admissionId/deliver-letter', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.deliverAdmissionLetter);
 
 // 8. Portals: Student, Parent, Instructor, Applicant, Coordinator, Partner
 router.get('/student/dashboard', authenticate, studentController.getStudentDashboard);
+router.get('/student/curriculum', authenticate, studentController.getStudentCurriculum);
+router.post('/student/lessons/:lessonId/progress', authenticate, studentController.recordLessonProgress);
+router.get('/student/completion-readiness', authenticate, studentController.getCompletionReadiness);
 router.get('/parent/dashboard', authenticate, parentController.getParentDashboard);
+router.get('/parent/wards/:studentId/academic-records', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PARENT), parentController.getWardAcademicRecords);
 router.get('/instructor/dashboard', authenticate, instructorController.getInstructorDashboard);
-router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR), instructorController.createClassSession);
+router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.createClassSession);
+router.post('/instructor/competencies/evaluate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.evaluateCompetency);
 router.get('/applicant/dashboard', authenticate, applicantController.getApplicantDashboard);
 router.get('/coordinator/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), coordinatorController.getCoordinatorOverview);
 router.get('/partner/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PARTNER), partnerController.getPartnerOverview);
@@ -84,13 +96,17 @@ router.post('/attendance/mark', authenticate, authorize(Role.SUPER_ADMIN, Role.I
 router.get('/attendance/cohort/:cohortId', authenticate, attendanceController.getAttendanceForCohort);
 
 // 10. Assignments & Grading
-router.post('/assignments', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR), assignmentController.createAssignment);
+router.post('/assignments', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.createAssignment);
 router.post('/assignments/submit', authenticate, assignmentController.submitAssignment);
-router.patch('/assignments/submissions/:submissionId/grade', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR), assignmentController.gradeSubmission);
+router.patch('/assignments/submissions/:submissionId/grade', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.gradeSubmission);
+router.get('/assignments/:assignmentId/submissions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.getAssignmentSubmissions);
+router.get('/assignments/my-submissions', authenticate, assignmentController.getMySubmissions);
 
 // 11. Projects & Showcase
 router.get('/projects', projectController.getProjects);
 router.post('/projects', authenticate, projectController.createProject);
+router.patch('/projects/:projectId/evidence', authenticate, projectController.updateProjectEvidence);
+router.post('/projects/:projectId/evaluate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR), projectController.evaluateProject);
 
 // 12. Certificates & Public Verification
 router.get('/certificates/verify/:certNumber', certificateController.verifyCertificate);
@@ -107,6 +123,10 @@ router.post('/payments/bank-transfer', authenticate, paymentController.submitBan
 router.get('/payments/bank-transfers', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.getBankTransfers);
 router.post('/payments/bank-transfers/:paymentId/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.approveBankTransfer);
 router.post('/payments/bank-transfers/:paymentId/reject', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.rejectBankTransfer);
+router.post('/payments/waivers', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.grantFinancialWaiver);
+router.get('/payments/clearance/:admissionId', authenticate, paymentController.getFinancialClearance);
+router.post('/payments/arrangements', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.approvePaymentArrangement);
+router.post('/payments/adjustments', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.applyFinancialAdjustment);
 
 // 14. CMS & Public Feeds
 router.get('/cms/content', cmsController.getCMSContent);
@@ -123,10 +143,13 @@ router.get('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUser
 router.post('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR), adminUserController.createInstructor);
 router.get('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN), adminUserController.getInstructors);
 
-// 17. In-App Notifications
+// 17. In-App Notifications & Preferences
 router.get('/notifications', authenticate, notificationController.getNotifications);
 router.patch('/notifications/:id/read', authenticate, notificationController.markRead);
 router.patch('/notifications/read-all', authenticate, notificationController.markAllRead);
+router.get('/notifications/preferences', authenticate, notificationController.getPreferences);
+router.put('/notifications/preferences', authenticate, notificationController.updatePreferences);
+router.get('/notifications/deliveries', authenticate, notificationController.getDeliveries);
 
 // 18. Audit Trail
 router.get('/audit/logs', authenticate, authorize(Role.SUPER_ADMIN), auditController.getAuditLogs);
@@ -175,6 +198,7 @@ router.post('/ai/admin-assistant', authenticate, authorize(Role.SUPER_ADMIN, Rol
 
 router.post('/ai/publish-program', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
 router.post('/ai/generations/:id/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
+router.patch('/ai/drafts/:generationId/review', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), aiController.reviewDraft);
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
 
 // 22. Database Bootstrap & System Health Diagnostics
