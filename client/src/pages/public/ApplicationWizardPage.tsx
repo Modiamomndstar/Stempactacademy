@@ -21,6 +21,9 @@ import {
   Eye,
   EyeOff,
   Check,
+  Clock,
+  MapPin,
+  RefreshCw,
 } from 'lucide-react';
 
 export const ApplicationWizardPage: React.FC = () => {
@@ -31,6 +34,9 @@ export const ApplicationWizardPage: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [selectedCohortData, setSelectedCohortData] = useState<any>(null);
+  const [activeSession, setActiveSession] = useState<any>(null);
+  const [manualSelectionMode, setManualSelectionMode] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -77,18 +83,54 @@ export const ApplicationWizardPage: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [schoolsRes, programsRes, cohortsRes] = await Promise.all([
+        const [schoolsRes, programsRes, cohortsRes, sessionsRes] = await Promise.all([
           api.getSchools(),
           api.getPrograms(),
           api.getCohorts({ openOnly: 'true' }),
+          api.getAcademicSessions(),
         ]);
-        setSchools(schoolsRes.schools || []);
-        setPrograms(programsRes.programs || []);
-        setCohorts(cohortsRes.cohorts || []);
+        const scList = schoolsRes.schools || [];
+        const prList = programsRes.programs || [];
+        const coList = cohortsRes.cohorts || [];
+        const sessList = sessionsRes.academicSessions || [];
 
+        setSchools(scList);
+        setPrograms(prList);
+        setCohorts(coList);
+
+        const currentSess = sessList.find((s: any) => s.isCurrent) || sessList[0];
+        setActiveSession(currentSess);
+
+        const initialCohortId = searchParams.get('cohortId');
         const initialProgramId = searchParams.get('programId');
-        if (initialProgramId) {
-          const matchedProg = (programsRes.programs || []).find((p: Program) => p.id === initialProgramId);
+
+        let targetCohort: any = null;
+        if (initialCohortId) {
+          targetCohort = coList.find((c: any) => c.id === initialCohortId);
+          if (!targetCohort) {
+            try {
+              const singleRes = await api.getCohortById(initialCohortId);
+              targetCohort = singleRes.cohort;
+            } catch (err) {
+              console.warn('Could not fetch cohort by id:', err);
+            }
+          }
+        }
+
+        if (targetCohort) {
+          setSelectedCohortData(targetCohort);
+          const progId = targetCohort.programId || initialProgramId;
+          const matchedProg = prList.find((p: Program) => p.id === progId);
+          const schId = targetCohort.program?.schoolId || matchedProg?.schoolId || '';
+          setFormData((prev) => ({
+            ...prev,
+            cohortId: targetCohort.id,
+            programId: progId || prev.programId,
+            schoolId: schId || prev.schoolId,
+            preferredSchedule: targetCohort.schedule || prev.preferredSchedule,
+          }));
+        } else if (initialProgramId) {
+          const matchedProg = prList.find((p: Program) => p.id === initialProgramId);
           if (matchedProg) {
             setFormData((prev) => ({
               ...prev,
@@ -245,7 +287,7 @@ export const ApplicationWizardPage: React.FC = () => {
       <div className="text-center space-y-3">
         <Badge variant="blue">Official Online Application</Badge>
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-          Join STEMPACT ACADEMY 2025/2026
+          Join STEMPACT ACADEMY {activeSession?.name ? `${activeSession.name}` : ''}
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
           Complete the sections below to register your academic profile and initiate your placement review.
@@ -306,84 +348,215 @@ export const ApplicationWizardPage: React.FC = () => {
                 <span>Step 1: Academic Discipline & Cohort Schedule</span>
               </h2>
               <p className="text-xs text-slate-500">
-                Choose the academic school and target program track you are applying to.
+                Review your selected cohort track or choose your academic school and program manually.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-              <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700">Academic School *</label>
-                <select
-                  name="schoolId"
-                  value={formData.schoolId}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setFormData((prev) => ({ ...prev, programId: '', cohortId: '' }));
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
-                  required
-                >
-                  <option value="">-- Choose Academic School --</option>
-                  {schools.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* PREFILLED CONFIRMED COHORT VIEW (When navigating from Cohorts or Programs page) */}
+            {selectedCohortData && !manualSelectionMode ? (
+              <div className="space-y-4">
+                <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 border border-blue-200 shadow-2xs space-y-4">
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md border border-blue-200">
+                          {selectedCohortData.cohortCode || 'COHORT'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-600">
+                          {selectedCohortData.program?.school?.name ||
+                            schools.find((s) => s.id === formData.schoolId)?.name ||
+                            'STEMPACT School'}
+                        </span>
+                        {selectedCohortData.academicSession && (
+                          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                            {selectedCohortData.academicSession.name}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                        {selectedCohortData.name}
+                      </h3>
+                      <p className="text-xs font-bold text-blue-900">
+                        Track: {selectedCohortData.program?.name || currentProgram?.name}
+                      </p>
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700">Target Program Track *</label>
-                <select
-                  name="programId"
-                  value={formData.programId}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
-                  required
-                >
-                  <option value="">-- Choose Program Track --</option>
-                  {filteredPrograms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.duration})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setManualSelectionMode(true)}
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs border border-slate-300 shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Change Program / Cohort</span>
+                    </button>
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700">Select Available Cohort (Optional)</label>
-                <select
-                  name="cohortId"
-                  value={formData.cohortId}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
-                >
-                  <option value="">-- Open Cohort (Assigned upon placement) --</option>
-                  {filteredCohorts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.cohortCode} • Starts {c.startDate ? new Date(c.startDate).toLocaleDateString('en-GB') : 'TBA'})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {/* Cohort Schedule, Mode, & Start Date Matrix */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-3 border-t border-blue-200/60 text-xs">
+                    <div className="flex items-start gap-2.5 text-slate-800">
+                      <Calendar className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Commencement Date
+                        </span>
+                        <span className="font-bold text-slate-900">
+                          {selectedCohortData.startDate
+                            ? new Date(selectedCohortData.startDate).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'To Be Announced'}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="font-semibold text-slate-700">Preferred Learning Schedule *</label>
-                <select
-                  name="preferredSchedule"
-                  value={formData.preferredSchedule}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
-                  required
-                >
-                  <option value="Weekday Evenings (4:00 PM - 7:00 PM WAT)">Weekday Evenings (4:00 PM - 7:00 PM WAT)</option>
-                  <option value="Weekend Executive (Saturdays 9:00 AM - 3:00 PM WAT)">Weekend Executive (Saturdays 9:00 AM - 3:00 PM WAT)</option>
-                  <option value="Morning Intensive (9:00 AM - 1:00 PM WAT)">Morning Intensive (9:00 AM - 1:00 PM WAT)</option>
-                  <option value="After-School (Kids & Teens 3:30 PM - 5:30 PM)">After-School (Kids & Teens 3:30 PM - 5:30 PM)</option>
-                  <option value="Hybrid (Weekend Lab & Virtual Midweek)">Hybrid (Weekend Lab & Virtual Midweek)</option>
-                </select>
+                    <div className="flex items-start gap-2.5 text-slate-800">
+                      <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Class Schedule Pattern
+                        </span>
+                        <span className="font-bold text-slate-900">
+                          {selectedCohortData.schedule || formData.preferredSchedule}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 text-slate-800">
+                      <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                          Delivery Venue & Mode
+                        </span>
+                        <span className="font-bold text-slate-900">
+                          {selectedCohortData.mode || 'Hybrid (Onsite Ile-Ife & Virtual)'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-blue-200/40 text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span className="font-medium">
+                        Intake status: <strong className="text-emerald-700">Open for Enrollment</strong>
+                      </span>
+                    </div>
+
+                    {selectedCohortData.trainingFee !== undefined && Number(selectedCohortData.trainingFee) > 0 && (
+                      <span className="font-bold text-slate-900">
+                        Tuition Fee: ₦{Number(selectedCohortData.trainingFee).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* MANUAL DROPDOWN SELECTION (When entering via admissions or when toggling change) */
+              <div className="space-y-4">
+                {selectedCohortData && manualSelectionMode && (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <span className="text-slate-600 font-medium">
+                      Manually customizing selection (previously: <strong>{selectedCohortData.name}</strong>)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setManualSelectionMode(false)}
+                      className="font-bold text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Restore Selected Cohort
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-700">Academic School *</label>
+                    <select
+                      name="schoolId"
+                      value={formData.schoolId}
+                      onChange={(e) => {
+                        handleChange(e);
+                        setFormData((prev) => ({ ...prev, programId: '', cohortId: '' }));
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                      required
+                    >
+                      <option value="">-- Choose Academic School --</option>
+                      {schools.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-700">Target Program Track *</label>
+                    <select
+                      name="programId"
+                      value={formData.programId}
+                      onChange={(e) => {
+                        handleChange(e);
+                        setFormData((prev) => ({ ...prev, cohortId: '' }));
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                      required
+                    >
+                      <option value="">-- Choose Program Track --</option>
+                      {filteredPrograms.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.duration})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-700">Select Available Cohort (Optional)</label>
+                    <select
+                      name="cohortId"
+                      value={formData.cohortId}
+                      onChange={(e) => {
+                        const cid = e.target.value;
+                        const matched = cohorts.find((c) => c.id === cid);
+                        setFormData((prev) => ({
+                          ...prev,
+                          cohortId: cid,
+                          preferredSchedule: matched?.schedule || prev.preferredSchedule,
+                        }));
+                        if (matched) {
+                          setSelectedCohortData(matched);
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                    >
+                      <option value="">-- Open Cohort (Assigned upon placement) --</option>
+                      {filteredCohorts.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.cohortCode} • Starts{' '}
+                          {c.startDate ? new Date(c.startDate).toLocaleDateString('en-GB') : 'TBA'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-700">Preferred Learning Schedule *</label>
+                    <input
+                      type="text"
+                      name="preferredSchedule"
+                      value={formData.preferredSchedule}
+                      onChange={handleChange}
+                      placeholder="e.g. Weekday Evenings (4:00 PM - 7:00 PM WAT)"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {currentProgram && (
               <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

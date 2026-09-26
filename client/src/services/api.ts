@@ -293,6 +293,8 @@ export const api = {
   parentAssistant: (data: any) => apiRequest('/ai/parent-assistant', { method: 'POST', body: JSON.stringify(data) }),
   adminAssistant: (data: any) => apiRequest('/ai/admin-assistant', { method: 'POST', body: JSON.stringify(data) }),
   publishProgram: (data: any) => apiRequest('/ai/publish-program', { method: 'POST', body: JSON.stringify(data) }),
+  optimizeCohortSchedule: (data: { programs: any[]; preferredTiming?: string; hubLocation?: string }) =>
+    apiRequest('/ai/optimize-schedule', { method: 'POST', body: JSON.stringify(data) }),
   getAIGenerations: (params?: { entityType?: string; entityId?: string; actionType?: string }) => {
     const query = new URLSearchParams();
     if (params?.entityType) query.append('entityType', params.entityType);

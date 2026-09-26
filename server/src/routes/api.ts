@@ -208,6 +208,7 @@ router.post('/ai/publish-program', authenticate, authorize(Role.SUPER_ADMIN, Rol
 router.post('/ai/generations/:id/approve', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.approveAndPublish);
 router.patch('/ai/drafts/:generationId/review', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), aiController.reviewDraft);
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
+router.post('/ai/optimize-schedule', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), aiController.optimizeSchedule);
 
 // 22. Database Bootstrap & System Health Diagnostics
 router.get('/bootstrap/status', authenticate, authorize(Role.SUPER_ADMIN), async (req, res) => {

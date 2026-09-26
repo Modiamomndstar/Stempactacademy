@@ -1,6 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Badge, Card } from '../../components/UIElements';
+import { api } from '../../services/api';
 import {
   FileText,
   Sparkles,
@@ -14,6 +15,29 @@ import {
 } from 'lucide-react';
 
 export const AdmissionsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const [activeSession, setActiveSession] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await api.getAcademicSessions();
+        const current = (res.academicSessions || []).find((s: any) => s.isCurrent) || res.academicSessions?.[0];
+        if (current) setActiveSession(current);
+      } catch (err) {
+        console.error('Failed to fetch academic session for admissions:', err);
+      }
+    };
+    fetchSession();
+  }, []);
+
+  const cohortId = searchParams.get('cohortId');
+  const programId = searchParams.get('programId');
+  const applyQuery = new URLSearchParams();
+  if (cohortId) applyQuery.append('cohortId', cohortId);
+  if (programId) applyQuery.append('programId', programId);
+  const applyUrl = applyQuery.toString() ? `/apply?${applyQuery.toString()}` : '/apply';
+
   const steps = [
     {
       step: '01',
@@ -67,7 +91,9 @@ export const AdmissionsPage: React.FC = () => {
       {/* Header */}
       <section className="bg-slate-900 text-white py-16 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-          <Badge variant="blue">Admissions 2025 Cycle</Badge>
+          <Badge variant="blue">
+            Admissions {activeSession?.name ? `${activeSession.name} Cycle` : 'Open Cycle'}
+          </Badge>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
             Your Roadmap to STEMPACT Admission
           </h1>
@@ -77,7 +103,7 @@ export const AdmissionsPage: React.FC = () => {
           </p>
           <div className="pt-4">
             <Link
-              to="/apply"
+              to={applyUrl}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors"
             >
               <span>Begin Application Now</span>

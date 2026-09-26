@@ -298,7 +298,7 @@ export const CohortsPage: React.FC = () => {
                   <div className="p-6 pt-0">
                     {isOpen ? (
                       <Link
-                        to={`/admissions?cohortId=${cohort.id}&programId=${cohort.programId}`}
+                        to={`/apply?cohortId=${cohort.id}&programId=${cohort.programId}`}
                         className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:shadow transition cursor-pointer"
                       >
                         <span>Apply for this Cohort</span>

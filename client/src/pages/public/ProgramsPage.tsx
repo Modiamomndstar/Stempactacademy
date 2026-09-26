@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Program, School } from '../../types';
@@ -19,6 +19,8 @@ export const ProgramsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
+  const [openCohorts, setOpenCohorts] = useState<any[]>([]);
+  const [activeSession, setActiveSession] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedSchool, setSelectedSchool] = useState<string>(searchParams.get('school') || 'ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -28,14 +30,20 @@ export const ProgramsPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [progRes, schoolRes] = await Promise.all([
+        const [progRes, schoolRes, cohortsRes, sessionsRes] = await Promise.all([
           api.getPrograms(),
           api.getSchools(),
+          api.getCohorts({ currentSessionOnly: 'true', openOnly: 'true' }),
+          api.getAcademicSessions(),
         ]);
         setPrograms(progRes.programs || []);
         setSchools(schoolRes.schools || []);
+        setOpenCohorts(cohortsRes.cohorts || []);
+        const sessList = sessionsRes.academicSessions || [];
+        const current = sessList.find((s: any) => s.isCurrent) || sessList[0];
+        setActiveSession(current);
       } catch (err) {
-        console.error('Failed to load programs:', err);
+        console.error('Failed to load programs catalog:', err);
       } finally {
         setLoading(false);
       }
@@ -50,15 +58,26 @@ export const ProgramsPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Lookup map of open cohorts for each program in current active session
+  const openCohortsByProgram = useMemo(() => {
+    const map: Record<string, any> = {};
+    openCohorts.forEach((c) => {
+      if (c.programId && !map[c.programId]) {
+        map[c.programId] = c;
+      }
+    });
+    return map;
+  }, [openCohorts]);
+
   const filteredPrograms = programs.filter((p) => {
     // Search query filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matches =
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.tools.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q);
+        p.name?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.tools?.toLowerCase().includes(q) ||
+        p.code?.toLowerCase().includes(q);
       if (!matches) return false;
     }
 
@@ -76,7 +95,8 @@ export const ProgramsPage: React.FC = () => {
 
     // View mode filter (open cohorts vs all)
     if (viewMode === 'openOnly') {
-      if (p.status !== 'OPEN_FOR_APPLICATION' || !p.cohorts || p.cohorts.length === 0) {
+      const hasCohort = !!openCohortsByProgram[p.id];
+      if (!hasCohort && p.status !== 'OPEN_FOR_APPLICATION') {
         return false;
       }
     }
@@ -85,7 +105,7 @@ export const ProgramsPage: React.FC = () => {
   });
 
   const openProgramsCount = programs.filter(
-    (p) => p.status === 'OPEN_FOR_APPLICATION' && p.cohorts && p.cohorts.length > 0
+    (p) => !!openCohortsByProgram[p.id] || (p.status === 'OPEN_FOR_APPLICATION' && p.cohorts && p.cohorts.length > 0)
   ).length;
 
   return (
@@ -220,29 +240,40 @@ export const ProgramsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredPrograms.map((prog) => {
-              const isOpen = prog.status === 'OPEN_FOR_APPLICATION';
+              const activeCohort = openCohortsByProgram[prog.id];
+              const hasLiveOpenCohort = !!activeCohort;
+              const isOpen = hasLiveOpenCohort || prog.status === 'OPEN_FOR_APPLICATION';
+
               return (
                 <Card key={prog.id} className="flex flex-col justify-between" hoverable>
                   <div className="p-6 space-y-4">
                     {/* Top School Badge & Status */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <span
                         className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
                         style={{ backgroundColor: prog.school?.color || '#2563eb' }}
                       >
                         {prog.school?.name.split(' ')[0]}
                       </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isOpen
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : prog.status === 'UPCOMING'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {prog.status.replace(/_/g, ' ')}
-                      </span>
+
+                      {hasLiveOpenCohort ? (
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                          <span>OPEN INTAKE ({activeSession?.name || 'ACTIVE'})</span>
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isOpen
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : prog.status === 'UPCOMING'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {prog.status.replace(/_/g, ' ')}
+                        </span>
+                      )}
                     </div>
 
                     <div>
@@ -258,6 +289,40 @@ export const ProgramsPage: React.FC = () => {
                       {prog.description}
                     </p>
 
+                    {/* Active Session Open Cohort Timetable & Details Box */}
+                    {hasLiveOpenCohort && (
+                      <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/70 space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold text-blue-900">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Active Cohort: {activeCohort.name}</span>
+                          <span className="font-mono text-[10px] text-blue-600">({activeCohort.cohortCode})</span>
+                        </div>
+                        {activeCohort.schedule && (
+                          <div className="flex items-start gap-1.5 text-[11px] text-slate-700">
+                            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                            <span className="font-medium line-clamp-1">{activeCohort.schedule}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-blue-100">
+                          <span>
+                            Starts{' '}
+                            {activeCohort.startDate
+                              ? new Date(activeCohort.startDate).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : 'TBA'}
+                          </span>
+                          {activeCohort.availableSeats !== undefined && (
+                            <span className="font-semibold text-emerald-700">
+                              {activeCohort.availableSeats} seats left
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="pt-2 text-[11px] text-slate-500 space-y-1">
                       <div>
                         <strong className="text-slate-700">Duration:</strong> {prog.duration} ({prog.contactHours} Contact Hours)
@@ -269,16 +334,24 @@ export const ProgramsPage: React.FC = () => {
                   </div>
 
                   {/* Card Action Footer */}
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
                     <Link
                       to={`/programs/${prog.code}`}
                       className="text-xs font-bold text-slate-700 hover:text-blue-600 flex items-center gap-1"
                     >
-                      <span>Curriculum & Capstone</span>
+                      <span>Syllabus</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
 
-                    {isOpen ? (
+                    {hasLiveOpenCohort ? (
+                      <Link
+                        to={`/apply?cohortId=${activeCohort.id}&programId=${prog.id}`}
+                        className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs flex items-center gap-1"
+                      >
+                        <span>Apply for Intake</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    ) : isOpen ? (
                       <Link
                         to={`/apply?programId=${prog.id}`}
                         className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors"
@@ -287,7 +360,7 @@ export const ProgramsPage: React.FC = () => {
                       </Link>
                     ) : (
                       <span className="text-[11px] font-semibold text-slate-400">
-                        {prog.status === 'UPCOMING' ? 'Notify Me' : 'Closed'}
+                        {prog.status === 'UPCOMING' ? 'Upcoming' : 'Closed'}
                       </span>
                     )}
                   </div>

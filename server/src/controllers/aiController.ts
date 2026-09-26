@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { Role, AIActionType } from '@prisma/client';
+import { z } from 'zod';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { AIOrchestrator } from '../services/ai/aiOrchestrator.js';
@@ -685,4 +686,151 @@ export const reviewDraft = async (req: AuthRequest, res: Response): Promise<void
     res.status(400).json({ message: error.message || 'Failed to review draft' });
   }
 };
+
+// ---------------------------------------------------------------------------
+// 15. AI COHORT CLASS SCHEDULE OPTIMIZER
+// ---------------------------------------------------------------------------
+export const optimizeSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { programs = [], preferredTiming = 'HYBRID_OPTIMAL', hubLocation } = req.body;
+
+    if (!Array.isArray(programs) || programs.length === 0) {
+      res.status(400).json({ message: 'At least one program is required for schedule optimization.' });
+      return;
+    }
+
+    const defaultLocation = hubLocation || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State';
+
+    // Algorithmic rule base for disciplines
+    const getDisciplineSchedule = (name: string, code: string, index: number) => {
+      const lower = `${name} ${code}`.toLowerCase();
+
+      if (lower.includes('robot') || lower.includes('iot') || lower.includes('hardware') || lower.includes('embed')) {
+        return {
+          schedule: 'Wednesdays (3:30 PM – 6:30 PM) & Saturdays (10:00 AM – 2:00 PM WAT)',
+          mode: 'Onsite Laboratory Intensive & Interactive Practice',
+          rationale: 'Hardware & IoT require dedicated bench access and physical prototyping equipment on Saturdays with midweek debugging sprints.',
+        };
+      }
+      if (lower.includes('solar') || lower.includes('clean energy') || lower.includes('energy') || lower.includes('install')) {
+        return {
+          schedule: 'Mondays & Thursdays (9:00 AM – 1:00 PM WAT Practical Field Work)',
+          mode: 'Onsite Technical Workshop & Field Practicum',
+          rationale: 'Renewable energy systems require daylight hours for PV irradiance measurements, rooftop mounting, and inverter testing.',
+        };
+      }
+      if (lower.includes('kid') || lower.includes('teen') || lower.includes('young') || lower.includes('maker')) {
+        return {
+          schedule: 'Saturdays (10:00 AM – 1:00 PM WAT Weekend STEM Discovery)',
+          mode: 'Onsite Kids Discovery Hub & Interactive Lab',
+          rationale: 'Designed for primary and secondary school learners with zero conflict with regular school hours.',
+        };
+      }
+      if (lower.includes('startup') || lower.includes('venture') || lower.includes('freelance') || lower.includes('market')) {
+        return {
+          schedule: 'Tuesdays & Thursdays (5:00 PM – 7:30 PM) & Bi-weekly Saturday Demo',
+          mode: 'Hybrid (Virtual Interactive Sprints + Onsite Venture Demo)',
+          rationale: 'Evening sessions accommodate young founders and remote professionals with weekend pitch and client sprints.',
+        };
+      }
+      // Software Engineering, Data Science, AI, Cloud
+      const slotVariations = [
+        'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
+        'Tuesdays, Thursdays (4:00 PM – 7:00 PM) & Saturdays (10:00 AM – 1:00 PM WAT)',
+        'Mondays, Thursdays (5:00 PM – 8:00 PM) & Saturdays (1:00 PM – 4:00 PM WAT)',
+      ];
+      const selectedSlot = slotVariations[index % slotVariations.length];
+      return {
+        schedule: selectedSlot,
+        mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+        rationale: 'Spaced repetition across 3 weekly touchpoints ensures high code retention and prevents cognitive overload.',
+      };
+    };
+
+    const ScheduleOptimizationSchema = z.object({
+      schedules: z.array(
+        z.object({
+          programId: z.string().optional(),
+          programName: z.string().optional(),
+          schedule: z.string(),
+          mode: z.string().optional(),
+          location: z.string().optional(),
+          rationale: z.string().optional(),
+        })
+      ),
+    });
+
+    let schedules: Array<{
+      programId: string;
+      programName: string;
+      schedule: string;
+      mode: string;
+      location: string;
+      rationale: string;
+    }> = [];
+
+    // Attempt AI Generation via AIOrchestrator
+    try {
+      const prompt = `You are the Chief Academic Timetable Officer for STEMPACT Academy in Ile-Ife, Nigeria.
+Configure conflict-free, pedagogically optimal class timetables and delivery modes for the following intake programs:
+${JSON.stringify(programs, null, 2)}
+
+Location: ${defaultLocation}
+Timing Preference: ${preferredTiming}
+
+Rules:
+1. Software & AI programs thrive on 3-day hybrid evening formats (4-7pm WAT) so polytechnic/university students have zero class conflict.
+2. Hardware, Robotics & Electronics require Saturday morning physical bench lab sessions (10am-2pm).
+3. Solar & Clean Energy requires morning/daylight hours for solar field workshops.
+4. Teen & Junior programs must be strictly Saturdays.
+
+Return a JSON object containing a "schedules" array of objects with keys: "programId", "programName", "schedule", "mode", "location", "rationale".`;
+
+      const aiRes = await AIOrchestrator.generateStructured({
+        actionType: AIActionType.PROGRAM_GENERATION,
+        prompt,
+        schema: ScheduleOptimizationSchema,
+        contextData: { programs, preferredTiming, defaultLocation },
+        userId: req.user?.id || 'system',
+        userRole: req.user?.role || Role.SUPER_ADMIN,
+      });
+
+      if (aiRes.structured?.schedules && Array.isArray(aiRes.structured.schedules)) {
+        schedules = aiRes.structured.schedules.map((item: any, idx: number) => ({
+          programId: item.programId || programs[idx]?.programId || `prog-${idx}`,
+          programName: programs[idx]?.programName || item.programName || 'Program Track',
+          schedule: item.schedule || getDisciplineSchedule(programs[idx]?.programName || '', programs[idx]?.programCode || '', idx).schedule,
+          mode: item.mode || 'Hybrid (Onsite Ile-Ife & Virtual)',
+          location: item.location || defaultLocation,
+          rationale: item.rationale || 'AI-optimized for learning retention and laboratory capacity.',
+        }));
+      } else {
+        throw new Error('AI output missing schedules array');
+      }
+    } catch (aiErr) {
+      // Fallback seamlessly to pedagogical rule-engine
+      schedules = programs.map((p: any, idx: number) => {
+        const disc = getDisciplineSchedule(p.programName || '', p.programCode || '', idx);
+        return {
+          programId: p.programId,
+          programName: p.programName,
+          schedule: disc.schedule,
+          mode: disc.mode,
+          location: defaultLocation,
+          rationale: disc.rationale,
+        };
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Generated ${schedules.length} optimal program class schedules.`,
+      schedules,
+    });
+  } catch (error: any) {
+    console.error('[optimizeSchedule error]:', error);
+    res.status(500).json({ message: error.message || 'Failed to optimize class schedule' });
+  }
+};
+
 

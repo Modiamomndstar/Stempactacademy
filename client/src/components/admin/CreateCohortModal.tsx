@@ -39,7 +39,21 @@ interface ProgramIntakeConfig {
   certificationFee: number;
   discountPercentage: number;
   status: 'OPEN' | 'UPCOMING' | 'CLOSED';
+  schedule: string;
+  mode: string;
+  location: string;
+  scheduleRationale?: string;
 }
+
+export const SCHEDULE_PRESETS = [
+  { label: 'Weekday Evenings (Mon, Wed, Fri • 4:00 PM – 7:00 PM WAT)', value: 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)' },
+  { label: 'Weekend Intensive (Saturdays • 10:00 AM – 3:00 PM WAT)', value: 'Saturdays (10:00 AM – 3:00 PM WAT)' },
+  { label: 'Morning Immersion (Mon – Thu • 9:00 AM – 1:00 PM WAT)', value: 'Mondays to Thursdays (9:00 AM – 1:00 PM WAT)' },
+  { label: 'Hardware Lab (Wed 3:30–6:30 PM & Sat 10 AM–2 PM WAT)', value: 'Wednesdays (3:30 PM – 6:30 PM) & Saturdays (10:00 AM – 2:00 PM WAT)' },
+  { label: 'Solar Field Practicum (Mon & Thu • 9:00 AM – 1:00 PM WAT)', value: 'Mondays & Thursdays (9:00 AM – 1:00 PM Field Work)' },
+  { label: 'Youth Maker Space (Saturdays • 10:00 AM – 1:00 PM WAT)', value: 'Saturdays (10:00 AM – 1:00 PM WAT)' },
+  { label: 'Founder Sprints (Tue & Thu • 5:00 PM – 7:30 PM WAT)', value: 'Tuesdays & Thursdays (5:00 PM – 7:30 PM WAT)' },
+];
 
 export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
   isOpen,
@@ -54,6 +68,8 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [optimizingAllSchedules, setOptimizingAllSchedules] = useState(false);
+  const [optimizingProgId, setOptimizingProgId] = useState<string | null>(null);
 
   // Step 1: Academic Session & Intake Batch Identity
   const [academicSessionId, setAcademicSessionId] = useState(
@@ -116,11 +132,14 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
             certificationFee: 10000,
             discountPercentage: 0,
             status: 'OPEN',
+            schedule: schedule || 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
+            mode: mode || 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+            location: location || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State',
           },
         }));
       }
     }
-  }, [initialProgramId, programs]);
+  }, [initialProgramId, programs, schedule, mode, location]);
 
   // Distinct schools
   const distinctSchools = useMemo(() => {
@@ -163,6 +182,9 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
           certificationFee: 10000,
           discountPercentage: 0,
           status: 'OPEN',
+          schedule: schedule || 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
+          mode: mode || 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          location: location || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State',
         };
       }
       return next;
@@ -180,6 +202,79 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
         },
       };
     });
+  };
+
+  // AI Schedule Optimizer for All Selected Programs
+  const handleAIOptimizeAll = async () => {
+    const configs = Object.values(activeConfigs);
+    if (configs.length === 0) return;
+    setOptimizingAllSchedules(true);
+    setError('');
+    try {
+      const res = await api.optimizeCohortSchedule({
+        programs: configs.map((c) => ({
+          programId: c.programId,
+          programName: c.programName,
+          programCode: c.programCode,
+          schoolName: c.schoolName,
+        })),
+        hubLocation: location,
+      });
+
+      if (res?.schedules && Array.isArray(res.schedules)) {
+        setActiveConfigs((prev) => {
+          const next = { ...prev };
+          res.schedules.forEach((s: any) => {
+            if (next[s.programId]) {
+              next[s.programId] = {
+                ...next[s.programId],
+                schedule: s.schedule,
+                mode: s.mode || next[s.programId].mode,
+                location: s.location || next[s.programId].location,
+                scheduleRationale: s.rationale,
+              };
+            }
+          });
+          return next;
+        });
+      }
+    } catch (err: any) {
+      console.error('AI optimization failed:', err);
+      setError('AI schedule optimization failed. Using preset timetables.');
+    } finally {
+      setOptimizingAllSchedules(false);
+    }
+  };
+
+  // AI Schedule Optimizer for a Single Program
+  const handleAIOptimizeSingle = async (progId: string) => {
+    const cfg = activeConfigs[progId];
+    if (!cfg) return;
+    setOptimizingProgId(progId);
+    try {
+      const res = await api.optimizeCohortSchedule({
+        programs: [
+          {
+            programId: cfg.programId,
+            programName: cfg.programName,
+            programCode: cfg.programCode,
+            schoolName: cfg.schoolName,
+          },
+        ],
+        hubLocation: cfg.location || location,
+      });
+
+      if (res?.schedules?.[0]) {
+        const s = res.schedules[0];
+        updateConfig(progId, 'schedule', s.schedule);
+        if (s.mode) updateConfig(progId, 'mode', s.mode);
+        if (s.rationale) updateConfig(progId, 'scheduleRationale', s.rationale);
+      }
+    } catch (err: any) {
+      console.error('Single program schedule optimize failed:', err);
+    } finally {
+      setOptimizingProgId(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -226,9 +321,9 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
           registrationFee: Number(cfg.registrationFee),
           certificationFee: Number(cfg.certificationFee),
           discountPercentage: Number(cfg.discountPercentage),
-          schedule: schedule.trim(),
-          mode: mode.trim(),
-          location: location.trim(),
+          schedule: (cfg.schedule || schedule).trim(),
+          mode: (cfg.mode || mode).trim(),
+          location: (cfg.location || location).trim(),
           instructorName: instructorName.trim(),
           startDate: new Date(startDate).toISOString(),
           endDate: new Date(endDate).toISOString(),
@@ -492,24 +587,41 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
             </div>
           </div>
 
-          {/* STEP 3: INDIVIDUAL PROGRAM INTAKE CAPACITY & PRICING CUSTOMIZATION */}
+          {/* STEP 3: INDIVIDUAL PROGRAM INTAKE CAPACITY, FEES & SCHEDULE CUSTOMIZATION */}
           {selectedCount > 0 && (
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-purple-600" />
-                  <span>Step 3: Customize Intake Capacity & Fees for Each Program</span>
-                </h4>
-                <span className="text-[11px] text-slate-500">
-                  Set program-specific maximum capacity limits and open/closed registration status.
-                </span>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4 text-purple-600" />
+                    <span>Step 3: Customize Capacity, Fees & Timetable for Each Program</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Configure seats, tuition, registration status, and distinct conflict-free class schedules for every program.
+                  </p>
+                </div>
+
+                {/* AI Schedule Optimizer Global Button */}
+                <button
+                  type="button"
+                  onClick={handleAIOptimizeAll}
+                  disabled={optimizingAllSchedules}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-sm flex items-center gap-2 transition cursor-pointer disabled:opacity-60"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${optimizingAllSchedules ? 'animate-spin' : ''}`} />
+                  <span>
+                    {optimizingAllSchedules
+                      ? 'AI Optimizing Conflict-Free Timetables...'
+                      : '✨ Auto-Generate Optimal Schedules with AI'}
+                  </span>
+                </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {Object.values(activeConfigs).map((cfg) => (
                   <div
                     key={cfg.programId}
-                    className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3 shadow-xs"
+                    className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3.5 shadow-xs"
                   >
                     <div className="flex items-start justify-between flex-wrap gap-2">
                       <div>
@@ -561,7 +673,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                           max="500"
                           value={cfg.maxCapacity}
                           onChange={(e) => updateConfig(cfg.programId, 'maxCapacity', Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-blue-600 text-sm"
                           required
                         />
                       </div>
@@ -576,7 +688,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                           step="1000"
                           value={cfg.trainingFee}
                           onChange={(e) => updateConfig(cfg.programId, 'trainingFee', Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono font-bold focus:outline-blue-600 text-sm"
                         />
                       </div>
 
@@ -590,7 +702,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                           step="500"
                           value={cfg.registrationFee}
                           onChange={(e) => updateConfig(cfg.programId, 'registrationFee', Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono focus:outline-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono focus:outline-blue-600 text-sm"
                         />
                       </div>
 
@@ -604,9 +716,87 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                           max="100"
                           value={cfg.discountPercentage}
                           onChange={(e) => updateConfig(cfg.programId, 'discountPercentage', Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono focus:outline-blue-600"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-mono focus:outline-blue-600 text-sm"
                         />
                       </div>
+                    </div>
+
+                    {/* Program Timetable & Class Schedule Controls */}
+                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700 space-y-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Class Timetable & Schedule Configuration</span>
+                        </label>
+
+                        <div className="flex items-center gap-2">
+                          {/* Schedule Presets */}
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                updateConfig(cfg.programId, 'schedule', e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 cursor-pointer"
+                          >
+                            <option value="">Preset Timetables...</option>
+                            {SCHEDULE_PRESETS.map((p, idx) => (
+                              <option key={idx} value={p.value}>
+                                {p.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Per-Program AI Optimizer Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleAIOptimizeSingle(cfg.programId)}
+                            disabled={optimizingProgId === cfg.programId}
+                            className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer disabled:opacity-60"
+                          >
+                            <Sparkles className={`w-3 h-3 ${optimizingProgId === cfg.programId ? 'animate-spin' : ''}`} />
+                            <span>{optimizingProgId === cfg.programId ? 'Optimizing...' : 'AI Suggest'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="sm:col-span-2 space-y-1">
+                          <input
+                            type="text"
+                            value={cfg.schedule}
+                            onChange={(e) => updateConfig(cfg.programId, 'schedule', e.target.value)}
+                            placeholder="e.g. Tuesdays & Thursdays (5:00 PM – 8:00 PM WAT) + Saturday Lab"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-medium text-xs focus:outline-blue-600"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <select
+                            value={cfg.mode}
+                            onChange={(e) => updateConfig(cfg.programId, 'mode', e.target.value)}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium focus:outline-blue-600 bg-white dark:bg-slate-800"
+                          >
+                            <option value="Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)">Hybrid (Onsite & Virtual)</option>
+                            <option value="100% In-Person (STEMPACT Physical Hub, Ile-Ife)">100% In-Person Physical Hub</option>
+                            <option value="100% Virtual Interactive (Live Online & Mentorship)">100% Virtual Interactive</option>
+                            <option value="Executive Weekend Intensive (Hybrid)">Executive Weekend Intensive</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* AI Schedule Rationale Display */}
+                      {cfg.scheduleRationale && (
+                        <div className="text-[11px] text-purple-700 dark:text-purple-300 bg-purple-50/70 dark:bg-purple-950/30 p-2 rounded-xl border border-purple-200/70 flex items-start gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600" />
+                          <span>
+                            <strong>AI Rationale:</strong> {cfg.scheduleRationale}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
