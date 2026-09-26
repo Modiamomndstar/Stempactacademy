@@ -109,8 +109,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'Faculty Workstation',
           items: [
             { key: 'cohorts', label: 'Assigned Cohorts & Rosters', icon: BookOpen, route: '/portal/instructor' },
+            { key: 'sessions', label: 'Class Sessions & Timetable', icon: Calendar, route: '/portal/instructor' },
             { key: 'attendance', label: 'Mark Class Attendance', icon: CheckCircle2, route: '/portal/instructor', badge: 'Live', badgeColor: 'bg-emerald-600' },
             { key: 'grading', label: 'Submissions & Grading', icon: ClipboardList, route: '/portal/instructor', badge: 'Tasks', badgeColor: 'bg-amber-600' },
+            { key: 'competencies', label: 'Competency Evaluation', icon: Award, route: '/portal/instructor' },
           ],
         },
       ];
@@ -123,6 +125,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'Guardian Overview',
           items: [
             { key: 'overview', label: 'Enrolled Wards Overview', icon: Users, route: '/portal/parent' },
+            { key: 'progress', label: 'Academic & Curriculum Progress', icon: BookOpen, route: '/portal/parent' },
+            { key: 'assignments', label: 'Assignments & Grades', icon: ClipboardList, route: '/portal/parent' },
+            { key: 'attendance', label: 'Attendance Records', icon: CheckCircle2, route: '/portal/parent' },
+            { key: 'finance', label: 'Tuition & Payment Schedule', icon: CreditCard, route: '/portal/parent' },
           ],
         },
       ];
@@ -135,11 +141,13 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'Learning Ledger',
           items: [
             { key: 'overview', label: 'My Learning Cockpit', icon: TrendingUp, route: '/portal/student' },
-            { key: 'curriculum', label: 'Modules & Syllabus', icon: BookOpen, route: '/portal/student' },
-            { key: 'attendance', label: 'Attendance Record', icon: CheckCircle2, route: '/portal/student' },
+            { key: 'curriculum', label: 'Curriculum & Lessons', icon: BookOpen, route: '/portal/student' },
             { key: 'assignments', label: 'Assignments & Submissions', icon: ClipboardList, route: '/portal/student' },
-            { key: 'invoices', label: 'Tuition Fees & Receipts', icon: CreditCard, route: '/portal/student' },
-            { key: 'certificates', label: 'Certificates & Credentials', icon: Award, route: '/portal/student' },
+            { key: 'projects', label: 'Practical Projects', icon: FolderGit2, route: '/portal/student' },
+            { key: 'competencies', label: 'Competency Development', icon: Award, route: '/portal/student' },
+            { key: 'attendance', label: 'Attendance Record', icon: CheckCircle2, route: '/portal/student' },
+            { key: 'finance', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/student' },
+            { key: 'completion', label: 'Completion & Readiness', icon: GraduationCap, route: '/portal/student' },
           ],
         },
       ];
@@ -166,8 +174,10 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'Program Operations',
           items: [
             { key: 'overview', label: 'Program Pacing & Cohorts', icon: Compass, route: '/portal/coordinator' },
-            { key: 'cohorts', label: 'Cohort Rosters & Capacity', icon: Calendar, route: '/portal/coordinator' },
-            { key: 'attendance', label: 'Attendance Monitoring', icon: CheckCircle2, route: '/portal/coordinator' },
+            { key: 'cohorts', label: 'Cohort Rosters & Capacity', icon: Users, route: '/portal/coordinator' },
+            { key: 'sessions', label: 'Timetable & Sessions', icon: Calendar, route: '/portal/coordinator' },
+            { key: 'attendance', label: 'Attendance Oversight', icon: CheckCircle2, route: '/portal/coordinator' },
+            { key: 'progress', label: 'Academic Delivery Progress', icon: BookOpen, route: '/portal/coordinator' },
           ],
         },
       ];

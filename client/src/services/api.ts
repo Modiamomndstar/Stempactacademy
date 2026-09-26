@@ -106,12 +106,35 @@ export const api = {
     apiRequest('/admissions/issue', { method: 'POST', body: JSON.stringify(data) }),
   getAdmissions: () => apiRequest('/admissions'),
   getAdmissionByNumber: (number: string) => apiRequest(`/admissions/${number}`),
+  acceptAdmission: (admissionId: string) =>
+    apiRequest(`/admissions/${admissionId}/accept`, { method: 'POST' }),
+  declineAdmission: (admissionId: string, reason?: string) =>
+    apiRequest(`/admissions/${admissionId}/decline`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getAdmissionDocument: (admissionId: string) =>
+    apiRequest(`/admissions/${admissionId}/document`),
+  checkEligibility: (admissionId: string) =>
+    apiRequest(`/admissions/${admissionId}/eligibility`),
+  enrollStudent: (admissionId: string, notes?: string) =>
+    apiRequest(`/admissions/${admissionId}/enroll`, { method: 'POST', body: JSON.stringify({ notes }) }),
+  deliverAdmissionLetter: (admissionId: string) =>
+    apiRequest(`/admissions/${admissionId}/deliver-letter`, { method: 'POST' }),
+  withdrawAdmission: (admissionId: string, reason: string) =>
+    apiRequest(`/admissions/${admissionId}/withdraw`, { method: 'POST', body: JSON.stringify({ reason }) }),
 
-  // Portals
+  // Portals: Student, Parent, Instructor, Coordinator
   getStudentDashboard: () => apiRequest('/student/dashboard'),
+  getStudentCurriculum: () => apiRequest('/student/curriculum'),
+  recordLessonProgress: (lessonId: string, data: { status?: string; timeSpentMinutes?: number; notes?: string }) =>
+    apiRequest(`/student/lessons/${lessonId}/progress`, { method: 'POST', body: JSON.stringify(data) }),
+  getCompletionReadiness: (studentId?: string) =>
+    apiRequest(`/student/completion-readiness${studentId ? `?studentId=${studentId}` : ''}`),
   getParentDashboard: () => apiRequest('/parent/dashboard'),
+  getWardAcademicRecords: (studentId: string) =>
+    apiRequest(`/parent/wards/${studentId}/academic-records`),
   getInstructorDashboard: () => apiRequest('/instructor/dashboard'),
   createClassSession: (data: any) => apiRequest('/instructor/sessions', { method: 'POST', body: JSON.stringify(data) }),
+  evaluateCompetency: (data: { studentId: string; competencyId: string; status: 'ACQUIRED' | 'IN_PROGRESS' | 'NEEDS_PRACTICE' | string; score?: number; evidenceNotes?: string }) =>
+    apiRequest('/instructor/competencies/evaluate', { method: 'POST', body: JSON.stringify(data) }),
 
   // Attendance
   markAttendance: (data: { classSessionId: string; records: { studentId: string; status: string; remarks?: string }[] }) =>
@@ -120,9 +143,14 @@ export const api = {
 
   // Assignments
   createAssignment: (data: any) => apiRequest('/assignments', { method: 'POST', body: JSON.stringify(data) }),
-  submitAssignment: (data: any) => apiRequest('/assignments/submit', { method: 'POST', body: JSON.stringify(data) }),
+  submitAssignment: (data: { assignmentId: string; content: string; attachmentUrl?: string }) =>
+    apiRequest('/assignments/submit', { method: 'POST', body: JSON.stringify(data) }),
   gradeSubmission: (submissionId: string, data: { grade: number; feedback?: string }) =>
     apiRequest(`/assignments/submissions/${submissionId}/grade`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getAssignmentSubmissions: (assignmentId: string) =>
+    apiRequest(`/assignments/${assignmentId}/submissions`),
+  getMySubmissions: () =>
+    apiRequest('/assignments/my-submissions'),
 
   // Projects
   getProjects: (params: Record<string, string> = {}) => {
@@ -130,6 +158,10 @@ export const api = {
     return apiRequest(`/projects${query ? `?${query}` : ''}`);
   },
   createProject: (data: any) => apiRequest('/projects', { method: 'POST', body: JSON.stringify(data) }),
+  updateProjectEvidence: (projectId: string, data: { githubUrl?: string; liveDemoUrl?: string; thumbnail?: string; description?: string; skills?: string; tools?: string }) =>
+    apiRequest(`/projects/${projectId}/evidence`, { method: 'PATCH', body: JSON.stringify(data) }),
+  evaluateProject: (projectId: string, data: { score: number; feedback?: string }) =>
+    apiRequest(`/projects/${projectId}/evaluate`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Certificates & Public Verification
   verifyCertificate: (certNumber: string) => apiRequest(`/certificates/verify/${certNumber}`),
@@ -157,6 +189,26 @@ export const api = {
     apiRequest(`/payments/bank-transfers/${paymentId}/approve`, { method: 'POST' }),
   rejectBankTransfer: (paymentId: string, rejectionReason?: string) =>
     apiRequest(`/payments/bank-transfers/${paymentId}/reject`, { method: 'POST', body: JSON.stringify({ rejectionReason }) }),
+  getFinancialClearance: (admissionId: string) =>
+    apiRequest(`/payments/clearance/${admissionId}`),
+  grantFinancialWaiver: (data: { admissionId: string; reason: string; waiverAmount?: number }) =>
+    apiRequest('/payments/waivers', { method: 'POST', body: JSON.stringify(data) }),
+  approvePaymentArrangement: (data: {
+    admissionId: string;
+    planType: string;
+    requiredInitialPayment?: number;
+    installmentSchedule?: any;
+    fundingSource?: string;
+    sponsorName?: string;
+    notes?: string;
+  }) => apiRequest('/payments/arrangements', { method: 'POST', body: JSON.stringify(data) }),
+  applyFinancialAdjustment: (data: {
+    invoiceId: string;
+    adjustmentType: string;
+    amount: number;
+    reason: string;
+    sponsorDetails?: any;
+  }) => apiRequest('/payments/adjustments', { method: 'POST', body: JSON.stringify(data) }),
 
   // CMS
   getCMSContent: () => apiRequest('/cms/content'),
@@ -238,5 +290,15 @@ export const api = {
     const qs = query.toString();
     return apiRequest(`/ai/generations${qs ? `?${qs}` : ''}`);
   },
+  reviewAIDraft: (generationId: string, data: { action: 'APPROVE' | 'REJECT' | 'REQUEST_REVISION'; notes?: string; overrideOutput?: any; reviewNotes?: string }) =>
+    apiRequest(`/ai/drafts/${generationId}/review`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        action: data.action,
+        notes: data.notes || data.reviewNotes,
+        overrideOutput: data.overrideOutput,
+      }),
+    }),
+  getNotificationDeliveries: () => apiRequest('/notifications/deliveries'),
 };
 

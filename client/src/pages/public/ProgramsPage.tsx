@@ -95,7 +95,7 @@ export const ProgramsPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
           <Badge variant="blue">Program Catalog</Badge>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Explore All 50 Academic Programs
+            Explore All {programs.length > 0 ? programs.length : 51} Academic Programs
           </h1>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
             From foundation computing to autonomous robotics, renewable solar grids, AI models, and startup venture

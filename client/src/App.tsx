@@ -84,7 +84,7 @@ const AppShell: React.FC = () => {
       <Route path="/programs/:code" element={<ProgramDetailPage />} />
       <Route path="/cohorts" element={<CohortsPage />} />
       <Route path="/admissions" element={<AdmissionsPage />} />
-      <Route path="/apply" element={<RegisterPage />} />
+      <Route path="/apply" element={<ApplicationWizardPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/application-wizard" element={<ApplicationWizardPage />} />
       <Route path="/assessment" element={<AssessmentEnginePage />} />
@@ -103,8 +103,10 @@ const AppShell: React.FC = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/portal/login" element={<LoginPage />} />
       <Route path="/portal/student/login" element={<LoginPage />} />
+      <Route path="/admin-login" element={<AdminLoginPage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/portal/admin/login" element={<AdminLoginPage />} />
+      <Route path="/instructor-login" element={<InstructorLoginPage />} />
       <Route path="/instructor/login" element={<InstructorLoginPage />} />
       <Route path="/portal/instructor/login" element={<InstructorLoginPage />} />
 
@@ -172,6 +174,9 @@ const AppShell: React.FC = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="/applicant" element={<Navigate to="/portal/applicant" replace />} />
+      <Route path="/applicant/status" element={<Navigate to="/portal/applicant" replace />} />
+      <Route path="/applicant/dashboard" element={<Navigate to="/portal/applicant" replace />} />
 
       {/* Student Counselor & Support */}
       <Route

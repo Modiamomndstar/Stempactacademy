@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Assessment, AssessmentQuestion } from '../../types';
@@ -14,19 +14,25 @@ import {
   ArrowRight,
   ShieldCheck,
   Award,
+  Play,
+  X,
+  FileCheck,
 } from 'lucide-react';
 
 export const AssessmentEnginePage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const applicationId = searchParams.get('appId');
+  const applicationId = searchParams.get('appId') || searchParams.get('applicationId');
   const programId = searchParams.get('programId');
   const { user, portalRoute } = useAuth();
+  const navigate = useNavigate();
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [timeLeft, setTimeLeft] = useState<number>(1800); // 30 mins
+  const [timeLeft, setTimeLeft] = useState<number>(1800); // 30 mins default
+  const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [resultData, setResultData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -52,21 +58,21 @@ export const AssessmentEnginePage: React.FC = () => {
     fetchAssessment();
   }, [applicationId, programId]);
 
-  // Countdown Timer
+  // Countdown Timer (Only runs after user starts)
   useEffect(() => {
-    if (isSubmitted || loading || !assessment) return;
+    if (!hasStarted || isSubmitted || loading || !assessment) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          handleSubmit();
+          handleSubmitFinal();
           return 0;
         }
         return prev - 1;
-      })}
-    , 1000);
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isSubmitted, loading, assessment]);
+  }, [hasStarted, isSubmitted, loading, assessment]);
 
   const handleSelectOption = (questionId: string, optionText: string) => {
     setAnswers((prev) => ({
@@ -75,8 +81,9 @@ export const AssessmentEnginePage: React.FC = () => {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitFinal = async () => {
     if (!assessment) return;
+    setShowConfirmModal(false);
     setSubmitting(true);
     setErrorMsg('');
 
@@ -91,7 +98,8 @@ export const AssessmentEnginePage: React.FC = () => {
       setIsSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to submit assessment answers.');
+      console.error('Submit assessment error:', err);
+      setErrorMsg(err.message || 'Failed to submit assessment answers. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -103,16 +111,99 @@ export const AssessmentEnginePage: React.FC = () => {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  if (loading) return <LoadingSpinner message="Loading STEMPACT Diagnostic Assessment Engine..." />;
+  if (loading) {
+    return <LoadingSpinner message="Loading STEMPACT Diagnostic Placement Engine..." />;
+  }
 
   if (!assessment || !assessment.questions || assessment.questions.length === 0) {
     return (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+          <HelpCircle className="w-6 h-6" />
+        </div>
         <h2 className="text-xl font-bold text-slate-800">No Assessment Found</h2>
-        <p className="text-xs text-slate-500">Please start by submitting an online application first.</p>
-        <Link to="/apply" className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">
-          Go to Application
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Diagnostic assessments are linked to an active student application. Please start by submitting an online application first.
+        </p>
+        <Link to="/apply" className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md">
+          Start Application
         </Link>
+      </div>
+    );
+  }
+
+  // Pre-test Instructions Screen
+  if (!hasStarted) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4 space-y-8">
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 shadow-xl space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <Badge variant="blue">Diagnostic Placement Test</Badge>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
+                {assessment.title}
+              </h1>
+            </div>
+          </div>
+
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            This diagnostic placement assessment evaluates baseline competencies across digital literacy, analytical logic, mathematics, and problem-solving. Your results help the Academic Board recommend your optimal cohort level.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-400 font-bold uppercase text-[10px]">Questions</div>
+              <div className="text-base font-black text-slate-900 mt-0.5">
+                {assessment.questions.length} Items
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-400 font-bold uppercase text-[10px]">Time Limit</div>
+              <div className="text-base font-black text-blue-600 mt-0.5">
+                {assessment.durationMinutes || 30} Minutes
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-slate-400 font-bold uppercase text-[10px]">Format</div>
+              <div className="text-base font-black text-slate-900 mt-0.5">
+                Multiple Choice
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1.5">
+            <div className="font-bold flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-amber-700" />
+              <span>Assessment Rules & Security:</span>
+            </div>
+            <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-800">
+              <li>Ensure you have a stable internet connection in a quiet environment.</li>
+              <li>Once you click Start, the timer will begin countdown automatically.</li>
+              <li>You may navigate back and forth between questions before submitting.</li>
+              <li>Calculators and scratch pads are allowed. No external collaboration.</li>
+            </ul>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => setHasStarted(true)}
+              className="flex-1 py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Play className="w-4 h-4" />
+              <span>Start Assessment Now</span>
+            </button>
+            <Link
+              to="/portal/applicant"
+              className="py-3.5 px-6 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs text-center transition-colors"
+            >
+              Return to Portal
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -141,13 +232,13 @@ export const AssessmentEnginePage: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 border-b border-slate-200 pb-4">
               <div>
                 <div className="text-[10px] uppercase font-bold text-slate-400">Total Score</div>
-                <div className="text-2xl font-black text-slate-900">
+                <div className="text-2xl font-black text-slate-900 font-mono">
                   {resultData.attempt?.score} / {resultData.attempt?.maxScore}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] uppercase font-bold text-slate-400">Percentage</div>
-                <div className="text-2xl font-black text-blue-600">
+                <div className="text-2xl font-black text-blue-600 font-mono">
                   {resultData.attempt?.percentage}%
                 </div>
               </div>
@@ -172,7 +263,7 @@ export const AssessmentEnginePage: React.FC = () => {
                   Recommended Level: {resultData.attempt?.recommendedLevel}
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                  <strong>Evaluator Reason:</strong> {resultData.attempt?.recommendationReason}
+                  <strong>Evaluator Rationale:</strong> {resultData.attempt?.recommendationReason}
                 </p>
               </div>
             </div>
@@ -181,20 +272,17 @@ export const AssessmentEnginePage: React.FC = () => {
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
               <ShieldCheck className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <div>
-                <strong className="font-bold">Academic Review Safeguard:</strong> In accordance with STEMPACT
-                admissions policy, this automated placement recommendation is currently undergoing formal review and
-                ratification by an authorized Academic Administrator. Once approved, your official Admission Letter and
-                Student ID will be issued.
+                <strong className="font-bold">Academic Review Safeguard:</strong> In accordance with STEMPACT admissions policy, this automated placement recommendation is currently undergoing formal review and ratification by the Academic Board. Once ratified, your official Offer of Admission will be accessible in your portal.
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 pt-2">
             <Link
-              to={user ? portalRoute : '/portal/login'}
+              to="/portal/applicant"
               className="py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors"
             >
-              {user ? 'Go to My Portal' : 'Access Applicant Portal'}
+              Go to Applicant Portal
             </Link>
             <Link
               to="/"
@@ -217,7 +305,6 @@ export const AssessmentEnginePage: React.FC = () => {
   }
 
   const answeredCount = Object.keys(answers).length;
-  const isAnswered = answers[currentQ.id] !== undefined;
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-8">
@@ -227,16 +314,16 @@ export const AssessmentEnginePage: React.FC = () => {
           <Badge variant="blue">STEMPACT Placement Engine</Badge>
           <h1 className="text-xl sm:text-2xl font-black text-white">{assessment.title}</h1>
           <p className="text-xs text-slate-400">
-            Measures readiness across Digital Literacy, Logic, Math, and Technical Problem Solving.
+            Measures baseline readiness across Logic, Digital Problem Solving, and Applied Mathematics.
           </p>
         </div>
 
         {/* Live Timer */}
         <div className="flex items-center gap-3 bg-slate-800/90 border border-slate-700 rounded-2xl px-5 py-3 shrink-0">
-          <Clock className="w-5 h-5 text-amber-400" />
+          <Clock className={`w-5 h-5 ${timeLeft < 300 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
           <div>
             <div className="text-[10px] text-slate-400 uppercase font-bold">Time Remaining</div>
-            <div className="text-xl font-black text-white tracking-widest font-mono">
+            <div className={`text-xl font-black tracking-widest font-mono ${timeLeft < 300 ? 'text-rose-400' : 'text-white'}`}>
               {formatTimer(timeLeft)}
             </div>
           </div>
@@ -252,12 +339,13 @@ export const AssessmentEnginePage: React.FC = () => {
             return (
               <button
                 key={q.id}
+                type="button"
                 onClick={() => setCurrentQuestionIndex(idx)}
                 className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                   isCurrent
                     ? 'bg-blue-600 text-white ring-2 ring-blue-300'
                     : hasAnswered
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -272,7 +360,7 @@ export const AssessmentEnginePage: React.FC = () => {
       </div>
 
       {/* Active Question Card */}
-      <Card className="p-8 sm:p-10 space-y-6 shadow-md border-t-4 border-t-blue-600">
+      <Card className="p-8 sm:p-10 space-y-6 shadow-md border-t-4 border-t-blue-600 bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-extrabold text-[11px] uppercase">
@@ -282,7 +370,7 @@ export const AssessmentEnginePage: React.FC = () => {
               {currentQ.category.replace(/_/g, ' ')}
             </span>
           </div>
-          <span className="text-xs font-bold text-amber-600">+{currentQ.points} Points</span>
+          <span className="text-xs font-bold text-amber-600 font-mono">+{currentQ.points} Points</span>
         </div>
 
         {/* Question Prompt */}
@@ -300,9 +388,9 @@ export const AssessmentEnginePage: React.FC = () => {
                   key={oIdx}
                   type="button"
                   onClick={() => handleSelectOption(currentQ.id, opt)}
-                  className={`w-full text-left p-4 rounded-xl text-xs font-medium border transition-all flex items-center justify-between ${
+                  className={`w-full text-left p-4 rounded-xl text-xs font-medium border transition-all flex items-center justify-between cursor-pointer ${
                     selected
-                      ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-sm'
+                      ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-xs'
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
@@ -323,10 +411,10 @@ export const AssessmentEnginePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Alert Banner */}
+        {/* Error Alert */}
         {errorMsg && (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -337,7 +425,7 @@ export const AssessmentEnginePage: React.FC = () => {
             type="button"
             disabled={currentQuestionIndex === 0 || submitting}
             onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+            className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
           >
             Previous
           </button>
@@ -347,7 +435,7 @@ export const AssessmentEnginePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCurrentQuestionIndex((prev) => Math.min(assessment.questions.length - 1, prev + 1))}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5"
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Next Question</span>
                 <ArrowRight className="w-4 h-4" />
@@ -356,16 +444,68 @@ export const AssessmentEnginePage: React.FC = () => {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit}
-                className="px-7 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
+                onClick={() => setShowConfirmModal(true)}
+                className="px-7 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-2 shadow-md disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                <span>{submitting ? 'Submitting Answers...' : 'Submit Assessment'}</span>
+                <span>Submit Assessment</span>
               </button>
             )}
           </div>
         </div>
       </Card>
+
+      {/* Confirmation Modal before Submit */}
+      {showConfirmModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-blue-600" />
+                <span>Confirm Assessment Submission</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              You have answered <strong>{answeredCount}</strong> of <strong>{assessment.questions.length}</strong> questions.
+              {answeredCount < assessment.questions.length && (
+                <span className="block text-amber-700 font-semibold mt-1">
+                  Warning: You have {assessment.questions.length - answeredCount} unanswered question(s). Unanswered questions score 0 points.
+                </span>
+              )}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Review Answers
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleSubmitFinal}
+                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm"
+              >
+                {submitting ? 'Submitting...' : 'Confirm & Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,42 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
 import { AIProgramGeneratorModal } from '../../components/AIProgramGeneratorModal';
 import { CohortAnalysisModal } from '../../components/CohortAnalysisModal';
+import { AdmissionsManager } from '../../components/admin/AdmissionsManager';
+import { FinanceManager } from '../../components/admin/FinanceManager';
+import { AcademicOperationsManager } from '../../components/admin/AcademicOperationsManager';
+import { CertificateManager } from '../../components/admin/CertificateManager';
+import { AIAdminManager } from '../../components/admin/AIAdminManager';
+import { NotificationDeliveriesManager } from '../../components/admin/NotificationDeliveriesManager';
 import {
   TrendingUp,
   Users,
   BookOpen,
-  Calendar,
   DollarSign,
   ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
   Plus,
-  ArrowRight,
   Sparkles,
   Award,
   Layers,
-  FileText,
-  Filter,
-  Check,
-  X,
-  CreditCard,
-  Edit,
-  ExternalLink,
   Send,
   ShieldAlert,
   GraduationCap,
   Copy,
-  Key,
   Building,
+  RefreshCw,
+  Mail,
+  UserCheck,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
-  const { user, isSuperAdmin, isCoordinatorAdmin } = useAuth();
+  const {
+    user,
+    isSuperAdmin,
+    isAcademicAdmin,
+    isFinanceAdmin,
+    isAdmissionsAdmin,
+    isCoordinator,
+    isContentManager,
+    isMarketingManager,
+  } = useAuth();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Primary Data Collections
   const [stats, setStats] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [pendingPlacements, setPendingPlacements] = useState<any[]>([]);
@@ -47,94 +57,22 @@ export const AdminDashboardPage: React.FC = () => {
   const [admins, setAdmins] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
+  const [aiGenerations, setAiGenerations] = useState<any[]>([]);
+  const [notificationDeliveries, setNotificationDeliveries] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<
-    | 'analytics'
-    | 'admins'
-    | 'instructors'
-    | 'placements'
-    | 'applications'
-    | 'cohorts'
-    | 'programs'
-    | 'invoices'
-    | 'transfers'
-    | 'certificates'
-    | 'cms'
-    | 'audit'
-  >('analytics');
-
-  const [programSchoolFilter, setProgramSchoolFilter] = useState('');
-  const [programStatusFilter, setProgramStatusFilter] = useState('');
-  const [programPriceMinFilter, setProgramPriceMinFilter] = useState('');
-  const [programPriceMaxFilter, setProgramPriceMaxFilter] = useState('');
-
-  const [cohortYearFilter, setCohortYearFilter] = useState('');
-  const [cohortStatusFilter, setCohortStatusFilter] = useState('');
-  const [selectedCohortAnalysis, setSelectedCohortAnalysis] = useState<string | null>(null);
-
-  // Computed filtered arrays
-  const filteredPrograms = programs.filter(p => {
-    if (programSchoolFilter && p.school?.code !== programSchoolFilter) return false;
-    if (programStatusFilter && p.status !== programStatusFilter) return false;
-    if (programPriceMinFilter || programPriceMaxFilter) {
-      const min = programPriceMinFilter ? Number(programPriceMinFilter) : 0;
-      const max = programPriceMaxFilter ? Number(programPriceMaxFilter) : Infinity;
-      const hasMatchingCohort = p.cohorts?.some((c: any) => c.trainingFee >= min && c.trainingFee <= max);
-      if (!hasMatchingCohort) return false;
-    }
-    return true;
-  });
-
-  const filteredCohorts = cohorts.filter(c => {
-    if (cohortStatusFilter && c.status !== cohortStatusFilter) return false;
-    if (cohortYearFilter && c.academicSession?.name !== cohortYearFilter) return false;
-    return true;
-  });
-
-  // Modal / Review States
+  // Global action notifications
   const [actionSuccess, setActionSuccess] = useState<string>('');
-  const [reviewingPlacement, setReviewingPlacement] = useState<any | null>(null);
-  const [approvedLevelInput, setApprovedLevelInput] = useState<string>('Level 2 (Accelerated)');
-  const [adminNotesInput, setAdminNotesInput] = useState<string>('Approved following diagnostic assessment review.');
   const [processingAction, setProcessingAction] = useState<boolean>(false);
 
-  // New Announcement / CMS state
-  const [announcementTitle, setAnnouncementTitle] = useState('');
-  const [announcementContent, setAnnouncementContent] = useState('');
-
-  // Create Admin Modal State
-  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
-  const [adminFormData, setAdminFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    phone: '',
-    role: 'COORDINATOR_ADMIN' as 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN',
-    password: '',
-  });
-
-  // Create Instructor Modal State
-  const [showCreateInstructorModal, setShowCreateInstructorModal] = useState(false);
-  const [instructorFormData, setInstructorFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    username: '',
-    phone: '',
-    specialization: 'Software Engineering & AI',
-    qualification: 'B.Sc Computer Science / Software Engineering',
-    assignedSchools: 'School of Software & AI',
-    bio: 'Experienced faculty member mentoring learners in hands-on industry practices.',
-    password: '',
-  });
-  const [createdInstructorCard, setCreatedInstructorCard] = useState<any | null>(null);
-  const [copiedSuccess, setCopiedSuccess] = useState(false);
+  // Modals & Sub-actions
+  const [selectedCohortAnalysis, setSelectedCohortAnalysis] = useState<string | null>(null);
   const [showAIProgramModal, setShowAIProgramModal] = useState(false);
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [showCreateInstructorModal, setShowCreateInstructorModal] = useState(false);
 
-  // Cohort Fee & Pricing Modal State
+  // Cohort Fee Edit Modal State
   const [editingCohort, setEditingCohort] = useState<any | null>(null);
   const [cohortFeeForm, setCohortFeeForm] = useState({
     trainingFee: 65000,
@@ -147,6 +85,61 @@ export const AdminDashboardPage: React.FC = () => {
     mode: 'Hybrid (Onsite Ile-Ife & Virtual)',
     installmentPlan: 'full',
   });
+
+  // Admin Creation Form
+  const [adminFormData, setAdminFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    username: '',
+    phone: '',
+    role: 'COORDINATOR_ADMIN' as 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN',
+    password: '',
+  });
+
+  // Faculty Onboarding Form
+  const [instructorFormData, setInstructorFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    username: '',
+    phone: '',
+    specialization: 'Software Engineering & AI',
+    qualification: 'B.Sc Computer Science / Software Engineering',
+    assignedSchools: 'School of Software & AI',
+    bio: 'Experienced faculty member mentoring learners in hands-on industry practices.',
+    password: '',
+  });
+
+  // Announcements & CMS State
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementContent, setAnnouncementContent] = useState('');
+
+  // Extract enrolled students list from invoices and certificates for readiness evaluation
+  const gatheredStudents = useMemo(() => {
+    const map = new Map<string, any>();
+    invoices.forEach((inv) => {
+      if (inv.student && inv.student.id) {
+        map.set(inv.student.id, {
+          id: inv.student.id,
+          studentIdNumber: inv.student.studentIdNumber,
+          user: inv.student.user,
+          cohort: inv.application?.cohort,
+        });
+      }
+    });
+    certificates.forEach((c) => {
+      if (c.student && c.student.id && !map.has(c.student.id)) {
+        map.set(c.student.id, {
+          id: c.student.id,
+          studentIdNumber: c.student.studentIdNumber,
+          user: c.student.user,
+          cohort: c.student.cohort,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [invoices, certificates]);
 
   const loadAllData = async () => {
     try {
@@ -162,31 +155,37 @@ export const AdminDashboardPage: React.FC = () => {
         certsRes,
         transfersRes,
         auditRes,
+        aiRes,
+        deliveriesRes,
       ] = await Promise.all([
-        api.getAdminStats(),
-        api.getApplications(),
-        api.getPendingPlacements(),
-        api.getCohorts(),
-        api.getPrograms(),
-        api.getInvoices(),
+        api.getAdminStats().catch(() => null),
+        api.getApplications().catch(() => ({ applications: [] })),
+        api.getPendingPlacements().catch(() => ({ placements: [] })),
+        api.getCohorts().catch(() => ({ cohorts: [] })),
+        api.getPrograms().catch(() => ({ programs: [] })),
+        api.getInvoices().catch(() => ({ invoices: [] })),
         api.getAdmins().catch(() => ({ admins: [] })),
         api.getInstructors().catch(() => ({ instructors: [] })),
         api.getCertificates().catch(() => ({ certificates: [] })),
         api.getBankTransfers().catch(() => ({ payments: [] })),
         api.getAuditLogs({ limit: 50 }).catch(() => ({ logs: [] })),
+        api.getAIGenerations().catch(() => ({ data: [] })),
+        api.getNotificationDeliveries().catch(() => ({ data: [] })),
       ]);
 
       setStats(statsRes);
-      setApplications(appsRes.applications || []);
-      setPendingPlacements(placementsRes.placements || []);
-      setCohorts(cohortsRes.cohorts || []);
-      setPrograms(progRes.programs || []);
-      setInvoices(invRes.invoices || []);
-      setAdmins(adminsRes.admins || []);
-      setInstructors(instructorsRes.instructors || []);
-      setCertificates(certsRes.certificates || []);
-      setBankTransfers(transfersRes.payments || []);
-      setAuditLogs(auditRes.logs || []);
+      setApplications(appsRes?.applications || []);
+      setPendingPlacements(placementsRes?.placements || []);
+      setCohorts(cohortsRes?.cohorts || []);
+      setPrograms(progRes?.programs || []);
+      setInvoices(invRes?.invoices || []);
+      setAdmins(adminsRes?.admins || []);
+      setInstructors(instructorsRes?.instructors || []);
+      setCertificates(certsRes?.certificates || []);
+      setBankTransfers(transfersRes?.payments || []);
+      setAuditLogs(auditRes?.logs || []);
+      setAiGenerations(aiRes?.data || []);
+      setNotificationDeliveries(deliveriesRes?.data || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -198,58 +197,107 @@ export const AdminDashboardPage: React.FC = () => {
     loadAllData();
   }, []);
 
-  // 1. Approve Placement
-  const handleApprovePlacement = async (placementId: string) => {
-    setProcessingAction(true);
-    try {
-      await api.reviewPlacement(placementId, {
-        action: 'APPROVE',
-        approvedLevel: approvedLevelInput,
-        adminNotes: adminNotesInput,
-      });
-      setActionSuccess('Placement approved by Academic Board! Ready for admission issuance.');
-      setReviewingPlacement(null);
-      await loadAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to approve placement');
-    } finally {
-      setProcessingAction(false);
-    }
+  // Canonical tab registry with role-based visibility
+  const availableTabs = useMemo(() => {
+    return [
+      { id: 'analytics', name: 'Executive Intelligence', icon: TrendingUp },
+      {
+        id: 'admissions',
+        name: `Admissions & Placements (${applications.length})`,
+        icon: Users,
+        visible: isSuperAdmin || isAdmissionsAdmin || isAcademicAdmin || isCoordinator,
+      },
+      {
+        id: 'academics',
+        name: `Academic Operations (${programs.length})`,
+        icon: BookOpen,
+        visible: isSuperAdmin || isAcademicAdmin || isCoordinator,
+      },
+      {
+        id: 'finance',
+        name: `Financial Ledger (${invoices.length})`,
+        icon: DollarSign,
+        visible: isSuperAdmin || isFinanceAdmin,
+      },
+      {
+        id: 'certificates',
+        name: `Certifications (${certificates.length})`,
+        icon: Award,
+        visible: isSuperAdmin || isAcademicAdmin || isCoordinator,
+      },
+      {
+        id: 'ai',
+        name: `AI Governance (${aiGenerations.length})`,
+        icon: Sparkles,
+        visible: isSuperAdmin || isAcademicAdmin || isCoordinator,
+      },
+      {
+        id: 'deliveries',
+        name: `Communications Outbox (${notificationDeliveries.length})`,
+        icon: Send,
+        visible: isSuperAdmin || isAcademicAdmin || isAdmissionsAdmin || isCoordinator,
+      },
+      {
+        id: 'instructors',
+        name: `Faculty & Mentors (${instructors.length})`,
+        icon: GraduationCap,
+        visible: isSuperAdmin || isAcademicAdmin || isCoordinator,
+      },
+      {
+        id: 'admins',
+        name: `Admin Accounts (${admins.length})`,
+        icon: ShieldCheck,
+        visible: isSuperAdmin,
+      },
+      {
+        id: 'cms',
+        name: 'Campus Bulletins',
+        icon: Layers,
+        visible: isSuperAdmin || isContentManager || isMarketingManager || isCoordinator,
+      },
+      {
+        id: 'audit',
+        name: `Audit Trail (${auditLogs.length})`,
+        icon: ShieldAlert,
+        visible: isSuperAdmin,
+      },
+    ].filter((t) => t.visible !== false);
+  }, [
+    isSuperAdmin,
+    isAcademicAdmin,
+    isFinanceAdmin,
+    isAdmissionsAdmin,
+    isCoordinator,
+    isContentManager,
+    isMarketingManager,
+    applications.length,
+    programs.length,
+    invoices.length,
+    certificates.length,
+    aiGenerations.length,
+    notificationDeliveries.length,
+    instructors.length,
+    admins.length,
+    auditLogs.length,
+  ]);
+
+  // URL-synchronized active tab
+  const rawUrlTab = searchParams.get('tab');
+  const activeTab = useMemo(() => {
+    if (!rawUrlTab) return 'analytics';
+    if (['admissions', 'applications', 'placements'].includes(rawUrlTab)) return 'admissions';
+    if (['academics', 'programs', 'cohorts'].includes(rawUrlTab)) return 'academics';
+    if (['finance', 'invoices', 'transfers'].includes(rawUrlTab)) return 'finance';
+    if (['faculty', 'instructors'].includes(rawUrlTab)) return 'instructors';
+    const match = availableTabs.find((t) => t.id === rawUrlTab);
+    return match ? match.id : 'analytics';
+  }, [rawUrlTab, availableTabs]);
+
+  const handleTabChange = (newTabId: string) => {
+    setSearchParams({ tab: newTabId });
   };
 
-  // 2. Issue Admission
-  const handleIssueAdmission = async (applicationId: string, cohortId?: string) => {
-    setProcessingAction(true);
-    try {
-      const res = await api.issueAdmission({
-        applicationId,
-        cohortId,
-        assignedClass: 'Turing Computer Lab 1',
-      });
-      setActionSuccess(
-        `Admission issued successfully! Student ID: ${res.studentIdNumber} • Admission No: ${res.admissionNumber}`
-      );
-      await loadAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to issue admission');
-    } finally {
-      setProcessingAction(false);
-    }
-  };
-
-  // 3. Toggle Program Status
-  const handleToggleProgramStatus = async (programId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'OPEN_FOR_APPLICATION' ? 'FULL' : 'OPEN_FOR_APPLICATION';
-    try {
-      await api.updateProgramStatus(programId, { status: newStatus });
-      setActionSuccess(`Program status switched to ${newStatus}`);
-      await loadAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to update program status');
-    }
-  };
-
-  // 4. Broadcast Announcement
+  // Broadcast Announcement
   const handleBroadcastAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementTitle || !announcementContent) return;
@@ -268,36 +316,7 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Bank Transfer Actions
-  const handleApproveBankTransfer = async (paymentId: string) => {
-    setProcessingAction(true);
-    try {
-      await api.approveBankTransfer(paymentId);
-      setActionSuccess('Bank transfer payment verified & approved! Official receipt emitted.');
-      await loadAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to approve bank transfer');
-    } finally {
-      setProcessingAction(false);
-    }
-  };
-
-  const handleRejectBankTransfer = async (paymentId: string) => {
-    const reason = window.prompt('Enter reason for rejecting this payment:', 'Payment could not be verified on bank statement');
-    if (!reason) return;
-    setProcessingAction(true);
-    try {
-      await api.rejectBankTransfer(paymentId, reason);
-      setActionSuccess('Bank transfer has been rejected.');
-      await loadAllData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to reject bank transfer');
-    } finally {
-      setProcessingAction(false);
-    }
-  };
-
-  // 5. Handle Create Admin
+  // Create Admin
   const handleCreateAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessingAction(true);
@@ -324,19 +343,14 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // 6. Handle Create Instructor
+  // Create Instructor
   const handleCreateInstructorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessingAction(true);
     try {
       const res = await api.createInstructor(instructorFormData);
-      setCreatedInstructorCard({
-        instructor: res.instructor,
-        tempPassword: instructorFormData.password,
-        loginUrl: `${window.location.origin}/portal/instructor/login`,
-      });
       setActionSuccess(
-        `Faculty account created for ${instructorFormData.firstName} ${instructorFormData.lastName}! Staff Code: ${res.instructor.instructorProfile?.staffCode}`
+        `Faculty account created successfully for ${instructorFormData.firstName} ${instructorFormData.lastName}. Staff Code: ${res.instructor.staffCode || res.instructor.instructorProfile?.staffCode}. Account is now active in directory.`
       );
       setShowCreateInstructorModal(false);
       setInstructorFormData({
@@ -359,219 +373,198 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const copyInstructorCredentials = () => {
-    if (!createdInstructorCard) return;
-    const text = `STEMPACT ACADEMY - FACULTY CREDENTIALS
-Name: ${createdInstructorCard.instructor.firstName} ${createdInstructorCard.instructor.lastName}
-Staff Code: ${createdInstructorCard.instructor.instructorProfile?.staffCode}
-Username: ${createdInstructorCard.instructor.username}
-Email: ${createdInstructorCard.instructor.email}
-Password: ${createdInstructorCard.tempPassword}
-Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
-
-    navigator.clipboard.writeText(text);
-    setCopiedSuccess(true);
-    setTimeout(() => setCopiedSuccess(false), 3000);
-  };
-
-  // 7. Cohort Pricing & Fees Management Handlers
+  // Open Edit Cohort Pricing Modal
   const handleOpenEditCohort = (c: any) => {
     setEditingCohort(c);
     setCohortFeeForm({
-      trainingFee: c.trainingFee || 65000,
-      registrationFee: c.registrationFee || 5000,
-      certificationFee: c.certificationFee || 10000,
-      discountPercentage: c.discountPercentage || 0,
-      maxCapacity: c.maxCapacity || 30,
-      status: c.status || 'OPEN',
-      schedule: c.schedule || '',
-      mode: c.mode || 'Hybrid (Onsite Ile-Ife & Virtual)',
-      installmentPlan: 'full',
+      trainingFee: c.trainingFee ?? 65000,
+      registrationFee: c.registrationFee ?? 5000,
+      certificationFee: c.certificationFee ?? 10000,
+      discountPercentage: c.discountPercentage ?? 0,
+      maxCapacity: c.maxCapacity ?? 30,
+      status: c.status ?? 'OPEN',
+      schedule: c.schedule ?? '',
+      mode: c.mode ?? 'Hybrid (Onsite Ile-Ife & Virtual)',
+      installmentPlan: c.installmentPlan ?? 'full',
     });
   };
 
-  const handleSaveCohortPricing = async (e: React.FormEvent) => {
+  const handleSaveCohortFees = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCohort) return;
     setProcessingAction(true);
     try {
-      await api.updateCohort(editingCohort.id, {
-        trainingFee: Number(cohortFeeForm.trainingFee),
-        registrationFee: Number(cohortFeeForm.registrationFee),
-        certificationFee: Number(cohortFeeForm.certificationFee),
-        discountPercentage: Number(cohortFeeForm.discountPercentage),
-        maxCapacity: Number(cohortFeeForm.maxCapacity),
-        status: cohortFeeForm.status,
-        schedule: cohortFeeForm.schedule,
-        mode: cohortFeeForm.mode,
-      });
-      setActionSuccess(`Pricing & enrollment policies updated for cohort: ${editingCohort.name}!`);
+      await api.updateCohort(editingCohort.id, cohortFeeForm);
+      setActionSuccess(`Pricing & schedule updated for cohort ${editingCohort.name}!`);
       setEditingCohort(null);
       await loadAllData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update cohort pricing');
+      alert(err.message || 'Failed to update cohort fee configuration');
     } finally {
       setProcessingAction(false);
     }
   };
 
-  if (loading) return <LoadingSpinner message="Loading Executive Management Console..." />;
+  if (loading) {
+    return (
+      <PortalLayout>
+        <div className="py-24 flex flex-col items-center justify-center space-y-4">
+          <LoadingSpinner message="Connecting to STEMPACT Administrative Ledger & Operational APIs..." />
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
-    <PortalLayout activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as any)}>
-      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
-        {/* Top Header */}
-        <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center shrink-0 shadow-lg">
-              <ShieldAlert className="w-8 h-8" />
+    <PortalLayout>
+      <div className="space-y-8 max-w-7xl mx-auto pb-16">
+        {/* Header Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/5 pb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+              <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-800">
-                  EXECUTIVE ACADEMIC CONSOLE
-                </span>
-                <span className="text-xs font-bold text-slate-400">
-                  {user?.role.replace(/_/g, ' ')}
+                <h1 className="text-2xl font-black text-white tracking-tight">Executive Management Console</h1>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-brand-500/10 border border-brand-500/20 text-brand-300">
+                  {user?.role?.replace(/_/g, ' ') || 'Staff'}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white mt-1">
-                STEMPACT Administration Hub
-              </h1>
               <p className="text-xs text-slate-400">
                 Ile-Ife Campus Operations • Admissions Pipeline • Faculty Governance • Financial Ledger
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-2.5">
             <button
               onClick={() => loadAllData()}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition"
             >
-              Refresh Data
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh</span>
             </button>
             {isSuperAdmin && (
               <button
                 onClick={() => setShowCreateAdminModal(true)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition"
               >
                 <Plus className="w-4 h-4" />
                 <span>New Admin</span>
               </button>
             )}
-            <button
-              onClick={() => setShowCreateInstructorModal(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Instructor</span>
-            </button>
-            <button
-              onClick={() => setShowAIProgramModal(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5 transition-all"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-200" />
-              <span>AI Curriculum Architect</span>
-            </button>
+            {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+              <button
+                onClick={() => setShowCreateInstructorModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Onboard Faculty</span>
+              </button>
+            )}
+            {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+              <button
+                onClick={() => setShowAIProgramModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md transition"
+              >
+                <Sparkles className="w-4 h-4 text-purple-200" />
+                <span>Curriculum Architect</span>
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Global Action Banner */}
         {actionSuccess && (
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between">
             <span className="font-semibold">{actionSuccess}</span>
-            <button onClick={() => setActionSuccess('')} className="font-bold text-emerald-900">
-              ×
+            <button onClick={() => setActionSuccess('')} className="font-bold text-emerald-300 hover:text-white">
+              ✕
             </button>
           </div>
         )}
 
         {/* Horizontal Tab Navigation Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2 scrollbar-thin">
-          {[
-            { id: 'analytics', name: 'Executive KPIs' },
-            { id: 'admins', name: `Admin Accounts (${admins.length})`, superOnly: true },
-            { id: 'instructors', name: `Faculty & Instructors (${instructors.length})` },
-            { id: 'placements', name: `Placements Queue (${pendingPlacements.length})` },
-            { id: 'applications', name: `Admissions Pipeline (${applications.length})` },
-            { id: 'cohorts', name: `Cohorts (${cohorts.length})` },
-            { id: 'programs', name: `Programs (${programs.length})` },
-            { id: 'invoices', name: `Revenue (${invoices.length})` },
-            { id: 'transfers', name: `Bank Transfers (${bankTransfers.filter((t) => t.status === 'PENDING').length})` },
-            { id: 'certificates', name: `Certificates (${certificates.length})` },
-            { id: 'cms', name: 'CMS & Bulletins' },
-            { id: 'audit', name: `Audit Trail (${auditLogs.length})`, superOnly: true },
-          ]
-            .filter((tab) => !tab.superOnly || isSuperAdmin)
-            .map((tab) => (
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-white/5 pb-2 scrollbar-thin">
+          {availableTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
                 }`}
               >
-                {tab.name}
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.name}</span>
               </button>
-            ))}
+            );
+          })}
         </div>
 
         {/* TAB 1: EXECUTIVE ANALYTICS */}
         {activeTab === 'analytics' && stats && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fadeIn">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Card className="p-5 space-y-1">
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Total Applicants</span>
-                <div className="text-2xl font-black text-slate-900">{stats?.metrics?.totalApplicants || 0}</div>
-                <div className="text-[11px] text-blue-600 font-semibold">{stats?.metrics?.newApplicants || 0} New Pending</div>
-              </Card>
+                <div className="text-3xl font-black text-white mt-1">{stats?.metrics?.totalApplicants || 0}</div>
+                <div className="text-[11px] text-brand-400 font-semibold mt-1">
+                  {stats?.metrics?.newApplicants || 0} New Pending
+                </div>
+              </div>
 
-              <Card className="p-5 space-y-1">
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Admitted Learners</span>
-                <div className="text-2xl font-black text-emerald-600">{stats?.metrics?.admittedStudents || 0}</div>
-                <div className="text-[11px] text-slate-500 font-semibold">{stats?.metrics?.conversionRate || 0}% Conversion Rate</div>
-              </Card>
+                <div className="text-3xl font-black text-emerald-400 mt-1">{stats?.metrics?.admittedStudents || 0}</div>
+                <div className="text-[11px] text-slate-400 font-semibold mt-1">
+                  {stats?.metrics?.conversionRate || 0}% Conversion Rate
+                </div>
+              </div>
 
-              <Card className="p-5 space-y-1">
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Total Revenue Collected</span>
-                <div className="text-2xl font-black text-slate-900">
+                <div className="text-3xl font-black text-white mt-1">
                   ₦{(stats?.metrics?.totalRevenue || 0).toLocaleString()}
                 </div>
-                <div className="text-[11px] text-amber-600 font-semibold">
+                <div className="text-[11px] text-amber-400 font-semibold mt-1">
                   ₦{(stats?.metrics?.outstandingInvoices || stats?.metrics?.outstandingBalance || 0).toLocaleString()} Outstanding
                 </div>
-              </Card>
+              </div>
 
-              <Card className="p-5 space-y-1">
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Active Cohorts</span>
-                <div className="text-2xl font-black text-slate-900">
+                <div className="text-3xl font-black text-white mt-1">
                   {stats?.metrics?.activeCohorts || stats?.metrics?.cohortsCount || 0}
                 </div>
-                <div className="text-[11px] text-purple-600 font-semibold">
+                <div className="text-[11px] text-purple-400 font-semibold mt-1">
                   {stats?.metrics?.totalPrograms || stats?.metrics?.programsCount || 0} Academic Tracks
                 </div>
-              </Card>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="p-6 space-y-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm space-y-4">
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-brand-400" />
                   <span>Pipeline Distribution by Status</span>
                 </h3>
                 <div className="space-y-3">
                   {(stats?.applicationsByStatus || []).length > 0 ? (
                     (stats.applicationsByStatus || []).map((item: any) => (
                       <div key={item.status} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold text-slate-700">
+                        <div className="flex justify-between text-xs font-semibold text-slate-300">
                           <span>{item.status?.replace(/_/g, ' ') || 'Pending'}</span>
                           <span>{item._count || 0} applicants</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-blue-600 rounded-full"
+                            className="h-full bg-brand-500 rounded-full"
                             style={{
                               width: `${((item._count || 0) / (stats?.metrics?.totalApplicants || 1)) * 100}%`,
                             }}
@@ -580,118 +573,118 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-400 py-4 text-center">No application records found.</div>
+                    <div className="text-xs text-slate-500 py-4 text-center">No application records found.</div>
                   )}
                 </div>
-              </Card>
+              </div>
 
-              <Card className="p-6 space-y-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-emerald-600" />
+              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm space-y-4">
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-emerald-400" />
                   <span>Top Enrolled Academic Programs</span>
                 </h3>
                 <div className="space-y-3 text-xs">
                   {(stats?.popularPrograms || stats?.programsWithEnrolledCount || []).slice(0, 5).map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/60 border border-white/5"
+                    >
                       <div>
-                        <div className="font-bold text-slate-900">{p.name}</div>
-                        <div className="text-[10px] text-slate-400">{p.code} • {p.durationWeeks || 12} Weeks</div>
+                        <div className="font-bold text-white">{p.name}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {p.code} • {p.durationWeeks || 12} Weeks
+                        </div>
                       </div>
-                      <Badge variant="blue">{p.applicantCount || p._count?.applications || 0} Enrolled</Badge>
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">
+                        {p.applicantCount || p._count?.applications || 0} Enrolled
+                      </span>
                     </div>
                   ))}
                 </div>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: ADMIN ACCOUNTS MANAGEMENT */}
-        {activeTab === 'admins' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">Administrator Accounts</h2>
-                <p className="text-xs text-slate-500">
-                  Provision and govern institutional admin roles (Super Admin, Coordinator Admin, Academic Admin, Finance Admin).
-                </p>
               </div>
-              {isSuperAdmin && (
-                <button
-                  onClick={() => setShowCreateAdminModal(true)}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create Admin Account</span>
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {admins.map((adm: any) => (
-                <Card key={adm.id} className="p-5 space-y-4 border-slate-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center">
-                        {adm.firstName ? adm.firstName[0] : 'A'}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-slate-900">
-                          {adm.firstName} {adm.lastName}
-                        </div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          {adm.username ? `@${adm.username}` : adm.email}
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        adm.role === 'SUPER_ADMIN'
-                          ? 'bg-rose-100 text-rose-800'
-                          : adm.role === 'COORDINATOR_ADMIN'
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-purple-100 text-purple-800'
-                      }`}
-                    >
-                      {adm.role.replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Email:</span>
-                      <span className="font-medium text-slate-800">{adm.email}</span>
-                    </div>
-                    {adm.phone && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Phone:</span>
-                        <span className="font-medium text-slate-800">{adm.phone}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Status:</span>
-                      <span className="font-bold text-emerald-600">Active</span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
             </div>
           </div>
         )}
 
-        {/* TAB 3: FACULTY & INSTRUCTORS MANAGEMENT */}
+        {/* TAB 2: ADMISSIONS & PLACEMENT MANAGER */}
+        {activeTab === 'admissions' && (
+          <AdmissionsManager
+            applications={applications}
+            placements={pendingPlacements}
+            cohorts={cohorts}
+            programs={programs}
+            onDataRefresh={loadAllData}
+            isAdmissionsOrSuperAdmin={isSuperAdmin || isAdmissionsAdmin}
+            isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
+          />
+        )}
+
+        {/* TAB 3: ACADEMIC OPERATIONS MANAGER */}
+        {activeTab === 'academics' && (
+          <AcademicOperationsManager
+            programs={programs}
+            cohorts={cohorts}
+            onDataRefresh={loadAllData}
+            onOpenCohortAnalysis={(cohortId) => setSelectedCohortAnalysis(cohortId)}
+            onOpenEditCohort={(c) => handleOpenEditCohort(c)}
+            onOpenAIArchitect={() => setShowAIProgramModal(true)}
+            isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
+          />
+        )}
+
+        {/* TAB 4: FINANCE MANAGER */}
+        {activeTab === 'finance' && (
+          <FinanceManager
+            invoices={invoices}
+            bankTransfers={bankTransfers}
+            stats={stats}
+            onDataRefresh={loadAllData}
+            isFinanceOrSuperAdmin={isSuperAdmin || isFinanceAdmin}
+          />
+        )}
+
+        {/* TAB 5: CERTIFICATE & COMPLETION MANAGER */}
+        {activeTab === 'certificates' && (
+          <CertificateManager
+            certificates={certificates}
+            students={gatheredStudents}
+            onRefresh={loadAllData}
+            currentUser={user}
+          />
+        )}
+
+        {/* TAB 6: AI GOVERNANCE & ARCHITECT */}
+        {activeTab === 'ai' && (
+          <AIAdminManager
+            generations={aiGenerations}
+            onRefresh={loadAllData}
+            onOpenCurriculumArchitect={() => setShowAIProgramModal(true)}
+            currentUser={user}
+          />
+        )}
+
+        {/* TAB 7: NOTIFICATION DELIVERIES OUTBOX */}
+        {activeTab === 'deliveries' && (
+          <NotificationDeliveriesManager
+            deliveries={notificationDeliveries}
+            onRefresh={loadAllData}
+            currentUser={user}
+          />
+        )}
+
+        {/* TAB 8: FACULTY & INSTRUCTORS */}
         {activeTab === 'instructors' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-black text-slate-900">Faculty & Instructors Directory</h2>
-                <p className="text-xs text-slate-500">
+                <h2 className="text-lg font-bold text-white">Faculty & Instructors Directory</h2>
+                <p className="text-xs text-slate-400">
                   Onboard faculty mentors, generate staff codes, assign academic schools, and issue login credentials.
                 </p>
               </div>
               <button
                 onClick={() => setShowCreateInstructorModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md flex items-center gap-2"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition"
               >
                 <Plus className="w-4 h-4" />
                 <span>Onboard New Instructor</span>
@@ -699,781 +692,361 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {instructors.map((ins: any) => (
-                <Card key={ins.id} className="p-5 space-y-4 border-slate-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 font-bold text-sm flex items-center justify-center">
-                        {ins.firstName ? ins.firstName[0] : 'I'}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-slate-900">
-                          {ins.firstName} {ins.lastName}
-                        </div>
-                        <div className="text-[11px] text-emerald-700 font-mono font-bold">
-                          {ins.instructorProfile?.staffCode || 'STP-INS-FACULTY'}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge variant="green">Faculty</Badge>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Specialization:</span>
-                      <span className="font-semibold text-slate-800 text-right">
-                        {ins.instructorProfile?.specialization || 'STEM / Technology'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Qualification:</span>
-                      <span className="text-slate-700 text-right truncate max-w-[180px]">
-                        {ins.instructorProfile?.qualification || 'Certified Professional'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Email:</span>
-                      <span className="font-mono text-slate-800">{ins.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Assigned School:</span>
-                      <span className="font-medium text-slate-800 text-right">
-                        {ins.instructorProfile?.assignedSchools || 'School of Software & AI'}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: PLACEMENTS REVIEW QUEUE */}
-        {activeTab === 'placements' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">Academic Board Placement Queue</h2>
-              <p className="text-xs text-slate-500">
-                Review diagnostic assessment results and approve student level placement.
-              </p>
-            </div>
-
-            {pendingPlacements.length === 0 ? (
-              <Card className="p-12 text-center text-slate-400 space-y-2">
-                <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500" />
-                <div className="font-bold text-slate-700">Placement Review Queue is Clean</div>
-                <p className="text-xs">All completed diagnostic assessments have been processed by the Board.</p>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {pendingPlacements.map((plc: any) => (
-                  <Card key={plc.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900">
-                          {plc.application?.fullName}
-                        </span>
-                        <Badge variant="blue">App: {plc.application?.applicationNumber}</Badge>
-                      </div>
-                      <div className="text-xs text-slate-600">
-                        Target Program: <span className="font-semibold">{plc.application?.program?.name}</span>
-                      </div>
-                      <div className="text-xs text-amber-700 font-semibold">
-                        Algorithm Recommendation: {plc.recommendedLevel} ({plc.reason})
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setReviewingPlacement(plc)}
-                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm"
-                      >
-                        Review & Approve
-                      </button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 5: APPLICATIONS PIPELINE */}
-        {activeTab === 'applications' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">Admissions Intake Pipeline</h2>
-              <p className="text-xs text-slate-500">
-                Manage registered learners, verify entry criteria, and issue official admissions.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {applications.map((app: any) => (
-                <Card key={app.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">{app.fullName}</span>
-                      <span className="text-xs font-mono text-slate-500">{app.applicationNumber}</span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          app.status === 'ADMITTED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : app.status === 'SUBMITTED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-slate-100 text-slate-800'
-                        }`}
-                      >
-                        {app.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-600">
-                      {app.program?.name} • {app.email} • {app.phone}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {app.status !== 'ADMITTED' && (
-                      <button
-                        onClick={() => handleIssueAdmission(app.id, app.cohortId)}
-                        disabled={processingAction}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm disabled:opacity-50"
-                      >
-                        Issue Official Admission
-                      </button>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 6: COHORTS */}
-        {activeTab === 'cohorts' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">Cohorts, Tuition Fees & Payment Plans</h2>
-                <p className="text-xs text-slate-500">
-                  Manage class schedules, seat capacities, tuition pricing, merit discounts, and installment structures.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <input
-                type="text"
-                placeholder="Filter by Academic Year (e.g. 2025/2026)"
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
-                value={cohortYearFilter}
-                onChange={(e) => setCohortYearFilter(e.target.value)}
-              />
-              <select
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500"
-                value={cohortStatusFilter}
-                onChange={(e) => setCohortStatusFilter(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CLOSED">Closed</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredCohorts.map((c: any) => {
-                const trainingFee = c.trainingFee || 65000;
-                const regFee = c.registrationFee || 5000;
-                const certFee = c.certificationFee || 10000;
-                const discount = c.discountPercentage || 0;
-                const netTuition = trainingFee * (1 - discount / 100);
-                const totalInvoiced = netTuition + regFee + certFee;
-
-                return (
-                  <Card 
-                    key={c.id} 
-                    className="p-6 space-y-4 hover:border-blue-300 cursor-pointer transition-colors"
-                    onClick={() => setSelectedCohortAnalysis(c.id)}
+              {instructors.length === 0 ? (
+                <div className="col-span-3 py-12 text-center text-slate-500 text-xs">
+                  No instructors found in directory.
+                </div>
+              ) : (
+                instructors.map((inst: any) => (
+                  <div
+                    key={inst.id}
+                    className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 space-y-4 backdrop-blur-sm"
                   >
                     <div className="flex items-start justify-between">
-                      <div>
-                        <div className="text-[10px] font-mono text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded inline-block mb-1">
-                          {c.cohortCode || c.code}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center">
+                          {inst.firstName ? inst.firstName[0] : 'I'}
                         </div>
-                        <div className="font-bold text-sm text-slate-900">{c.name}</div>
-                        <div className="text-xs text-slate-500">{c.program?.name}</div>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          c.status === 'OPEN'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : c.status === 'ALMOST_FULL'
-                            ? 'bg-amber-100 text-amber-800'
-                            : c.status === 'FULL'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </div>
-
-                    {/* Financial Breakdown Card */}
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-                      <div className="flex items-center justify-between font-semibold text-slate-800">
-                        <span>Tuition / Training Fee:</span>
-                        <span className="font-mono font-bold">₦{trainingFee.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                        <span>Registration & Portal:</span>
-                        <span className="font-mono">₦{regFee.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                        <span>Certification & Badge:</span>
-                        <span className="font-mono">₦{certFee.toLocaleString()}</span>
-                      </div>
-                      {discount > 0 && (
-                        <div className="flex items-center justify-between text-emerald-600 text-[11px] font-medium">
-                          <span>Merit / Early Bird Discount:</span>
-                          <span>{discount}% (-₦{((trainingFee * discount) / 100).toLocaleString()})</span>
-                        </div>
-                      )}
-                      <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between font-black text-slate-900 text-xs">
-                        <span>Net Student Invoiced:</span>
-                        <span className="text-emerald-700 font-mono text-sm">₦{totalInvoiced.toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <div>
-                        <strong className="text-slate-700">Schedule:</strong> {c.schedule || 'Flexible Hybrid Schedule'}
-                      </div>
-                      <div>
-                        <strong className="text-slate-700">Delivery Mode:</strong>{' '}
-                        {c.mode || 'Hybrid (Onsite Ile-Ife & Virtual)'}
-                      </div>
-                      <div>
-                        <strong className="text-slate-700">Enrollment:</strong> {c.currentEnrollment || 0} /{' '}
-                        {c.maxCapacity || c.maxSeats || 25} Seats
-                      </div>
-                      <div>
-                        <strong className="text-slate-700">Dates:</strong>{' '}
-                        {c.startDate ? new Date(c.startDate).toLocaleDateString() : 'TBA'} –{' '}
-                        {c.endDate ? new Date(c.endDate).toLocaleDateString() : 'TBA'}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
-                      <button
-                        onClick={() => handleOpenEditCohort(c)}
-                        className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
-                      >
-                        <Edit className="w-3.5 h-3.5 text-slate-300" />
-                        <span>Edit Fees & Payment Plan</span>
-                      </button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 7: PROGRAMS */}
-        {activeTab === 'programs' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">Academic Programs Catalog</h2>
-                <p className="text-xs text-slate-500">Live programs, curriculum modules, and admissions availability.</p>
-              </div>
-              <button
-                onClick={() => setShowAIProgramModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 self-start sm:self-auto"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-200" />
-                <span>Architect Program with AI</span>
-              </button>
-            </div>
-            
-            {/* Filter Bar */}
-            <div className="flex flex-wrap gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <input
-                type="text"
-                placeholder="Filter by School Code (e.g. SENG)"
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
-                value={programSchoolFilter}
-                onChange={(e) => setProgramSchoolFilter(e.target.value)}
-              />
-              <select
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500"
-                value={programStatusFilter}
-                onChange={(e) => setProgramStatusFilter(e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="OPEN_FOR_APPLICATION">Open</option>
-                <option value="CLOSED">Closed</option>
-                <option value="DRAFT">Draft</option>
-              </select>
-              <input
-                type="number"
-                placeholder="Min Price (₦)"
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
-                value={programPriceMinFilter}
-                onChange={(e) => setProgramPriceMinFilter(e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="Max Price (₦)"
-                className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full md:w-auto"
-                value={programPriceMaxFilter}
-                onChange={(e) => setProgramPriceMaxFilter(e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPrograms.map((p: any) => (
-                <Card key={p.id} className="p-5 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold text-blue-600">{p.code}</span>
-                      <h4 className="font-bold text-sm text-slate-900">{p.name}</h4>
-                    </div>
-                    <button
-                      onClick={() => handleToggleProgramStatus(p.id, p.status)}
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        p.status === 'OPEN_FOR_APPLICATION'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {p.status}
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 line-clamp-2">{p.description}</p>
-                  <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-slate-100">
-                    <span className="text-emerald-700 font-bold">₦{(p.tuitionFeeNgn || p.cohorts?.[0]?.trainingFee || 65000).toLocaleString()}</span>
-                    <button
-                      onClick={() => setActiveTab('cohorts')}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      <span>Configure Fees</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 8: REVENUE & BANK TRANSFERS */}
-        {activeTab === 'invoices' && (
-          <div className="space-y-8">
-            {/* 1. Bank Transfer Verification Queue */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Building className="w-5 h-5 text-emerald-600" />
-                    <span>Bank Transfer Verification Queue ({bankTransfers.filter(t => t.status === 'PENDING').length} Pending)</span>
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Review and verify student payment receipts/tellers against official bank statements.
-                  </p>
-                </div>
-              </div>
-
-              {bankTransfers.length === 0 ? (
-                <Card className="p-8 text-center text-slate-400 text-xs">
-                  No bank transfer submissions recorded.
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {bankTransfers.map((tx: any) => (
-                    <Card key={tx.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-xs text-blue-600">{tx.paymentReference}</span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              tx.status === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : tx.status === 'PENDING'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {tx.status}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-700">
-                          <strong>Payer:</strong> {tx.senderAccount || 'Student'} • <strong>Bank:</strong> {tx.senderBank || 'Access Bank'}
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          Invoice: {tx.invoice?.invoiceNumber || tx.invoiceId} • Submitted: {new Date(tx.paidAt).toLocaleString()}
-                        </div>
-                        {tx.proofUrl && (
-                          <div className="pt-1">
-                            <a
-                              href={tx.proofUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1"
-                            >
-                              <span>View Uploaded Teller / Proof</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                        <div>
+                          <div className="font-bold text-sm text-white">
+                            {inst.firstName} {inst.lastName}
                           </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <span className="font-black text-slate-900 text-base block">₦{(tx.amount || 0).toLocaleString()}</span>
-                          <span className="text-[10px] text-slate-400">NGN Direct Deposit</span>
-                        </div>
-
-                        {tx.status === 'PENDING' && (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleApproveBankTransfer(tx.id)}
-                              disabled={processingAction}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleRejectBankTransfer(tx.id)}
-                              disabled={processingAction}
-                              className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
+                          <div className="text-[11px] text-slate-400 font-mono">
+                            {inst.instructorProfile?.staffCode || `@${inst.username}`}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Institutional Invoices Ledger */}
-            <div className="space-y-4 pt-4 border-t border-slate-200">
-              <h2 className="text-lg font-black text-slate-900">All Academic Invoices ({invoices.length})</h2>
-              <div className="space-y-3">
-                {invoices.map((inv: any) => (
-                  <Card key={inv.id} className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-mono font-bold text-slate-500">{inv.invoiceNumber}</div>
-                      <div className="font-bold text-sm text-slate-900">{inv.title}</div>
-                      <div className="text-xs text-slate-500">
-                        Paid: ₦{(inv.amountPaid || 0).toLocaleString()} • Balance: ₦{(inv.balance || 0).toLocaleString()} • Due: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'Immediate'}
-                      </div>
-                    </div>
-                    <div className="text-right space-y-0.5">
-                      <span className="font-black text-slate-900 text-sm block">
-                        ₦{(inv.totalAmount || 0).toLocaleString()}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {inv.status}
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                        Faculty
                       </span>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* TAB 9: CERTIFICATES */}
-        {activeTab === 'certificates' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">Accredited Certificates & Clearances</h2>
-                <p className="text-xs text-slate-500">
-                  Manage cryptographically verifiable student certificates and graduation clearances.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {certificates.length === 0 ? (
-                <Card className="p-10 text-center text-slate-400">
-                  <Award className="w-10 h-10 mx-auto text-amber-500 mb-2" />
-                  <div className="font-bold text-slate-700">No Certificates Issued Yet</div>
-                  <p className="text-xs">Certificates appear here as cohorts finish capstones and graduation review.</p>
-                </Card>
-              ) : (
-                certificates.map((cert: any) => (
-                  <Card key={cert.id} className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-mono font-bold text-amber-600">{cert.certificateNumber}</div>
-                      <div className="font-bold text-sm text-slate-900">{cert.title}</div>
-                      <div className="text-xs text-slate-500">Recipient: {cert.student?.user?.firstName} {cert.student?.user?.lastName}</div>
+                    <div className="space-y-1.5 text-xs text-slate-300 border-t border-white/5 pt-3">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Specialization:</span>
+                        <span className="font-medium text-slate-200 truncate max-w-[180px]">
+                          {inst.instructorProfile?.specialization || 'STEM'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">School:</span>
+                        <span className="font-medium text-slate-200 truncate max-w-[180px]">
+                          {inst.instructorProfile?.assignedSchools || 'Engineering'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Email:</span>
+                        <span className="text-slate-300 font-mono text-[11px]">{inst.email}</span>
+                      </div>
                     </div>
-                    <Link
-                      to={`/verify/${cert.certificateNumber}`}
-                      target="_blank"
-                      className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      <span>Public Verification</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Link>
-                  </Card>
+                  </div>
                 ))
               )}
             </div>
           </div>
         )}
 
-        {/* TAB 10: CMS & ANNOUNCEMENTS */}
+        {/* TAB 9: ADMIN ACCOUNTS */}
+        {activeTab === 'admins' && isSuperAdmin && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">Administrator Accounts</h2>
+                <p className="text-xs text-slate-400">
+                  Provision and govern institutional admin roles (Super Admin, Academic Admin, Finance Admin, Coordinator Admin).
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreateAdminModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Admin Account</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {admins.map((adm: any) => (
+                <div
+                  key={adm.id}
+                  className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 space-y-4 backdrop-blur-sm"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-sm flex items-center justify-center">
+                        {adm.firstName ? adm.firstName[0] : 'A'}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-white">
+                          {adm.firstName} {adm.lastName}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {adm.username ? `@${adm.username}` : adm.email}
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                        adm.role === 'SUPER_ADMIN'
+                          ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                          : adm.role === 'COORDINATOR_ADMIN'
+                          ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
+                          : 'bg-purple-500/10 border border-purple-500/20 text-purple-400'
+                      }`}
+                    >
+                      {adm.role.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-slate-300 border-t border-white/5 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Email:</span>
+                      <span className="font-medium text-slate-200">{adm.email}</span>
+                    </div>
+                    {adm.phone && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Phone:</span>
+                        <span className="font-medium text-slate-200">{adm.phone}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Status:</span>
+                      <span className="font-bold text-emerald-400">Active</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 10: CMS & CAMPUS BULLETINS */}
         {activeTab === 'cms' && (
-          <Card className="p-8 space-y-6">
-            <h3 className="font-bold text-base text-slate-900">Broadcast Campus Announcement</h3>
-            <form onSubmit={handleBroadcastAnnouncement} className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Announcement Title *</label>
+          <div className="space-y-6 animate-fadeIn max-w-3xl">
+            <div>
+              <h2 className="text-lg font-bold text-white">Campus Bulletins & Broadcasts</h2>
+              <p className="text-xs text-slate-400">
+                Publish high-priority administrative bulletins to student, faculty, and parent portal dashboards.
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleBroadcastAnnouncement}
+              className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Bulletin Headline / Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Schedule Update for 2025 Full-Stack Sprint"
+                  placeholder="e.g. Schedule Update for Fall 2026 Cohorts"
                   value={announcementTitle}
                   onChange={(e) => setAnnouncementTitle(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500"
                   required
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Announcement Content *</label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Bulletin Announcement Body</label>
                 <textarea
                   rows={4}
-                  placeholder="Official memo broadcasted across Student, Parent, and Instructor dashboards..."
+                  placeholder="Type the message to be broadcasted to the academy community..."
                   value={announcementContent}
                   onChange={(e) => setAnnouncementContent(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500"
                   required
-                ></textarea>
+                />
               </div>
 
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm flex items-center gap-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Broadcast Announcement</span>
-              </button>
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold transition shadow-lg shadow-brand-500/20"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Broadcast Bulletin</span>
+                </button>
+              </div>
             </form>
-          </Card>
+          </div>
         )}
 
-        {/* TAB 11: SYSTEM AUDIT TRAIL */}
-        {activeTab === 'audit' && (
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-purple-600" />
-                  <span>Immutable System Audit Trail</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Comprehensive security log recording administrative actions, role assignments, financial approvals, and grade ratifications.
-                </p>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-                {auditLogs.length} Events Logged
-              </span>
+        {/* TAB 11: AUDIT TRAIL */}
+        {activeTab === 'audit' && isSuperAdmin && (
+          <div className="space-y-6 animate-fadeIn">
+            <div>
+              <h2 className="text-lg font-bold text-white">System & Security Audit Trail</h2>
+              <p className="text-xs text-slate-400">
+                Immutable chronological log of privileged administrative and academic state transitions.
+              </p>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase tracking-wider text-[10px]">
-                    <th className="p-3 font-bold">Timestamp</th>
-                    <th className="p-3 font-bold">Actor</th>
-                    <th className="p-3 font-bold">Action</th>
-                    <th className="p-3 font-bold">Resource</th>
-                    <th className="p-3 font-bold">Details</th>
-                    <th className="p-3 font-bold">Client IP</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {auditLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400">
-                        No audit records captured yet. Sensitive administrative events will be logged here.
-                      </td>
+            <div className="bg-slate-900/60 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-slate-950/50 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+                      <th className="py-4 px-6">Timestamp</th>
+                      <th className="py-4 px-6">Action</th>
+                      <th className="py-4 px-6">Entity</th>
+                      <th className="py-4 px-6">Staff Member</th>
+                      <th className="py-4 px-6">IP / Origin</th>
                     </tr>
-                  ) : (
-                    auditLogs.map((log: any) => (
-                      <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="p-3">
-                          <strong className="text-slate-900 block">
-                            {log.userName || (log.user?.firstName ? `${log.user.firstName} ${log.user.lastName}` : 'System Action')}
-                          </strong>
-                          <span className="text-[10px] text-purple-700 font-mono font-semibold">
-                            {log.userRole || log.user?.role || 'SYSTEM'}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 font-mono">
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono text-slate-600">
-                          {log.resource} {log.resourceId ? `(${log.resourceId.slice(0, 8)}...)` : ''}
-                        </td>
-                        <td className="p-3 max-w-xs truncate text-slate-500 text-[11px] font-mono">
-                          {log.newValue || log.previousValue || 'N/A'}
-                        </td>
-                        <td className="p-3 font-mono text-slate-400 text-[11px]">
-                          {log.ipAddress || '127.0.0.1'}
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-xs text-slate-300">
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-500">
+                          No audit trail events logged yet.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      auditLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-white/[0.02] transition">
+                          <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">
+                            {log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/A'}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="font-semibold text-white">{log.action}</span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="text-brand-300 font-mono">{log.entityType || log.entityId}</span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="text-slate-200">
+                              {log.user ? `${log.user.firstName} ${log.user.lastName}` : log.userId || 'System'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">{log.ipAddress || 'Internal'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </Card>
+          </div>
         )}
       </div>
 
-      {/* MODAL: CREATE ADMIN */}
+      {/* CREATE ADMIN MODAL */}
       {showCreateAdminModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                  <ShieldAlert className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">Create Administrator Account</h3>
-                  <p className="text-xs text-slate-500">Super Admin Governance Action</p>
+                  <h3 className="text-lg font-bold text-white">Create Administrator Account</h3>
+                  <p className="text-xs text-slate-400">Assign institutional administrative privileges.</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCreateAdminModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-white transition text-lg"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateAdminSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">First Name *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">First Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Oluwaseun"
                     value={adminFormData.firstName}
-                    onChange={(e) =>
-                      setAdminFormData({ ...adminFormData, firstName: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setAdminFormData({ ...adminFormData, firstName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Last Name *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Last Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Adeleke"
                     value={adminFormData.lastName}
-                    onChange={(e) =>
-                      setAdminFormData({ ...adminFormData, lastName: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setAdminFormData({ ...adminFormData, lastName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Official Email *</label>
-                <input
-                  type="email"
-                  placeholder="name@stempact.org"
-                  value={adminFormData.email}
-                  onChange={(e) =>
-                    setAdminFormData({ ...adminFormData, email: e.target.value })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                  required
-                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Username *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Email Address</label>
                   <input
-                    type="text"
-                    placeholder="e.g. seun.admin"
-                    value={adminFormData.username}
-                    onChange={(e) =>
-                      setAdminFormData({ ...adminFormData, username: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    type="email"
+                    value={adminFormData.email}
+                    onChange={(e) => setAdminFormData({ ...adminFormData, email: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Admin Role *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={adminFormData.username}
+                    onChange={(e) => setAdminFormData({ ...adminFormData, username: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={adminFormData.phone}
+                    onChange={(e) => setAdminFormData({ ...adminFormData, phone: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Administrative Role</label>
                   <select
                     value={adminFormData.role}
-                    onChange={(e) =>
-                      setAdminFormData({ ...adminFormData, role: e.target.value as any })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-medium"
+                    onChange={(e: any) => setAdminFormData({ ...adminFormData, role: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                   >
-                    <option value="COORDINATOR_ADMIN">Coordinator Admin</option>
-                    <option value="ACADEMIC_ADMIN">Academic Admin</option>
-                    <option value="FINANCE_ADMIN">Finance Admin</option>
+                    <option value="COORDINATOR_ADMIN">COORDINATOR_ADMIN</option>
+                    <option value="ACADEMIC_ADMIN">ACADEMIC_ADMIN</option>
+                    <option value="FINANCE_ADMIN">FINANCE_ADMIN</option>
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Initial Password *</label>
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Initial Password</label>
                 <input
                   type="password"
-                  placeholder="Minimum 6 characters"
                   value={adminFormData.password}
-                  onChange={(e) =>
-                    setAdminFormData({ ...adminFormData, password: e.target.value })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                  onChange={(e) => setAdminFormData({ ...adminFormData, password: e.target.value })}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                   required
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                 <button
                   type="button"
                   onClick={() => setShowCreateAdminModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={processingAction}
-                  className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-semibold transition"
                 >
-                  {processingAction ? 'Creating...' : 'Create Admin Account'}
+                  {processingAction ? 'Creating...' : 'Create Account'}
                 </button>
               </div>
             </form>
@@ -1481,186 +1054,127 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
         </div>
       )}
 
-      {/* MODAL: CREATE INSTRUCTOR */}
+      {/* CREATE INSTRUCTOR MODAL */}
       {showCreateInstructorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">Onboard Faculty Instructor</h3>
-                  <p className="text-xs text-slate-500">Auto-generates STP-INS Staff Code</p>
+                  <h3 className="text-lg font-bold text-white">Onboard Faculty Mentor</h3>
+                  <p className="text-xs text-slate-400">Issues faculty credentials & assigns academic school.</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCreateInstructorModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-white transition text-lg"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateInstructorSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">First Name *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">First Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Babatunde"
                     value={instructorFormData.firstName}
-                    onChange={(e) =>
-                      setInstructorFormData({ ...instructorFormData, firstName: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setInstructorFormData({ ...instructorFormData, firstName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Last Name *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Last Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Ogunleye"
                     value={instructorFormData.lastName}
-                    onChange={(e) =>
-                      setInstructorFormData({ ...instructorFormData, lastName: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setInstructorFormData({ ...instructorFormData, lastName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Email Address *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Email Address</label>
                   <input
                     type="email"
-                    placeholder="instructor@stempact.org"
                     value={instructorFormData.email}
-                    onChange={(e) =>
-                      setInstructorFormData({ ...instructorFormData, email: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setInstructorFormData({ ...instructorFormData, email: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Username *</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Username</label>
                   <input
                     type="text"
-                    placeholder="e.g. b.ogunleye"
                     value={instructorFormData.username}
-                    onChange={(e) =>
-                      setInstructorFormData({ ...instructorFormData, username: e.target.value })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                    onChange={(e) => setInstructorFormData({ ...instructorFormData, username: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Specialization *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Full-Stack Web, Embedded Systems, Python AI"
-                  value={instructorFormData.specialization}
-                  onChange={(e) =>
-                    setInstructorFormData({
-                      ...instructorFormData,
-                      specialization: e.target.value,
-                    })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Specialization</label>
+                  <input
+                    type="text"
+                    value={instructorFormData.specialization}
+                    onChange={(e) =>
+                      setInstructorFormData({ ...instructorFormData, specialization: e.target.value })
+                    }
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Assigned School</label>
+                  <input
+                    type="text"
+                    value={instructorFormData.assignedSchools}
+                    onChange={(e) =>
+                      setInstructorFormData({ ...instructorFormData, assignedSchools: e.target.value })
+                    }
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Highest Qualification *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. B.Sc Computer Engineering, OAU"
-                  value={instructorFormData.qualification}
-                  onChange={(e) =>
-                    setInstructorFormData({
-                      ...instructorFormData,
-                      qualification: e.target.value,
-                    })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Assigned Academic School</label>
-                <select
-                  value={instructorFormData.assignedSchools}
-                  onChange={(e) =>
-                    setInstructorFormData({
-                      ...instructorFormData,
-                      assignedSchools: e.target.value,
-                    })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="School of Software & AI">School of Software & AI</option>
-                  <option value="School of Robotics & Embedded Systems">
-                    School of Robotics & Embedded Systems
-                  </option>
-                  <option value="School of Applied Science & Labs">
-                    School of Applied Science & Labs
-                  </option>
-                  <option value="School of Digital Design & Media">
-                    School of Digital Design & Media
-                  </option>
-                  <option value="School of Mathematical Sciences">
-                    School of Mathematical Sciences
-                  </option>
-                  <option value="School of Renewable Energy & AgriTech">
-                    School of Renewable Energy & AgriTech
-                  </option>
-                  <option value="School of Vocational Tech & Fabrication">
-                    School of Vocational Tech & Fabrication
-                  </option>
-                  <option value="School of Innovation & Entrepreneurship">
-                    School of Innovation & Entrepreneurship
-                  </option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Initial Password *</label>
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Initial Password</label>
                 <input
                   type="password"
-                  placeholder="Minimum 6 characters"
                   value={instructorFormData.password}
-                  onChange={(e) =>
-                    setInstructorFormData({ ...instructorFormData, password: e.target.value })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                  onChange={(e) => setInstructorFormData({ ...instructorFormData, password: e.target.value })}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                   required
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                 <button
                   type="button"
                   onClick={() => setShowCreateInstructorModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={processingAction}
-                  className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-50"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition"
                 >
-                  {processingAction ? 'Onboarding...' : 'Onboard Instructor'}
+                  {processingAction ? 'Onboarding...' : 'Onboard Faculty'}
                 </button>
               </div>
             </form>
@@ -1668,308 +1182,95 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
         </div>
       )}
 
-      {/* MODAL: INSTRUCTOR CREDENTIALS SUCCESS CARD */}
-      {createdInstructorCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl border border-slate-100 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-200">
-                Faculty Account Ready
-              </span>
-              <h3 className="text-xl font-black text-slate-900">
-                {createdInstructorCard.instructor.firstName} {createdInstructorCard.instructor.lastName}
-              </h3>
-              <p className="text-xs text-slate-500">
-                Share these credentials with the instructor to access the faculty cockpit.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs font-mono">
-              <div>
-                <span className="text-slate-400">Staff Code: </span>
-                <span className="font-bold text-emerald-700">
-                  {createdInstructorCard.instructor.instructorProfile?.staffCode}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400">Username: </span>
-                <span className="font-bold text-slate-800">
-                  {createdInstructorCard.instructor.username}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400">Email: </span>
-                <span className="text-slate-800">{createdInstructorCard.instructor.email}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">Password: </span>
-                <span className="font-bold text-indigo-700">
-                  {createdInstructorCard.tempPassword}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400">Faculty Portal: </span>
-                <span className="text-blue-600 underline break-all">
-                  {createdInstructorCard.loginUrl}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={copyInstructorCredentials}
-                className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors"
-              >
-                {copiedSuccess ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Credentials Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Credentials</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setCreatedInstructorCard(null)}
-                className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: PLACEMENT REVIEW */}
-      {reviewingPlacement && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="font-black text-slate-900 text-base">Review Diagnostic Placement</h3>
-                <p className="text-xs text-slate-500">Applicant: {reviewingPlacement.application?.fullName}</p>
-              </div>
-              <button onClick={() => setReviewingPlacement(null)} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="font-bold text-slate-800">
-                  Target: {reviewingPlacement.application?.program?.name}
-                </div>
-                <div className="text-blue-600 font-semibold">
-                  Algorithm Recommendation: {reviewingPlacement.recommendedLevel}
-                </div>
-                <div className="text-slate-500">{reviewingPlacement.reason}</div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Approved Level *</label>
-                <select
-                  value={approvedLevelInput}
-                  onChange={(e) => setApprovedLevelInput(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="Level 1 (Foundation)">Level 1 (Foundation)</option>
-                  <option value="Level 2 (Accelerated)">Level 2 (Accelerated)</option>
-                  <option value="Level 3 (Advanced Specialization)">Level 3 (Advanced Specialization)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Academic Board Review Notes</label>
-                <textarea
-                  rows={3}
-                  value={adminNotesInput}
-                  onChange={(e) => setAdminNotesInput(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewingPlacement(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApprovePlacement(reviewingPlacement.id)}
-                  disabled={processingAction}
-                  className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
-                >
-                  {processingAction ? 'Approving...' : 'Confirm Academic Approval'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: COHORT PRICING & PAYMENT PLAN */}
+      {/* EDIT COHORT PRICING & SCHEDULE MODAL */}
       {editingCohort && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl border border-slate-100 my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                  {editingCohort.cohortCode || editingCohort.code}
-                </span>
-                <h3 className="font-black text-slate-900 text-lg mt-1">Configure Pricing & Payment Plan</h3>
-                <p className="text-xs text-slate-500">
-                  {editingCohort.name} ({editingCohort.program?.name})
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Cohort Pricing & Schedule</h3>
+                  <p className="text-xs text-slate-400">{editingCohort.name} ({editingCohort.cohortCode})</p>
+                </div>
               </div>
-              <button onClick={() => setEditingCohort(null)} className="p-1 text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+              <button
+                onClick={() => setEditingCohort(null)}
+                className="text-slate-400 hover:text-white transition text-lg"
+              >
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveCohortPricing} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Tuition / Training Fee (₦) *</label>
+            <form onSubmit={handleSaveCohortFees} className="space-y-4 text-xs">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Training Fee (₦)</label>
                   <input
                     type="number"
-                    min="0"
-                    step="1000"
                     value={cohortFeeForm.trainingFee}
                     onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, trainingFee: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                     required
                   />
-                  <span className="text-[10px] text-slate-400">Core academic curriculum & lab instruction</span>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Registration & Portal Fee (₦)</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Registration (₦)</label>
                   <input
                     type="number"
-                    min="0"
-                    step="500"
                     value={cohortFeeForm.registrationFee}
                     onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, registrationFee: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    required
                   />
-                  <span className="text-[10px] text-slate-400">Portal credentials & student kit</span>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Certification & Assessment Fee (₦)</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Certification (₦)</label>
                   <input
                     type="number"
-                    min="0"
-                    step="500"
                     value={cohortFeeForm.certificationFee}
                     onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, certificationFee: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-slate-900"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                    required
                   />
-                  <span className="text-[10px] text-slate-400">Formal accreditation & digital badge</span>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Scholarship / Merit Discount (%)</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Merit Discount (%)</label>
                   <input
                     type="number"
                     min="0"
                     max="100"
                     value={cohortFeeForm.discountPercentage}
-                    onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, discountPercentage: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-emerald-600"
+                    onChange={(e) =>
+                      setCohortFeeForm({ ...cohortFeeForm, discountPercentage: Number(e.target.value) })
+                    }
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                   />
-                  <span className="text-[10px] text-slate-400">Applied directly to training fee</span>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Max Capacity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={cohortFeeForm.maxCapacity}
+                    onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, maxCapacity: Number(e.target.value) })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                  />
                 </div>
               </div>
 
-              {/* Net Payable Breakdown Card */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <span>Gross Tuition:</span>
-                  <span>₦{cohortFeeForm.trainingFee.toLocaleString()}</span>
-                </div>
-                {cohortFeeForm.discountPercentage > 0 && (
-                  <div className="flex items-center justify-between text-xs text-emerald-400 font-medium">
-                    <span>Merit Discount ({cohortFeeForm.discountPercentage}%):</span>
-                    <span>-₦{((cohortFeeForm.trainingFee * cohortFeeForm.discountPercentage) / 100).toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <span>Registration + Certification:</span>
-                  <span>₦{(cohortFeeForm.registrationFee + cohortFeeForm.certificationFee).toLocaleString()}</span>
-                </div>
-                <div className="pt-2 border-t border-slate-700 flex items-center justify-between text-sm font-black text-amber-300">
-                  <span>Total Student Invoiced:</span>
-                  <span>
-                    ₦{(
-                      cohortFeeForm.trainingFee * (1 - cohortFeeForm.discountPercentage / 100) +
-                      cohortFeeForm.registrationFee +
-                      cohortFeeForm.certificationFee
-                    ).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Flexible Installment Structure Selection */}
-              <div className="space-y-2 pt-1">
-                <label className="font-semibold text-slate-700">Payment Plan / Installment Policy</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div
-                    onClick={() => setCohortFeeForm({ ...cohortFeeForm, installmentPlan: 'full' })}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                      cohortFeeForm.installmentPlan === 'full'
-                        ? 'border-blue-600 bg-blue-50/50 text-blue-900 font-bold'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <div className="text-xs">Full Payment</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">100% upfront on admission</div>
-                  </div>
-
-                  <div
-                    onClick={() => setCohortFeeForm({ ...cohortFeeForm, installmentPlan: 'two_part' })}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                      cohortFeeForm.installmentPlan === 'two_part'
-                        ? 'border-blue-600 bg-blue-50/50 text-blue-900 font-bold'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <div className="text-xs">2 Installments</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">60% entry, 40% midway</div>
-                  </div>
-
-                  <div
-                    onClick={() => setCohortFeeForm({ ...cohortFeeForm, installmentPlan: 'three_part' })}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                      cohortFeeForm.installmentPlan === 'three_part'
-                        ? 'border-blue-600 bg-blue-50/50 text-blue-900 font-bold'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <div className="text-xs">3 Installments</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">40% entry, 30%, 30%</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status, Mode & Capacity */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Status</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Cohort Status</label>
                   <select
                     value={cohortFeeForm.status}
                     onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, status: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                   >
                     <option value="OPEN">OPEN (Accepting)</option>
                     <option value="ALMOST_FULL">ALMOST FULL</option>
@@ -1979,55 +1280,43 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
                     <option value="CLOSED">CLOSED</option>
                   </select>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Max Capacity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={cohortFeeForm.maxCapacity}
-                    onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, maxCapacity: Number(e.target.value) })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Delivery Mode</label>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Delivery Mode</label>
                   <select
                     value={cohortFeeForm.mode}
                     onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, mode: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                   >
-                    <option value="Hybrid (Onsite Ile-Ife & Virtual)">Hybrid (Ile-Ife & Online)</option>
+                    <option value="Hybrid (Onsite Ile-Ife & Virtual)">Hybrid (Ile-Ife & Virtual)</option>
                     <option value="100% Virtual / Remote">100% Virtual / Remote</option>
                     <option value="100% Onsite Lab Intensive">100% Onsite Lab Intensive</option>
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Class Schedule & Timetable</label>
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Class Schedule & Timetable</label>
                 <input
                   type="text"
                   value={cohortFeeForm.schedule}
                   onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, schedule: e.target.value })}
                   placeholder="e.g. Mon, Wed, Fri (4:00 PM – 7:00 PM) & Saturdays"
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                 />
               </div>
 
-              <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                 <button
                   type="button"
                   onClick={() => setEditingCohort(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={processingAction}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-semibold transition shadow-lg shadow-emerald-500/20"
                 >
                   {processingAction ? 'Saving...' : 'Save & Apply Pricing'}
                 </button>
@@ -2044,7 +1333,8 @@ Faculty Login Portal: ${createdInstructorCard.loginUrl}`;
         onProgramCreated={loadAllData}
       />
 
-      <CohortAnalysisModal 
+      {/* COHORT DEEP ANALYSIS MODAL */}
+      <CohortAnalysisModal
         isOpen={!!selectedCohortAnalysis}
         onClose={() => setSelectedCohortAnalysis(null)}
         cohortId={selectedCohortAnalysis || ''}
