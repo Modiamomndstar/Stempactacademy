@@ -24,14 +24,19 @@ import {
   Tag,
   Check,
   Award,
+  PowerOff,
+  Power,
+  Plus,
 } from 'lucide-react';
 import { ProgramDetailModal } from './ProgramDetailModal';
 import { CohortDetailModal } from './CohortDetailModal';
+import { CreateCohortModal } from './CreateCohortModal';
 
 interface AcademicOperationsManagerProps {
   schools?: any[];
   programs: any[];
   cohorts: any[];
+  applications?: any[];
   onDataRefresh: () => Promise<void>;
   onOpenEditCohort: (cohort: any) => void;
   onOpenCohortAnalysis: (cohortId: string) => void;
@@ -44,6 +49,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   schools = [],
   programs = [],
   cohorts = [],
+  applications = [],
   onDataRefresh,
   onOpenEditCohort,
   onOpenCohortAnalysis,
@@ -73,11 +79,30 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   const [cohortStatusFilter, setCohortStatusFilter] = useState('');
   const [cohortSearch, setCohortSearch] = useState('');
 
-  // In-place canonical syllabus accordion
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  // Create Cohort Modal State
+  const [showCreateCohortModal, setShowCreateCohortModal] = useState(false);
+  const [createCohortProgramId, setCreateCohortProgramId] = useState<string | undefined>(undefined);
+
+  // Quick 1-click cohort intake toggle (Open/Close intake at any time)
+  const handleToggleCohortIntake = async (cohortId: string, currentStatus: string) => {
+    setProcessing(true);
+    setActionError('');
+    const newStatus = (currentStatus === 'OPEN' || currentStatus === 'ALMOST_FULL') ? 'CLOSED' : 'OPEN';
+    try {
+      await api.updateCohort(cohortId, { status: newStatus });
+      setActionSuccess(`Cohort intake status set to ${newStatus}. Public registration updated.`);
+      await onDataRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to update cohort intake');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   // Extract distinct academic sessions from cohorts
   const academicSessions = useMemo(() => {
@@ -281,13 +306,25 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
         </div>
 
         {isAcademicOrSuperAdmin && (
-          <button
-            onClick={onOpenAIArchitect}
-            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-            <span>AI Curriculum Architect</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setCreateCohortProgramId(undefined);
+                setShowCreateCohortModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create New Cohort</span>
+            </button>
+            <button
+              onClick={onOpenAIArchitect}
+              className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+              <span>AI Curriculum Architect</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -472,6 +509,20 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                               <ExternalLink className="w-3.5 h-3.5" />
                               <span>Program Console & Syllabus</span>
                             </button>
+
+                            {isAcademicOrSuperAdmin && (
+                              <button
+                                onClick={() => {
+                                  setCreateCohortProgramId(p.id);
+                                  setShowCreateCohortModal(true);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                title="Create & launch new intake cohort for this program"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Launch Cohort</span>
+                              </button>
+                            )}
 
                             <button
                               onClick={() => setExpandedProgramId(isExpanded ? null : p.id)}
@@ -889,6 +940,18 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     )}
                   </button>
                 ))}
+                {isAcademicOrSuperAdmin && (
+                  <button
+                    onClick={() => {
+                      setCreateCohortProgramId(undefined);
+                      setShowCreateCohortModal(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Launch Cohort in Session</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1118,13 +1181,40 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                     {isAcademicOrSuperAdmin && (
-                      <button
-                        onClick={() => onOpenEditCohort(c)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
-                      >
-                        <Edit className="w-3.5 h-3.5 text-slate-300" />
-                        <span>Edit Pricing</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleCohortIntake(c.id, c.status);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 cursor-pointer ${
+                            (c.status === 'OPEN' || c.status === 'ALMOST_FULL')
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                          title="Toggle intake open/closed for public applications"
+                        >
+                          {(c.status === 'OPEN' || c.status === 'ALMOST_FULL') ? (
+                            <>
+                              <PowerOff className="w-3 h-3 text-rose-600" />
+                              <span>Close Intake</span>
+                            </>
+                          ) : (
+                            <>
+                              <Power className="w-3 h-3 text-emerald-600" />
+                              <span>Reopen Intake</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => onOpenEditCohort(c)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-3.5 h-3.5 text-slate-300" />
+                          <span>Edit Pricing</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </Card>
@@ -1153,10 +1243,29 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
           cohortId={selectedCohortId}
           isOpen={!!selectedCohortId}
           onClose={() => setSelectedCohortId(null)}
+          applications={applications}
           isSuperOrAcademicAdmin={isAcademicOrSuperAdmin}
           onCohortUpdated={async () => {
             await onDataRefresh();
           }}
+        />
+      )}
+
+      {/* Create New Cohort Modal */}
+      {showCreateCohortModal && (
+        <CreateCohortModal
+          isOpen={showCreateCohortModal}
+          onClose={() => {
+            setShowCreateCohortModal(false);
+            setCreateCohortProgramId(undefined);
+          }}
+          onCohortCreated={async () => {
+            await onDataRefresh();
+          }}
+          programs={programs}
+          academicSessions={academicSessions}
+          initialProgramId={createCohortProgramId}
+          initialAcademicSessionId={selectedAcademicSessionId !== 'ALL' ? selectedAcademicSessionId : undefined}
         />
       )}
     </div>

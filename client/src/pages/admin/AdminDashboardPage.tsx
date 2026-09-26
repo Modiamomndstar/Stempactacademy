@@ -806,6 +806,7 @@ export const AdminDashboardPage: React.FC = () => {
             schools={schools}
             programs={programs}
             cohorts={cohorts}
+            applications={applications}
             onDataRefresh={loadAllData}
             onOpenCohortAnalysis={(cohortId) => setSelectedCohortAnalysis(cohortId)}
             onOpenEditCohort={(c) => handleOpenEditCohort(c)}
