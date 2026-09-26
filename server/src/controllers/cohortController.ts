@@ -5,9 +5,18 @@ import { identifierService } from '../services/identifierService.js';
 
 export const getCohorts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, programId, openOnly, academicYear, academicSessionId } = req.query;
+    const { status, programId, openOnly, academicYear, academicSessionId, currentSessionOnly } = req.query;
 
     const where: any = {};
+
+    if (currentSessionOnly === 'true') {
+      const currentSession = await prisma.academicSession.findFirst({
+        where: { isCurrent: true },
+      });
+      if (currentSession) {
+        where.academicSessionId = currentSession.id;
+      }
+    }
 
     if (status) {
       where.status = status as CohortStatus;
@@ -293,3 +302,187 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ message: 'Failed to create cohort' });
   }
 };
+
+export const deleteCohort = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { force } = req.query;
+
+    const cohort = await prisma.cohort.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            studentProfiles: true,
+            applications: true,
+          },
+        },
+      },
+    });
+
+    if (!cohort) {
+      res.status(404).json({ message: 'Cohort not found' });
+      return;
+    }
+
+    if (cohort._count.studentProfiles > 0 && force !== 'true') {
+      res.status(400).json({
+        message: `Cannot delete cohort "${cohort.name}" because it has ${cohort._count.studentProfiles} enrolled learners. Transfer students first or use force=true.`,
+      });
+      return;
+    }
+
+    // Safely detach/delete dependent relations in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.studentProfile.updateMany({
+        where: { currentCohortId: id },
+        data: { currentCohortId: null },
+      });
+      await tx.application.updateMany({
+        where: { cohortId: id },
+        data: { cohortId: null },
+      });
+      await tx.admission.deleteMany({
+        where: { cohortId: id },
+      });
+      await tx.placement.updateMany({
+        where: { recommendedCohortId: id },
+        data: { recommendedCohortId: null },
+      });
+      await tx.placement.updateMany({
+        where: { approvedCohortId: id },
+        data: { approvedCohortId: null },
+      });
+      await tx.assessmentAttempt.updateMany({
+        where: { recommendedCohortId: id },
+        data: { recommendedCohortId: null },
+      });
+      await tx.placementDecision.updateMany({
+        where: { approvedCohortId: id },
+        data: { approvedCohortId: null },
+      });
+      await tx.invoice.updateMany({
+        where: { cohortId: id },
+        data: { cohortId: null },
+      });
+      await tx.studentCohortEnrollment.deleteMany({
+        where: { cohortId: id },
+      });
+      await tx.assignment.deleteMany({
+        where: { cohortId: id },
+      });
+      await tx.project.deleteMany({
+        where: { cohortId: id },
+      });
+      await tx.classSession.deleteMany({
+        where: { cohortId: id },
+      });
+      await tx.syllabus.deleteMany({
+        where: { cohortId: id },
+      });
+
+      await tx.cohort.delete({
+        where: { id },
+      });
+    });
+
+    res.status(200).json({ message: `Cohort "${cohort.name}" deleted successfully.` });
+  } catch (error: any) {
+    console.error('deleteCohort error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete cohort' });
+  }
+};
+
+export const purgeLegacyCohorts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { preserveSessionId } = req.body;
+
+    const where: any = {};
+    if (preserveSessionId) {
+      where.academicSessionId = { not: preserveSessionId };
+    } else {
+      // Find cohorts not in any current session or matching legacy seeded patterns
+      where.OR = [
+        { academicSessionId: null },
+        { cohortCode: { startsWith: 'STP-2025' } },
+        { name: { contains: 'Alpha 2026' } },
+        { name: { contains: 'Cohort 1 (Alpha 2026)' } },
+      ];
+    }
+
+    const legacyCohorts = await prisma.cohort.findMany({
+      where,
+      select: { id: true, name: true, cohortCode: true },
+    });
+
+    if (legacyCohorts.length === 0) {
+      res.status(200).json({ message: 'No legacy seeded cohorts found to purge.', count: 0 });
+      return;
+    }
+
+    const ids = legacyCohorts.map((c) => c.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.studentProfile.updateMany({
+        where: { currentCohortId: { in: ids } },
+        data: { currentCohortId: null },
+      });
+      await tx.application.updateMany({
+        where: { cohortId: { in: ids } },
+        data: { cohortId: null },
+      });
+      await tx.admission.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+      await tx.placement.updateMany({
+        where: { recommendedCohortId: { in: ids } },
+        data: { recommendedCohortId: null },
+      });
+      await tx.placement.updateMany({
+        where: { approvedCohortId: { in: ids } },
+        data: { approvedCohortId: null },
+      });
+      await tx.assessmentAttempt.updateMany({
+        where: { recommendedCohortId: { in: ids } },
+        data: { recommendedCohortId: null },
+      });
+      await tx.placementDecision.updateMany({
+        where: { approvedCohortId: { in: ids } },
+        data: { approvedCohortId: null },
+      });
+      await tx.invoice.updateMany({
+        where: { cohortId: { in: ids } },
+        data: { cohortId: null },
+      });
+      await tx.studentCohortEnrollment.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+      await tx.assignment.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+      await tx.project.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+      await tx.classSession.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+      await tx.syllabus.deleteMany({
+        where: { cohortId: { in: ids } },
+      });
+
+      await tx.cohort.deleteMany({
+        where: { id: { in: ids } },
+      });
+    });
+
+    res.status(200).json({
+      message: `Successfully purged ${legacyCohorts.length} legacy seeded cohorts.`,
+      count: legacyCohorts.length,
+      purged: legacyCohorts.map((c) => c.name),
+    });
+  } catch (error: any) {
+    console.error('purgeLegacyCohorts error:', error);
+    res.status(500).json({ message: error.message || 'Failed to purge legacy cohorts' });
+  }
+};
+

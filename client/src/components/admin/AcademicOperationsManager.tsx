@@ -389,6 +389,10 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
       {/* ========================================================= */}
       {subTab === 'calendar' && (
         <AcademicCalendarManager
+          cohorts={cohorts}
+          programs={programs}
+          schools={effectiveSchools}
+          applications={applications}
           onOpenCreateCohortForSession={(sessionId) => {
             setSelectedAcademicSessionId(sessionId);
             setCreateCohortProgramId(undefined);

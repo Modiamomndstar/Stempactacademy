@@ -82,6 +82,10 @@ export const api = {
   getCohortAnalysis: (id: string) => apiRequest(`/cohorts/${id}/analysis`),
   createCohort: (data: any) => apiRequest('/cohorts', { method: 'POST', body: JSON.stringify(data) }),
   updateCohort: (id: string, data: any) => apiRequest(`/cohorts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCohort: (id: string, force: boolean = false) =>
+    apiRequest(`/cohorts/${id}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
+  purgeLegacyCohorts: (data: { preserveSessionId?: string } = {}) =>
+    apiRequest('/cohorts/purge-legacy', { method: 'POST', body: JSON.stringify(data) }),
 
   // Applications
   submitApplication: (data: any) => apiRequest('/applications', { method: 'POST', body: JSON.stringify(data) }),

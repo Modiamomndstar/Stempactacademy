@@ -53,10 +53,12 @@ router.patch('/academic-sessions/:id', authenticate, authorize(Role.SUPER_ADMIN,
 
 // 3. Cohorts
 router.get('/cohorts', cohortController.getCohorts);
+router.post('/cohorts/purge-legacy', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.purgeLegacyCohorts);
 router.get('/cohorts/:id', cohortController.getCohortById);
 router.get('/cohorts/:id/analysis', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN), cohortController.getCohortAnalysis);
 router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.createCohort);
 router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.updateCohort);
+router.delete('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.deleteCohort);
 
 // 4. Applications
 router.post('/applications', applicationController.submitApplication);
