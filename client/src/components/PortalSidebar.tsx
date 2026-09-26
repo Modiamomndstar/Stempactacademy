@@ -48,17 +48,19 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
   if (!user) return null;
+
+  const searchParams = new URLSearchParams(location.search);
+  const currentTabFromUrl = searchParams.get('tab');
+  const currentKey = currentTabFromUrl || activeSection || activeTab;
 
   const handleNavigate = (route: string, sectionKey?: string) => {
     if (sectionKey) {
       if (onSectionChange) onSectionChange(sectionKey);
       if (onTabChange) onTabChange(sectionKey);
     }
-    if (location.pathname !== route) {
-      navigate(route);
-    }
+    const targetUrl = sectionKey ? `${route}?tab=${sectionKey}` : route;
+    navigate(targetUrl);
     if (onCloseMobile) {
       onCloseMobile();
     }
@@ -244,7 +246,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       {
         title: 'COMMUNICATIONS',
         items: [
-          { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Megaphone, route: '/portal/admin' },
+          { key: 'cms', label: 'School Bulletins', icon: Megaphone, route: '/portal/admin' },
           { key: 'deliveries', label: 'Notification Outbox', icon: Send, route: '/portal/admin' },
         ],
       },
@@ -259,7 +261,6 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   };
 
   const navGroups = getNavigationGroups();
-  const currentKey = activeSection || activeTab;
 
   return (
     <aside className="h-full flex flex-col bg-[#070c14] text-white border-r border-[#1a2538] select-none">

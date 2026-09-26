@@ -114,6 +114,9 @@ export const AdminDashboardPage: React.FC = () => {
   // Announcements & CMS State
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
+  const [announcementAudience, setAnnouncementAudience] = useState<'ALL' | 'STUDENTS' | 'INSTRUCTORS' | 'PARENTS'>('ALL');
+  const [announcementPriority, setAnnouncementPriority] = useState<'NORMAL' | 'HIGH' | 'URGENT'>('NORMAL');
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
   // Extract enrolled students list from invoices and certificates for readiness evaluation
   const gatheredStudents = useMemo(() => {
@@ -157,6 +160,7 @@ export const AdminDashboardPage: React.FC = () => {
         auditRes,
         aiRes,
         deliveriesRes,
+        cmsRes,
       ] = await Promise.all([
         api.getAdminStats().catch(() => null),
         api.getApplications().catch(() => ({ applications: [] })),
@@ -171,6 +175,7 @@ export const AdminDashboardPage: React.FC = () => {
         api.getAuditLogs({ limit: 50 }).catch(() => ({ logs: [] })),
         api.getAIGenerations().catch(() => ({ data: [] })),
         api.getNotificationDeliveries().catch(() => ({ data: [] })),
+        api.getCMSContent().catch(() => ({ announcements: [] })),
       ]);
 
       setStats(statsRes);
@@ -186,6 +191,7 @@ export const AdminDashboardPage: React.FC = () => {
       setAuditLogs(auditRes?.logs || []);
       setAiGenerations(aiRes?.data || []);
       setNotificationDeliveries(deliveriesRes?.data || []);
+      setAnnouncements(cmsRes?.announcements || []);
     } catch (err) {
       console.error('Failed to load admin data:', err);
     } finally {
@@ -251,7 +257,7 @@ export const AdminDashboardPage: React.FC = () => {
       },
       {
         id: 'cms',
-        name: 'Campus Bulletins',
+        name: `School Bulletins (${announcements.length})`,
         icon: Layers,
         visible: isSuperAdmin || isContentManager || isMarketingManager || isCoordinator,
       },
@@ -305,12 +311,14 @@ export const AdminDashboardPage: React.FC = () => {
       await api.createAnnouncement({
         title: announcementTitle,
         content: announcementContent,
-        targetAudience: 'ALL',
-        priority: 'HIGH',
+        targetAudience: announcementAudience,
+        priority: announcementPriority,
       });
-      setActionSuccess('Announcement broadcasted to all students and faculty!');
+      setActionSuccess('School announcement broadcasted successfully!');
       setAnnouncementTitle('');
       setAnnouncementContent('');
+      const cmsRes = await api.getCMSContent().catch(() => ({ announcements: [] }));
+      setAnnouncements(cmsRes?.announcements || []);
     } catch (err: any) {
       alert(err.message || 'Failed to create announcement');
     }
@@ -407,7 +415,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <PortalLayout>
+      <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
         <div className="py-24 flex flex-col items-center justify-center space-y-4">
           <LoadingSpinner message="Connecting to STEMPACT Administrative Ledger & Operational APIs..." />
         </div>
@@ -416,7 +424,7 @@ export const AdminDashboardPage: React.FC = () => {
   }
 
   return (
-    <PortalLayout>
+    <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="space-y-8 max-w-7xl mx-auto pb-16">
         {/* Header Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-6">
@@ -820,25 +828,33 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 10: CMS & CAMPUS BULLETINS */}
+        {/* TAB 10: CMS & SCHOOL BULLETINS */}
         {activeTab === 'cms' && (
-          <div className="space-y-6 animate-fadeIn max-w-3xl">
+          <div className="space-y-8 animate-fadeIn max-w-4xl">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Campus Bulletins & Broadcasts</h2>
+              <h2 className="text-lg font-bold text-slate-900">School Bulletins & Announcements</h2>
               <p className="text-xs text-slate-500">
-                Publish high-priority administrative bulletins to student, faculty, and parent portal dashboards.
+                Publish and manage official school-wide announcements broadcasted to student, faculty, and parent portals.
               </p>
             </div>
 
+            {/* Broadcast Form Card */}
             <form
               onSubmit={handleBroadcastAnnouncement}
               className="bg-white border border-slate-200/90 rounded-xl p-6 shadow-xs space-y-4"
             >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Compose New School Bulletin
+                </h3>
+                <span className="text-[10px] text-slate-400 font-medium">Broadcasts instantly to dashboards</span>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">Bulletin Headline / Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Schedule Update for Fall 2026 Cohorts"
+                  placeholder="e.g. Orientation Schedule Update for Fall 2026 Cohorts"
                   value={announcementTitle}
                   onChange={(e) => setAnnouncementTitle(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
@@ -846,11 +862,40 @@ export const AdminDashboardPage: React.FC = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Target Audience</label>
+                  <select
+                    value={announcementAudience}
+                    onChange={(e: any) => setAnnouncementAudience(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  >
+                    <option value="ALL">All Academy (Students, Faculty & Parents)</option>
+                    <option value="STUDENTS">Enrolled Students Only</option>
+                    <option value="INSTRUCTORS">Faculty Mentors Only</option>
+                    <option value="PARENTS">Parents & Guardians Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Priority Level</label>
+                  <select
+                    value={announcementPriority}
+                    onChange={(e: any) => setAnnouncementPriority(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  >
+                    <option value="NORMAL">Normal Priority</option>
+                    <option value="HIGH">High Priority</option>
+                    <option value="URGENT">Urgent Alert</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Bulletin Announcement Body</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Bulletin Message Body</label>
                 <textarea
                   rows={4}
-                  placeholder="Type the message to be broadcasted to the academy community..."
+                  placeholder="Type the message to be broadcasted to the school community..."
                   value={announcementContent}
                   onChange={(e) => setAnnouncementContent(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
@@ -864,10 +909,65 @@ export const AdminDashboardPage: React.FC = () => {
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Broadcast Bulletin</span>
+                  <span>Broadcast School Bulletin</span>
                 </button>
               </div>
             </form>
+
+            {/* Published Announcements Feed */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Published School Bulletins
+                </h3>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {announcements.length} Total
+                </span>
+              </div>
+
+              {announcements.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200/90 p-8 text-center text-xs text-slate-500">
+                  No bulletins published yet. Use the form above to broadcast to students, faculty, or parents.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {announcements.map((item: any) => (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-xs space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h4 className="text-sm font-bold text-slate-900">{item.title}</h4>
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                item.priority === 'URGENT'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : item.priority === 'HIGH'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-blue-50 text-blue-700'
+                              }`}
+                            >
+                              {item.priority || 'NORMAL'}
+                            </span>
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              Audience: {item.targetAudience || 'ALL'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
+                            {item.content}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                        Broadcasted on {item.createdAt ? new Date(item.createdAt).toLocaleString() : 'N/A'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
