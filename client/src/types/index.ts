@@ -256,6 +256,20 @@ export interface Cohort {
   status: CohortStatus;
   academicSessionId?: string;
   academicSession?: AcademicSession;
+  programVersionId?: string;
+  programVersion?: {
+    id: string;
+    versionNumber: number;
+    isCurrent?: boolean;
+    status?: string;
+    changelog?: string;
+  };
+  curriculumVersionId?: string;
+  curriculumVersion?: {
+    id: string;
+    versionNumber: number;
+    status?: string;
+  };
   syllabi?: Syllabus[];
   isRegistrationOpen?: boolean;
 }

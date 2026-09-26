@@ -53,6 +53,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [pendingPlacements, setPendingPlacements] = useState<any[]>([]);
   const [cohorts, setCohorts] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [schools, setSchools] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [bankTransfers, setBankTransfers] = useState<any[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
@@ -153,6 +154,7 @@ export const AdminDashboardPage: React.FC = () => {
         placementsRes,
         cohortsRes,
         progRes,
+        schoolsRes,
         invRes,
         adminsRes,
         instructorsRes,
@@ -168,6 +170,7 @@ export const AdminDashboardPage: React.FC = () => {
         api.getPendingPlacements().catch(() => ({ placements: [] })),
         api.getCohorts().catch(() => ({ cohorts: [] })),
         api.getPrograms().catch(() => ({ programs: [] })),
+        api.getSchools().catch(() => ({ schools: [] })),
         api.getInvoices().catch(() => ({ invoices: [] })),
         api.getAdmins().catch(() => ({ admins: [] })),
         api.getInstructors().catch(() => ({ instructors: [] })),
@@ -184,6 +187,7 @@ export const AdminDashboardPage: React.FC = () => {
       setPendingPlacements(placementsRes?.placements || []);
       setCohorts(cohortsRes?.cohorts || []);
       setPrograms(progRes?.programs || []);
+      setSchools(schoolsRes?.schools || []);
       setInvoices(invRes?.invoices || []);
       setAdmins(adminsRes?.admins || []);
       setInstructors(instructorsRes?.instructors || []);
@@ -448,7 +452,12 @@ export const AdminDashboardPage: React.FC = () => {
             rawUrlTab === 'cohorts'
               ? 'Cohort rosters, session scheduling, capacity limits, and fee structures.'
               : 'Canonical academic curriculum structures, degree paths, and course syllabi.',
-          badge: <Badge variant="slate">{programs.length} Programs</Badge>,
+          badge: (
+            <Badge variant="slate">
+              {schools.length > 0 ? `${schools.length} Schools • ` : ''}
+              {programs.length} Programs • {cohorts.length} Cohorts
+            </Badge>
+          ),
           actions: (
             <div className="flex items-center gap-2">
               <button
@@ -794,6 +803,7 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 3: ACADEMIC OPERATIONS MANAGER */}
         {activeTab === 'academics' && (
           <AcademicOperationsManager
+            schools={schools}
             programs={programs}
             cohorts={cohorts}
             onDataRefresh={loadAllData}
@@ -801,7 +811,7 @@ export const AdminDashboardPage: React.FC = () => {
             onOpenEditCohort={(c) => handleOpenEditCohort(c)}
             onOpenAIArchitect={() => setShowAIProgramModal(true)}
             isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
-            initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : 'programs'}
+            initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : 'schools'}
           />
         )}
 
