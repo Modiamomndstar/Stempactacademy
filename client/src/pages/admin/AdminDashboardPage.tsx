@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
+import { PageHeader } from '../../components/PageHeader';
 import { AIProgramGeneratorModal } from '../../components/AIProgramGeneratorModal';
 import { CohortAnalysisModal } from '../../components/CohortAnalysisModal';
 import { AdmissionsManager } from '../../components/admin/AdmissionsManager';
@@ -423,29 +424,14 @@ export const AdminDashboardPage: React.FC = () => {
     );
   }
 
-  return (
-    <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <div className="space-y-8 max-w-7xl mx-auto pb-16">
-        {/* Header Bar */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Executive Management Console</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-blue-50 border border-blue-200 text-blue-700">
-                  {user?.role?.replace(/_/g, ' ') || 'Staff'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Ile-Ife Campus Operations • Admissions Pipeline • Faculty Governance • Financial Ledger
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center flex-wrap gap-2.5">
+  const getPageHeaderConfig = () => {
+    switch (activeTab) {
+      case 'analytics':
+        return {
+          title: 'Executive Dashboard',
+          subtitle: 'Institutional health metrics, student intake pacing, and financial ledger status.',
+          badge: <Badge variant="blue">{user?.role?.replace(/_/g, ' ') || 'Staff'}</Badge>,
+          actions: (
             <button
               onClick={() => loadAllData()}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
@@ -453,67 +439,245 @@ export const AdminDashboardPage: React.FC = () => {
               <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
               <span>Refresh</span>
             </button>
-            {isSuperAdmin && (
+          ),
+        };
+      case 'academics':
+        return {
+          title: rawUrlTab === 'cohorts' ? 'Cohorts & Timetables' : 'Schools & Programs',
+          subtitle:
+            rawUrlTab === 'cohorts'
+              ? 'Cohort rosters, session scheduling, capacity limits, and fee structures.'
+              : 'Canonical academic curriculum structures, degree paths, and course syllabi.',
+          badge: <Badge variant="slate">{programs.length} Programs</Badge>,
+          actions: (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowCreateAdminModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition"
+                onClick={() => loadAllData()}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
               >
-                <Plus className="w-4 h-4" />
-                <span>New Admin</span>
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Refresh</span>
               </button>
-            )}
-            {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+              {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+                <button
+                  onClick={() => setShowAIProgramModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md transition"
+                >
+                  <Sparkles className="w-4 h-4 text-purple-200" />
+                  <span>Curriculum Architect</span>
+                </button>
+              )}
+            </div>
+          ),
+        };
+      case 'admissions':
+        return {
+          title: 'Admissions & Placements',
+          subtitle: 'Applicant intake pipeline, diagnostic placement reviews, and cohort allocation.',
+          badge: <Badge variant="slate">{applications.length} Applicants</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      case 'finance':
+        return {
+          title: 'Tuition & Financial Ledger',
+          subtitle: 'Tuition invoice tracking, bank transfer reconciliation, and clearance records.',
+          badge: <Badge variant="slate">{invoices.length} Invoices</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      case 'certificates':
+        return {
+          title: 'Certificates & Verification',
+          subtitle: 'Issued credentials, cryptographic verification registry, and issuance desk.',
+          badge: <Badge variant="slate">{certificates.length} Issued</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      case 'ai':
+        return {
+          title: 'AI Studio & Governance',
+          subtitle: 'Autonomous curriculum generation audit logs, prompt safety, and review queue.',
+          badge: <Badge variant="slate">{aiGenerations.length} Logs</Badge>,
+          actions: (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowCreateInstructorModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition"
+                onClick={() => loadAllData()}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
               >
-                <Plus className="w-4 h-4" />
-                <span>Onboard Faculty</span>
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Refresh</span>
               </button>
-            )}
-            {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+              {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+                <button
+                  onClick={() => setShowAIProgramModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md transition"
+                >
+                  <Sparkles className="w-4 h-4 text-purple-200" />
+                  <span>Curriculum Architect</span>
+                </button>
+              )}
+            </div>
+          ),
+        };
+      case 'deliveries':
+        return {
+          title: 'Communications Outbox',
+          subtitle: 'Transactional notification dispatch logs, queue latency, and delivery reports.',
+          badge: <Badge variant="slate">{notificationDeliveries.length} Messages</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      case 'instructors':
+        return {
+          title: 'Faculty & Mentors',
+          subtitle: 'Instructional staff roster, specializations, credentials, and teaching assignments.',
+          badge: <Badge variant="slate">{instructors.length} Faculty</Badge>,
+          actions: (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAIProgramModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md transition"
+                onClick={() => loadAllData()}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
               >
-                <Sparkles className="w-4 h-4 text-purple-200" />
-                <span>Curriculum Architect</span>
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Refresh</span>
               </button>
-            )}
-          </div>
-        </div>
+              {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
+                <button
+                  onClick={() => setShowCreateInstructorModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Onboard Faculty</span>
+                </button>
+              )}
+            </div>
+          ),
+        };
+      case 'admins':
+        return {
+          title: 'Admin Accounts',
+          subtitle: 'Operational administrator profiles, system security privileges, and RBAC roles.',
+          badge: <Badge variant="slate">{admins.length} Staff</Badge>,
+          actions: (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => loadAllData()}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Refresh</span>
+              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setShowCreateAdminModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Admin</span>
+                </button>
+              )}
+            </div>
+          ),
+        };
+      case 'cms':
+        return {
+          title: 'School Bulletins & Announcements',
+          subtitle: 'Official announcements and notices broadcast to students, faculty, and guardians.',
+          badge: <Badge variant="slate">{announcements.length} Published</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      case 'audit':
+        return {
+          title: 'Security Audit Trail',
+          subtitle: 'Immutable chronological record of administrative actions, data edits, and auth events.',
+          badge: <Badge variant="slate">{auditLogs.length} Events</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+      default:
+        return {
+          title: 'Executive Console',
+          subtitle: 'Institutional management and administration overview.',
+          badge: <Badge variant="blue">{user?.role?.replace(/_/g, ' ') || 'Staff'}</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
+    }
+  };
+
+  const pageHeader = getPageHeaderConfig();
+
+  return (
+    <PortalLayout activeTab={rawUrlTab || activeTab} onTabChange={handleTabChange}>
+      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+        {/* Dynamic Domain Page Header */}
+        <PageHeader
+          title={pageHeader.title}
+          subtitle={pageHeader.subtitle}
+          badge={pageHeader.badge}
+          actions={pageHeader.actions}
+        />
 
         {/* Global Action Banner */}
         {actionSuccess && (
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
             <span className="font-semibold">{actionSuccess}</span>
-            <button onClick={() => setActionSuccess('')} className="font-bold text-emerald-300 hover:text-white">
+            <button onClick={() => setActionSuccess('')} className="font-bold text-emerald-950 hover:opacity-75">
               ✕
             </button>
           </div>
         )}
-
-        {/* Horizontal Tab Navigation Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 pb-2 no-scrollbar">
-          {availableTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/60 bg-white'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                <span>{tab.name}</span>
-              </button>
-            );
-          })}
-        </div>
 
         {/* TAB 1: EXECUTIVE ANALYTICS */}
         {activeTab === 'analytics' && stats && (
@@ -637,6 +801,7 @@ export const AdminDashboardPage: React.FC = () => {
             onOpenEditCohort={(c) => handleOpenEditCohort(c)}
             onOpenAIArchitect={() => setShowAIProgramModal(true)}
             isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
+            initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : 'programs'}
           />
         )}
 

@@ -24,6 +24,7 @@ interface AcademicOperationsManagerProps {
   onOpenCohortAnalysis: (cohortId: string) => void;
   onOpenAIArchitect: () => void;
   isAcademicOrSuperAdmin: boolean;
+  initialSubTab?: 'programs' | 'cohorts';
 }
 
 export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps> = ({
@@ -34,8 +35,16 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   onOpenCohortAnalysis,
   onOpenAIArchitect,
   isAcademicOrSuperAdmin,
+  initialSubTab,
 }) => {
-  const [subTab, setSubTab] = useState<'programs' | 'cohorts'>('programs');
+  const [subTab, setSubTab] = useState<'programs' | 'cohorts'>(initialSubTab || 'programs');
+
+  React.useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   const [schoolFilter, setSchoolFilter] = useState('');
   const [programStatusFilter, setProgramStatusFilter] = useState('');
   const [cohortStatusFilter, setCohortStatusFilter] = useState('');
