@@ -57,6 +57,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [bankTransfers, setBankTransfers] = useState<any[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
+  const [adminRoleFilter, setAdminRoleFilter] = useState<string>('ALL');
   const [instructors, setInstructors] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [aiGenerations, setAiGenerations] = useState<any[]>([]);
@@ -95,7 +96,7 @@ export const AdminDashboardPage: React.FC = () => {
     email: '',
     username: '',
     phone: '',
-    role: 'COORDINATOR_ADMIN' as 'COORDINATOR_ADMIN' | 'ACADEMIC_ADMIN' | 'FINANCE_ADMIN',
+    role: 'ACADEMIC_ADMIN',
     password: '',
   });
 
@@ -931,75 +932,133 @@ export const AdminDashboardPage: React.FC = () => {
         )}
 
         {/* TAB 9: ADMIN ACCOUNTS */}
+        {/* TAB: ADMIN & STAFF ACCOUNTS */}
         {activeTab === 'admins' && isSuperAdmin && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-white">Administrator Accounts</h2>
+                <h2 className="text-lg font-bold text-white">Institutional Staff & Administrators</h2>
                 <p className="text-xs text-slate-400">
-                  Provision and govern institutional admin roles (Super Admin, Academic Admin, Finance Admin, Coordinator Admin).
+                  Provision and govern all academy staff roles (Admissions, Academics, Finance, Counseling, Innovation, Marketing, Partners).
                 </p>
               </div>
               <button
                 onClick={() => setShowCreateAdminModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition"
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create Admin Account</span>
+                <span>Create Staff Account</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {admins.map((adm: any) => (
-                <div
-                  key={adm.id}
-                  className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 space-y-4 backdrop-blur-sm"
+            {/* Role Filter Chips */}
+            <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-white/10">
+              <button
+                type="button"
+                onClick={() => setAdminRoleFilter('ALL')}
+                className={`px-3 py-1 rounded-xl font-bold text-xs transition cursor-pointer ${
+                  adminRoleFilter === 'ALL'
+                    ? 'bg-white text-slate-900'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                All Staff ({admins.length})
+              </button>
+              {Array.from(new Set(admins.map((a: any) => a.role))).map((r: any) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setAdminRoleFilter(r)}
+                  className={`px-3 py-1 rounded-xl font-bold text-xs transition cursor-pointer ${
+                    adminRoleFilter === r
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-sm flex items-center justify-center">
-                        {adm.firstName ? adm.firstName[0] : 'A'}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-white">
-                          {adm.firstName} {adm.lastName}
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          {adm.username ? `@${adm.username}` : adm.email}
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        adm.role === 'SUPER_ADMIN'
-                          ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
-                          : adm.role === 'COORDINATOR_ADMIN'
-                          ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
-                          : 'bg-purple-500/10 border border-purple-500/20 text-purple-400'
-                      }`}
-                    >
-                      {adm.role.replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-slate-300 border-t border-white/5 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Email:</span>
-                      <span className="font-medium text-slate-200">{adm.email}</span>
-                    </div>
-                    {adm.phone && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Phone:</span>
-                        <span className="font-medium text-slate-200">{adm.phone}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Status:</span>
-                      <span className="font-bold text-emerald-400">Active</span>
-                    </div>
-                  </div>
-                </div>
+                  {r.replace('_', ' ')} ({admins.filter((a: any) => a.role === r).length})
+                </button>
               ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {admins
+                .filter((adm: any) => adminRoleFilter === 'ALL' || adm.role === adminRoleFilter)
+                .map((adm: any) => {
+                  const getRoleBadgeStyle = (role: string) => {
+                    switch (role) {
+                      case 'SUPER_ADMIN':
+                        return 'bg-rose-500/10 border border-rose-500/30 text-rose-400';
+                      case 'ACADEMIC_ADMIN':
+                        return 'bg-blue-500/10 border border-blue-500/30 text-blue-400';
+                      case 'FINANCE_ADMIN':
+                        return 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+                      case 'ADMISSIONS_ADMIN':
+                        return 'bg-amber-500/10 border border-amber-500/30 text-amber-400';
+                      case 'PROGRAM_COORDINATOR':
+                      case 'COORDINATOR_ADMIN':
+                        return 'bg-purple-500/10 border border-purple-500/30 text-purple-400';
+                      case 'COUNSELOR':
+                        return 'bg-pink-500/10 border border-pink-500/30 text-pink-400';
+                      case 'INNOVATION_MANAGER':
+                        return 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400';
+                      case 'CONTENT_MANAGER':
+                        return 'bg-violet-500/10 border border-violet-500/30 text-violet-400';
+                      case 'MARKETING_MANAGER':
+                        return 'bg-orange-500/10 border border-orange-500/30 text-orange-400';
+                      case 'PARTNER':
+                        return 'bg-teal-500/10 border border-teal-500/30 text-teal-400';
+                      default:
+                        return 'bg-slate-500/10 border border-slate-500/30 text-slate-400';
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={adm.id}
+                      className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 space-y-4 backdrop-blur-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-sm flex items-center justify-center">
+                            {adm.firstName ? adm.firstName[0] : 'A'}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-white">
+                              {adm.firstName} {adm.lastName}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              {adm.username ? `@${adm.username}` : adm.email}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-md text-right ${getRoleBadgeStyle(
+                            adm.role
+                          )}`}
+                        >
+                          {adm.role.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-300 border-t border-white/5 pt-3">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Email:</span>
+                          <span className="font-medium text-slate-200">{adm.email}</span>
+                        </div>
+                        {adm.phone && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Phone:</span>
+                            <span className="font-medium text-slate-200">{adm.phone}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Status:</span>
+                          <span className="font-bold text-emerald-400">Active</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -1285,15 +1344,23 @@ export const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Administrative Role</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Administrative / Staff Role</label>
                   <select
                     value={adminFormData.role}
                     onChange={(e: any) => setAdminFormData({ ...adminFormData, role: e.target.value })}
                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
                   >
-                    <option value="COORDINATOR_ADMIN">COORDINATOR_ADMIN</option>
-                    <option value="ACADEMIC_ADMIN">ACADEMIC_ADMIN</option>
-                    <option value="FINANCE_ADMIN">FINANCE_ADMIN</option>
+                    <option value="ACADEMIC_ADMIN">Academic Administrator (Curriculum, Schools, Cohorts)</option>
+                    <option value="FINANCE_ADMIN">Finance Administrator (Tuition, Ledger, Bank Approvals)</option>
+                    <option value="ADMISSIONS_ADMIN">Admissions Administrator (Applications, Placements)</option>
+                    <option value="PROGRAM_COORDINATOR">Program Coordinator (Pacing, Attendance, Operations)</option>
+                    <option value="COORDINATOR_ADMIN">Coordinator Admin (Academic Operations Suite)</option>
+                    <option value="COUNSELOR">Student Counselor (At-Risk Watchlist, Guidance)</option>
+                    <option value="INNOVATION_MANAGER">Innovation Manager (Hackathons, Competitions)</option>
+                    <option value="CONTENT_MANAGER">Content & LMS Manager (Courseware, Lessons)</option>
+                    <option value="MARKETING_MANAGER">Marketing Manager (Bulletins, Announcements, Media)</option>
+                    <option value="PARTNER">Corporate & NGO Partner (Grants, CSR Sponsorships)</option>
+                    <option value="SUPER_ADMIN">Super Administrator (Full System Authority)</option>
                   </select>
                 </div>
               </div>

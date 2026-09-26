@@ -16,10 +16,17 @@ export const createAdmin = async (req: AuthRequest, res: Response): Promise<void
     }
 
     const allowedAdminRoles = [
-      Role.COORDINATOR_ADMIN,
+      Role.SUPER_ADMIN,
       Role.ACADEMIC_ADMIN,
       Role.FINANCE_ADMIN,
-      Role.SUPER_ADMIN,
+      Role.ADMISSIONS_ADMIN,
+      Role.COORDINATOR_ADMIN,
+      Role.PROGRAM_COORDINATOR,
+      Role.COUNSELOR,
+      Role.CONTENT_MANAGER,
+      Role.INNOVATION_MANAGER,
+      Role.MARKETING_MANAGER,
+      Role.PARTNER,
     ];
 
     const adminRole = role && allowedAdminRoles.includes(role) ? role : Role.ACADEMIC_ADMIN;
@@ -65,8 +72,33 @@ export const createAdmin = async (req: AuthRequest, res: Response): Promise<void
       },
     });
 
+    // Create supporting profile if needed
+    if (adminRole === Role.PROGRAM_COORDINATOR || adminRole === Role.COORDINATOR_ADMIN) {
+      await prisma.coordinatorProfile.create({
+        data: {
+          userId: user.id,
+          staffCode: `STP-COORD-${Math.floor(100 + Math.random() * 900)}`,
+          department: 'Academic Program Operations',
+          assignedSchools: JSON.stringify([]),
+          assignedPrograms: JSON.stringify([]),
+        },
+      }).catch(() => null);
+    } else if (adminRole === Role.PARTNER) {
+      await prisma.partnerProfile.create({
+        data: {
+          userId: user.id,
+          organizationName: `${firstName} ${lastName} Organization`,
+          partnerType: 'CORPORATE',
+          contactPhone: phone || '',
+          mouDetails: 'Institutional Corporate/NGO Partner',
+          grantBudget: 0,
+          activeSponsorships: 0,
+        },
+      }).catch(() => null);
+    }
+
     res.status(201).json({
-      message: `Administrator account (${adminRole.replace('_', ' ')}) created successfully.`,
+      message: `Staff account (${adminRole.replace('_', ' ')}) created successfully.`,
       admin: user,
     });
   } catch (error: any) {
@@ -75,7 +107,7 @@ export const createAdmin = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// 2. List all Administrators (SUPER_ADMIN only)
+// 2. List all Administrators & Staff (SUPER_ADMIN only)
 export const getAdmins = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const admins = await prisma.user.findMany({
@@ -83,9 +115,16 @@ export const getAdmins = async (req: AuthRequest, res: Response): Promise<void> 
         role: {
           in: [
             Role.SUPER_ADMIN,
-            Role.COORDINATOR_ADMIN,
             Role.ACADEMIC_ADMIN,
             Role.FINANCE_ADMIN,
+            Role.ADMISSIONS_ADMIN,
+            Role.COORDINATOR_ADMIN,
+            Role.PROGRAM_COORDINATOR,
+            Role.COUNSELOR,
+            Role.CONTENT_MANAGER,
+            Role.INNOVATION_MANAGER,
+            Role.MARKETING_MANAGER,
+            Role.PARTNER,
           ],
         },
       },
