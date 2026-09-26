@@ -31,6 +31,8 @@ import {
   RefreshCw,
   Mail,
   UserCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -74,6 +76,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [showAIProgramModal, setShowAIProgramModal] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateInstructorModal, setShowCreateInstructorModal] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showInstructorPassword, setShowInstructorPassword] = useState(false);
 
   // Cohort Fee Edit Modal State
   const [editingCohort, setEditingCohort] = useState<any | null>(null);
@@ -1367,13 +1371,23 @@ export const AdminDashboardPage: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Initial Password</label>
-                <input
-                  type="password"
-                  value={adminFormData.password}
-                  onChange={(e) => setAdminFormData({ ...adminFormData, password: e.target.value })}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    value={adminFormData.password}
+                    onChange={(e) => setAdminFormData({ ...adminFormData, password: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 pr-10 text-white focus:outline-none focus:border-brand-500 font-mono"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition"
+                  >
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
@@ -1495,13 +1509,23 @@ export const AdminDashboardPage: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-slate-300 mb-1">Initial Password</label>
-                <input
-                  type="password"
-                  value={instructorFormData.password}
-                  onChange={(e) => setInstructorFormData({ ...instructorFormData, password: e.target.value })}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showInstructorPassword ? 'text' : 'password'}
+                    value={instructorFormData.password}
+                    onChange={(e) => setInstructorFormData({ ...instructorFormData, password: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 pr-10 text-white focus:outline-none focus:border-brand-500 font-mono"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowInstructorPassword(!showInstructorPassword)}
+                    aria-label={showInstructorPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition"
+                  >
+                    {showInstructorPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
