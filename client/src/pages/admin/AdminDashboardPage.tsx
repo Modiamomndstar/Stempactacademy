@@ -297,7 +297,7 @@ export const AdminDashboardPage: React.FC = () => {
   const activeTab = useMemo(() => {
     if (!rawUrlTab) return 'analytics';
     if (['admissions', 'applications', 'placements'].includes(rawUrlTab)) return 'admissions';
-    if (['academics', 'programs', 'cohorts'].includes(rawUrlTab)) return 'academics';
+    if (['academics', 'programs', 'cohorts', 'calendar', 'sessions'].includes(rawUrlTab)) return 'academics';
     if (['finance', 'invoices', 'transfers'].includes(rawUrlTab)) return 'finance';
     if (['faculty', 'instructors'].includes(rawUrlTab)) return 'instructors';
     const match = availableTabs.find((t) => t.id === rawUrlTab);
@@ -812,7 +812,7 @@ export const AdminDashboardPage: React.FC = () => {
             onOpenEditCohort={(c) => handleOpenEditCohort(c)}
             onOpenAIArchitect={() => setShowAIProgramModal(true)}
             isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
-            initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : 'schools'}
+            initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : (rawUrlTab === 'calendar' || rawUrlTab === 'sessions') ? 'calendar' : 'schools'}
           />
         )}
 

@@ -66,6 +66,13 @@ export const api = {
   getProgramByCode: (code: string) => apiRequest(`/programs/${code}`),
   updateProgramStatus: (id: string, data: any) => apiRequest(`/programs/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Academic Sessions & Calendars
+  getAcademicSessions: () => apiRequest('/academic-sessions'),
+  createAcademicSession: (data: { name: string; code?: string; startDate: string; endDate: string; isCurrent?: boolean }) =>
+    apiRequest('/academic-sessions', { method: 'POST', body: JSON.stringify(data) }),
+  updateAcademicSession: (id: string, data: { name?: string; code?: string; startDate?: string; endDate?: string; isCurrent?: boolean }) =>
+    apiRequest(`/academic-sessions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
   // Cohorts
   getCohorts: (params: Record<string, string> = {}) => {
     const query = new URLSearchParams(params).toString();

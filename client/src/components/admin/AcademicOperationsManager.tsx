@@ -27,10 +27,12 @@ import {
   PowerOff,
   Power,
   Plus,
+  CalendarDays,
 } from 'lucide-react';
 import { ProgramDetailModal } from './ProgramDetailModal';
 import { CohortDetailModal } from './CohortDetailModal';
 import { CreateCohortModal } from './CreateCohortModal';
+import { AcademicCalendarManager } from './AcademicCalendarManager';
 
 interface AcademicOperationsManagerProps {
   schools?: any[];
@@ -42,7 +44,7 @@ interface AcademicOperationsManagerProps {
   onOpenCohortAnalysis: (cohortId: string) => void;
   onOpenAIArchitect: () => void;
   isAcademicOrSuperAdmin: boolean;
-  initialSubTab?: 'schools' | 'programs' | 'cohorts';
+  initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts';
 }
 
 export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps> = ({
@@ -57,13 +59,31 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   isAcademicOrSuperAdmin,
   initialSubTab = 'schools',
 }) => {
-  const [subTab, setSubTab] = useState<'schools' | 'programs' | 'cohorts'>(initialSubTab);
+  const [subTab, setSubTab] = useState<'calendar' | 'schools' | 'programs' | 'cohorts'>(initialSubTab);
 
   React.useEffect(() => {
     if (initialSubTab) {
       setSubTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  // Live database academic sessions
+  const [dbSessions, setDbSessions] = useState<any[]>([]);
+
+  const loadDbSessions = async () => {
+    try {
+      const res = await api.getAcademicSessions();
+      if (res?.sessions) {
+        setDbSessions(res.sessions);
+      }
+    } catch (e) {
+      console.error('Failed to load db academic sessions:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    loadDbSessions();
+  }, []);
 
   // Drilldown & Modals state
   const [selectedSchool, setSelectedSchool] = useState<any | null>(null);
@@ -126,6 +146,14 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
     });
     return Array.from(map.values());
   }, [cohorts]);
+
+  // Combined live database academic sessions & derived session objects
+  const effectiveAcademicSessions = useMemo(() => {
+    if (dbSessions && dbSessions.length > 0) {
+      return dbSessions;
+    }
+    return academicSessions;
+  }, [dbSessions, academicSessions]);
 
   // Fallback schools list if schools prop is empty: derive from programs.school
   const effectiveSchools = useMemo(() => {
@@ -261,6 +289,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
+              setSubTab('calendar');
+              setSelectedSchool(null);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'calendar'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            <span>Academic Calendar ({effectiveAcademicSessions.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
               setSubTab('schools');
               setSelectedSchool(null);
             }}
@@ -339,6 +382,23 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
           <span>{actionError}</span>
           <button onClick={() => setActionError('')} className="font-bold text-rose-950">×</button>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* SUBTAB 0: ACADEMIC CALENDAR & SESSIONS                   */}
+      {/* ========================================================= */}
+      {subTab === 'calendar' && (
+        <AcademicCalendarManager
+          onOpenCreateCohortForSession={(sessionId) => {
+            setSelectedAcademicSessionId(sessionId);
+            setCreateCohortProgramId(undefined);
+            setShowCreateCohortModal(true);
+          }}
+          onDataRefresh={async () => {
+            await Promise.all([onDataRefresh(), loadDbSessions()]);
+          }}
+          isAcademicOrSuperAdmin={isAcademicOrSuperAdmin}
+        />
       )}
 
       {/* ========================================================= */}
@@ -1263,7 +1323,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             await onDataRefresh();
           }}
           programs={programs}
-          academicSessions={academicSessions}
+          academicSessions={effectiveAcademicSessions}
           initialProgramId={createCohortProgramId}
           initialAcademicSessionId={selectedAcademicSessionId !== 'ALL' ? selectedAcademicSessionId : undefined}
         />

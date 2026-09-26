@@ -29,6 +29,7 @@ import * as partnerController from '../controllers/partnerController.js';
 import * as coordinatorController from '../controllers/coordinatorController.js';
 import * as applicantController from '../controllers/applicantController.js';
 import * as aiController from '../controllers/aiController.js';
+import * as academicSessionController from '../controllers/academicSessionController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -44,6 +45,11 @@ router.get('/schools/:code', schoolController.getSchoolByCode);
 router.get('/programs', programController.getPrograms);
 router.get('/programs/:code', programController.getProgramByCode);
 router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.updateProgramStatus);
+
+// 2.5 Academic Calendars & Sessions
+router.get('/academic-sessions', academicSessionController.getAcademicSessions);
+router.post('/academic-sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), academicSessionController.createAcademicSession);
+router.patch('/academic-sessions/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), academicSessionController.updateAcademicSession);
 
 // 3. Cohorts
 router.get('/cohorts', cohortController.getCohorts);

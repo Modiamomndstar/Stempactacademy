@@ -229,6 +229,7 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
       registrationFee,
       certificationFee,
       discountPercentage,
+      status,
     } = req.body;
 
     const cohortCode = await identifierService.generateCohortCode({ year: new Date().getFullYear() });
@@ -276,7 +277,7 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
         registrationFee: Number(registrationFee) || 5000,
         certificationFee: Number(certificationFee) || 10000,
         discountPercentage: Number(discountPercentage) || 0,
-        status: CohortStatus.OPEN,
+        status: status ? (status as CohortStatus) : CohortStatus.OPEN,
       },
       include: {
         program: { include: { school: true } },
