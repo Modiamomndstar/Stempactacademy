@@ -24,6 +24,7 @@ import {
   HeartHandshake,
 } from 'lucide-react';
 import { ParentAssistantModal } from '../../components/ParentAssistantModal';
+import { PageHeader } from '../../components/PageHeader';
 
 export const ParentPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -35,6 +36,7 @@ export const ParentPortalPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>(currentTabFromUrl);
   const [selectedWardId, setSelectedWardId] = useState<string>(wardIdFromUrl);
+  const [academicSubTab, setAcademicSubTab] = useState<'lessons' | 'assignments'>('lessons');
 
   // Detailed Academic Records for Selected Ward
   const [detailedWardRecord, setDetailedWardRecord] = useState<any | null>(null);
@@ -218,6 +220,30 @@ export const ParentPortalPage: React.FC = () => {
               </div>
             </div>
 
+            {activeTab !== 'overview' && currentWard && (
+              <PageHeader
+                title={
+                  activeTab === 'progress'
+                    ? 'Academic Progress & Coursework'
+                    : activeTab === 'attendance'
+                    ? 'Attendance Register & Class Logs'
+                    : activeTab === 'finance'
+                    ? 'Tuition Invoices & Financial Clearance'
+                    : 'Ward Performance'
+                }
+                subtitle={`Authoritative academic ledger for ${currentWard.fullName}`}
+                badge={
+                  <Badge variant={activeTab === 'attendance' ? 'green' : activeTab === 'finance' ? 'purple' : 'blue'}>
+                    {activeTab === 'progress'
+                      ? 'Academic Standing'
+                      : activeTab === 'attendance'
+                      ? `${currentWard.attendanceRate}% Attendance`
+                      : 'Tuition Ledger'}
+                  </Badge>
+                }
+              />
+            )}
+
             {/* Selected Ward Profile Card */}
             {currentWard && (
               <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
@@ -244,29 +270,33 @@ export const ParentPortalPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Sub-Tab Navigation for Ward Details */}
-                <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
-                  {[
-                    { id: 'overview', name: 'Academic Overview' },
-                    { id: 'progress', name: 'Curriculum & Lessons' },
-                    { id: 'assignments', name: 'Assignments & Grades' },
-                    { id: 'attendance', name: 'Attendance Register' },
-                    { id: 'finance', name: 'Tuition & Invoices' },
-                  ].map((tab) => (
+                {/* Contextual Sub-Tabs only when in Academic Progress */}
+                {activeTab === 'progress' && (
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
                     <button
-                      key={tab.id}
                       type="button"
-                      onClick={() => handleTabChange(tab.id)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                        activeTab === tab.id
+                      onClick={() => setAcademicSubTab('lessons')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        academicSubTab === 'lessons'
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      {tab.name}
+                      Curriculum & Lessons
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setAcademicSubTab('assignments')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        academicSubTab === 'assignments'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      Assignments & Grades
+                    </button>
+                  </div>
+                )}
 
                 {recordError && (
                   <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
@@ -368,8 +398,8 @@ export const ParentPortalPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* TAB 2: DETAILED PROGRESS */}
-                {activeTab === 'progress' && (
+                {/* TAB 2: DETAILED PROGRESS - LESSONS */}
+                {activeTab === 'progress' && academicSubTab === 'lessons' && (
                   <div className="space-y-4">
                     <h3 className="font-bold text-base text-slate-900">Curriculum Lesson Progression</h3>
                     {loadingDetailedRecord ? (
@@ -397,7 +427,7 @@ export const ParentPortalPage: React.FC = () => {
                 )}
 
                 {/* TAB 3: ASSIGNMENTS & GRADES */}
-                {activeTab === 'assignments' && (
+                {((activeTab === 'progress' && academicSubTab === 'assignments') || activeTab === 'assignments') && (
                   <div className="space-y-4">
                     <h3 className="font-bold text-base text-slate-900">All Submitted Work & Instructor Grades</h3>
                     {(detailedWardRecord?.submissions || currentWard.recentAssignments || []).length > 0 ? (

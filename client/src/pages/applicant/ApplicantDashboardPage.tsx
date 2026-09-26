@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '../../components/PortalLayout';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -28,7 +28,26 @@ import {
 
 export const ApplicantDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>('status');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'status';
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl);
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && t !== activeTab) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (t: string) => {
+    setActiveTab(t);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', t);
+      return next;
+    });
+  };
+
   const [loading, setLoading] = useState<boolean>(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [clearanceData, setClearanceData] = useState<any>(null);
@@ -225,7 +244,7 @@ export const ApplicantDashboardPage: React.FC = () => {
   ];
 
   return (
-    <PortalLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
         {/* Header Hero */}
         <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
@@ -323,7 +342,7 @@ export const ApplicantDashboardPage: React.FC = () => {
         <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
           <button
             type="button"
-            onClick={() => setActiveTab('status')}
+            onClick={() => handleTabChange('status')}
             className={`pb-3 border-b-2 transition-all cursor-pointer ${
               activeTab === 'status'
                 ? 'border-blue-600 text-blue-600 font-bold'
@@ -334,7 +353,7 @@ export const ApplicantDashboardPage: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('assessment')}
+            onClick={() => handleTabChange('assessment')}
             className={`pb-3 border-b-2 transition-all cursor-pointer ${
               activeTab === 'assessment'
                 ? 'border-blue-600 text-blue-600 font-bold'
@@ -345,7 +364,7 @@ export const ApplicantDashboardPage: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('admission')}
+            onClick={() => handleTabChange('admission')}
             className={`pb-3 border-b-2 transition-all cursor-pointer ${
               activeTab === 'admission'
                 ? 'border-blue-600 text-blue-600 font-bold'
@@ -356,7 +375,7 @@ export const ApplicantDashboardPage: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('tuition')}
+            onClick={() => handleTabChange('tuition')}
             className={`pb-3 border-b-2 transition-all cursor-pointer ${
               activeTab === 'tuition'
                 ? 'border-blue-600 text-blue-600 font-bold'

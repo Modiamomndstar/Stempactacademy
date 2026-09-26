@@ -63,7 +63,7 @@ export const SchoolsPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
           <Badge variant="purple">Academic Architecture</Badge>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Our 8 Academic Schools
+            Academic Schools {schools.length > 0 && `(${schools.length})`}
           </h1>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
             Every academic school at STEMPACT represents an ecosystem of practical excellence, combining fundamental
@@ -113,7 +113,7 @@ export const SchoolsPage: React.FC = () => {
                     {activeSchool.code}
                   </span>
                   <span className="text-xs text-slate-400 font-semibold">
-                    School #{activeSchool.order} of 8
+                    School #{activeSchool.order || 1} of {schools.length}
                   </span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">

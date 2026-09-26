@@ -337,7 +337,9 @@ async function runPhase5Verification() {
     // TEST F: Conflicting Old Placement Logic Elimination
     // ----------------------------------------------------
     console.log('\n7. Conflicting Old Placement Logic Elimination:');
-    const controllerPath = path.resolve(process.cwd(), 'src/controllers/assessmentController.ts');
+    const controllerPath = fs.existsSync(path.resolve(process.cwd(), 'src/controllers/assessmentController.ts'))
+      ? path.resolve(process.cwd(), 'src/controllers/assessmentController.ts')
+      : path.resolve(process.cwd(), 'server/src/controllers/assessmentController.ts');
     const controllerCode = fs.readFileSync(controllerPath, 'utf8');
 
     assert(!controllerCode.includes('percentage >= 80'), 'assessmentController.ts NO LONGER contains conflicting "percentage >= 80" heuristic');

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '../../components/PortalLayout';
+import { PageHeader } from '../../components/PageHeader';
+import { Badge } from '../../components/UIElements';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import {
@@ -142,57 +144,66 @@ export const CoordinatorDashboardPage: React.FC = () => {
   const totalEnrolled = data?.totalStudents || cohorts.reduce((acc: number, c: any) => acc + (c.enrolledCount || 0), 0);
   const averageFillRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
+  const getPageHeaderConfig = () => {
+    switch (activeTab) {
+      case 'cohorts':
+        return {
+          title: 'Cohorts & Rosters',
+          subtitle: 'Active cohort quotas, student matriculation lists, and assigned faculty leads.',
+          badge: <Badge variant="blue">{cohorts.length} Cohorts</Badge>,
+        };
+      case 'sessions':
+        return {
+          title: 'Timetable & Sessions',
+          subtitle: 'Class lecture timetables, room assignments, and virtual class links.',
+          badge: <Badge variant="slate">{cohortSessions.length} Sessions</Badge>,
+        };
+      case 'attendance':
+        return {
+          title: 'Attendance Oversight',
+          subtitle: 'Session-by-session participation register and absence tracking across supervised cohorts.',
+          badge: <Badge variant="green">Register Audit</Badge>,
+        };
+      case 'progress':
+        return {
+          title: 'Academic Delivery Progress',
+          subtitle: 'Curriculum delivery pacing, module completions, and lesson milestones.',
+          badge: <Badge variant="purple">Pacing Tracker</Badge>,
+        };
+      case 'overview':
+      default:
+        return null;
+    }
+  };
+
+  const coordinatorPageHeader = getPageHeaderConfig();
+
   return (
     <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Header Hero */}
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
-              <Compass className="w-3.5 h-3.5" />
-              <span>Program Operations • {data?.staffCode && data.staffCode !== 'COORD-001' ? data.staffCode : 'Program Coordinator'}</span>
+        {/* Dynamic Domain Header */}
+        {coordinatorPageHeader ? (
+          <PageHeader
+            title={coordinatorPageHeader.title}
+            subtitle={coordinatorPageHeader.subtitle}
+            badge={coordinatorPageHeader.badge}
+          />
+        ) : (
+          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+            <div className="relative z-10 max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
+                <Compass className="w-3.5 h-3.5" />
+                <span>Program Operations • {data?.staffCode && data.staffCode !== 'COORD-001' ? data.staffCode : 'Program Coordinator'}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                Program Coordinator Cockpit
+              </h1>
+              <p className="text-sm text-slate-300">
+                Oversee assigned program schedules, track cohort enrollment quotas, inspect daily attendance pacing, and ensure syllabus milestones are met.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              Program Coordinator Cockpit
-            </h1>
-            <p className="text-sm text-slate-300">
-              Oversee assigned program schedules, track cohort enrollment quotas, inspect daily attendance pacing, and ensure syllabus milestones are met.
-            </p>
           </div>
-        </div>
-
-        {/* Global Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-px">
-          {[
-            { key: 'overview', label: 'Program Pacing & Cohorts', icon: Compass },
-            { key: 'cohorts', label: 'Cohort Rosters & Capacity', icon: Users, count: cohorts.length },
-            { key: 'sessions', label: 'Timetable & Sessions', icon: Calendar },
-            { key: 'attendance', label: 'Attendance Oversight', icon: CheckCircle2 },
-            { key: 'progress', label: 'Academic Delivery Progress', icon: BookOpen },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isSelected = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => handleTabChange(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 whitespace-nowrap ${
-                  isSelected
-                    ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isSelected ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        )}
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (

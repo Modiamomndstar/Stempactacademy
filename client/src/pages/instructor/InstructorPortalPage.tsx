@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
+import { PageHeader } from '../../components/PageHeader';
 import {
   Users,
   Calendar,
@@ -244,45 +245,99 @@ export const InstructorPortalPage: React.FC = () => {
   const { instructor, cohorts, pendingSubmissions, recentSessions } = data;
   const currentCohort = cohorts.find((c: any) => c.id === selectedCohortId) || cohorts[0] || null;
 
+  const getPageHeaderConfig = () => {
+    switch (activeTab) {
+      case 'attendance':
+        return {
+          title: 'Mark Class Attendance',
+          subtitle: 'Verify live participation, log attendance registers, and submit authorized session records.',
+          badge: <Badge variant="green">Register Open</Badge>,
+        };
+      case 'grading':
+        return {
+          title: 'Submissions & Grading Queue',
+          subtitle: 'Review student coursework submissions, assign grades, and provide qualitative mentor feedback.',
+          badge: <Badge variant="blue">{pendingSubmissions?.length || 0} Pending</Badge>,
+        };
+      case 'competencies':
+        return {
+          title: 'Competency Evaluation Desk',
+          subtitle: 'Rate student practical skill acquisition against ratified academic syllabus standards.',
+          badge: <Badge variant="purple">Competency Engine</Badge>,
+        };
+      case 'sessions':
+        return {
+          title: 'Class Sessions & Timetable',
+          subtitle: 'Schedule upcoming lecture sessions, lab practicums, and virtual class links.',
+          badge: <Badge variant="blue">{recentSessions?.length || 0} Sessions</Badge>,
+          actions: (
+            <button
+              type="button"
+              onClick={() => setShowNewSessionModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Session</span>
+            </button>
+          ),
+        };
+      case 'cohorts':
+      case 'cockpit':
+      default:
+        return null;
+    }
+  };
+
+  const instructorPageHeader = getPageHeaderConfig();
+
   return (
     <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
-        {/* Faculty Header */}
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-lg border border-emerald-400/30">
-              {instructor.name ? instructor.name[0] : 'F'}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-800">
-                  STAFF: {instructor.staffCode}
-                </span>
-                <span className="text-xs font-bold text-blue-400">FACULTY INSTRUCTOR</span>
+        {/* Dynamic Header: If specific sub-domain, show PageHeader; otherwise show Faculty Profile Header */}
+        {instructorPageHeader ? (
+          <PageHeader
+            title={instructorPageHeader.title}
+            subtitle={instructorPageHeader.subtitle}
+            badge={instructorPageHeader.badge}
+            actions={instructorPageHeader.actions}
+          />
+        ) : (
+          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-lg border border-emerald-400/30">
+                {instructor.name ? instructor.name[0] : 'F'}
               </div>
-              <h1 className="text-2xl font-black text-white mt-1">{instructor.name}</h1>
-              <p className="text-xs text-slate-300">{instructor.specialization || 'Technical Faculty Lead'}</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-800">
+                    STAFF: {instructor.staffCode}
+                  </span>
+                  <span className="text-xs font-bold text-blue-400">FACULTY INSTRUCTOR</span>
+                </div>
+                <h1 className="text-2xl font-black text-white mt-1">{instructor.name}</h1>
+                <p className="text-xs text-slate-300">{instructor.specialization || 'Technical Faculty Lead'}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLessonPlanModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>AI Lesson Assistant</span>
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowLessonPlanModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-200" />
-              <span>AI Lesson Assistant</span>
-            </button>
-            <button
-              type="button"
-              onClick={logout}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Global Feedback Banners */}
         {feedbackMsg && (
@@ -315,32 +370,8 @@ export const InstructorPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
-          {[
-            { id: 'cohorts', name: `Assigned Cohorts (${cohorts.length})` },
-            { id: 'sessions', name: 'Class Sessions & Timetable' },
-            { id: 'attendance', name: 'Mark Class Attendance' },
-            { id: 'grading', name: `Submissions & Grading (${pendingSubmissions.length})` },
-            { id: 'competencies', name: 'Competency Evaluation' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleTabChange(tab.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {tab.name}
-            </button>
-          ))}
-        </div>
-
         {/* TAB 1: ASSIGNED COHORTS & ROSTERS */}
-        {activeTab === 'cohorts' && (
+        {(activeTab === 'cohorts' || activeTab === 'cockpit') && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cohorts.map((c: any) => (

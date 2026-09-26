@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PortalLayout } from '../../components/PortalLayout';
+import { PageHeader } from '../../components/PageHeader';
+import { Badge } from '../../components/UIElements';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { CounselingRecord } from '../../types';
@@ -20,11 +23,25 @@ import {
 
 export const CounselorDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>('atrisk');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'atrisk';
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl);
   const [loading, setLoading] = useState<boolean>(true);
   const [atRiskList, setAtRiskList] = useState<any[]>([]);
   const [records, setRecords] = useState<CounselingRecord[]>([]);
   const [search, setSearch] = useState<string>('');
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && t !== activeTab) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
 
   // Modal State for New Case
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -105,77 +122,73 @@ export const CounselorDashboardPage: React.FC = () => {
   );
 
   return (
-    <PortalLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Header Banner */}
-        <div className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-semibold">
-              <HeartPulse className="w-3.5 h-3.5" />
-              <span>Student Support & Pastoral Advisory</span>
+        {/* Conditional Header or Domain PageHeader */}
+        {activeTab === 'records' ? (
+          <PageHeader
+            title="Counseling Case Records"
+            subtitle="Confidential pastoral intervention notes, recovery milestones, and action plans"
+            badge={<Badge variant="purple">{records.length} Total Records</Badge>}
+            actions={
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-700 transition flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Log Intervention Case</span>
+              </button>
+            }
+          />
+        ) : (
+          <>
+            {/* Header Banner */}
+            <div className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+              <div className="relative z-10 max-w-3xl space-y-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-semibold">
+                  <HeartPulse className="w-3.5 h-3.5" />
+                  <span>Student Support & Pastoral Advisory</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  Counselor Workstation
+                </h1>
+                <p className="text-sm text-slate-300">
+                  Proactively identify learners facing attendance slips or grade drops, record confidential counseling notes, and build actionable recovery plans.
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              Counselor Workstation
-            </h1>
-            <p className="text-sm text-slate-300">
-              Proactively identify learners facing attendance slips or grade drops, record confidential counseling notes, and build actionable recovery plans.
-            </p>
-          </div>
-        </div>
 
-        {/* Quick KPI Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-xs text-slate-500 font-semibold">Monitored Students</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">{atRiskList.length}</div>
-            <span className="text-[11px] text-slate-500">Across active cohorts</span>
-          </div>
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-xs text-rose-600 font-semibold">Critical Risk Flagged</span>
-            <div className="text-2xl font-black text-rose-700 mt-1">
-              {atRiskList.filter((s) => s.riskLevel === 'HIGH' || s.riskLevel === 'CRITICAL').length}
+            {/* Quick KPI Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-xs text-slate-500 font-semibold">Monitored Students</span>
+                <div className="text-2xl font-black text-slate-900 mt-1">{atRiskList.length}</div>
+                <span className="text-[11px] text-slate-500">Across active cohorts</span>
+              </div>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-xs text-rose-600 font-semibold">Critical Risk Flagged</span>
+                <div className="text-2xl font-black text-rose-700 mt-1">
+                  {atRiskList.filter((s) => s.riskLevel === 'HIGH' || s.riskLevel === 'CRITICAL').length}
+                </div>
+                <span className="text-[11px] text-rose-600 font-medium">Attendance &lt; 70% or grades &lt; 50%</span>
+              </div>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-xs text-purple-600 font-semibold">Open Intervention Cases</span>
+                <div className="text-2xl font-black text-purple-700 mt-1">
+                  {records.filter((r) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length}
+                </div>
+                <span className="text-[11px] text-purple-600 font-medium">Under active mentorship</span>
+              </div>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-xs text-emerald-600 font-semibold">Resolved Cases</span>
+                <div className="text-2xl font-black text-emerald-700 mt-1">
+                  {records.filter((r) => r.status === 'RESOLVED').length}
+                </div>
+                <span className="text-[11px] text-emerald-600 font-medium">Successfully back on track</span>
+              </div>
             </div>
-            <span className="text-[11px] text-rose-600 font-medium">Attendance &lt; 70% or grades &lt; 50%</span>
-          </div>
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-xs text-purple-600 font-semibold">Open Intervention Cases</span>
-            <div className="text-2xl font-black text-purple-700 mt-1">
-              {records.filter((r) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length}
-            </div>
-            <span className="text-[11px] text-purple-600 font-medium">Under active mentorship</span>
-          </div>
-          <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
-            <span className="text-xs text-emerald-600 font-semibold">Resolved Cases</span>
-            <div className="text-2xl font-black text-emerald-700 mt-1">
-              {records.filter((r) => r.status === 'RESOLVED').length}
-            </div>
-            <span className="text-[11px] text-emerald-600 font-medium">Successfully back on track</span>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
-          <button
-            onClick={() => setActiveTab('atrisk')}
-            className={`pb-3 border-b-2 transition-all ${
-              activeTab === 'atrisk'
-                ? 'border-purple-600 text-purple-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            At-Risk Watchlist ({atRiskList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('records')}
-            className={`pb-3 border-b-2 transition-all ${
-              activeTab === 'records'
-                ? 'border-purple-600 text-purple-600 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Counseling Case Records ({records.length})
-          </button>
-        </div>
+          </>
+        )}
 
         {/* Tab 1: At-Risk Watchlist */}
         {activeTab === 'atrisk' && (

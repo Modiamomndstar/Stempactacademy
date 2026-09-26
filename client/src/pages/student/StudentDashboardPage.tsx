@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
+import { PageHeader } from '../../components/PageHeader';
 import {
   BookOpen,
   Calendar,
@@ -140,7 +141,7 @@ export const StudentDashboardPage: React.FC = () => {
 
   // Lazy Load Completion Readiness when tab opens
   useEffect(() => {
-    if (activeTab === 'completion' && !completionReport) {
+    if ((activeTab === 'completion' || activeTab === 'certificates') && !completionReport) {
       const fetchCompletion = async () => {
         setLoadingCompletion(true);
         try {
@@ -308,55 +309,118 @@ export const StudentDashboardPage: React.FC = () => {
 
   const coursesList = curriculumData?.courses || data.curriculum?.courses || [];
 
-  return (
-    <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
-        {/* Top Student Institutional Banner */}
-        <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white font-black text-2xl flex items-center justify-center shadow-lg border border-blue-400/30">
-              {profile.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-blue-300 bg-blue-900/60 px-2.5 py-0.5 rounded-full border border-blue-700/60">
-                  ID: {profile.studentIdNumber}
-                </span>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-800">
-                  ACTIVE LEARNER
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
-                {profile.fullName}
-              </h1>
-              <p className="text-xs text-slate-300">
-                {program?.name || 'Academic Specialization'} • Cohort: <strong>{cohort?.cohortCode || cohort?.name}</strong> • Level: <strong>{profile.currentLevel}</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 relative z-10">
+  const getPageHeaderConfig = () => {
+    switch (activeTab) {
+      case 'curriculum':
+        return {
+          title: 'Curriculum & Lessons',
+          subtitle: `${program?.name || 'Academic Program'} canonical modular syllabus, lecture resources, and lesson tracker.`,
+          badge: <Badge variant="blue">{coursesList.length} Courses</Badge>,
+          actions: (
             <button
               type="button"
               onClick={() => setShowCopilot(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-emerald-200" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
               <span>Ask AI Copilot</span>
             </button>
-            {cohort?.whatsappGroupUrl && (
-              <a
-                href={cohort.whatsappGroupUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-colors"
+          ),
+        };
+      case 'assignments':
+      case 'projects':
+      case 'competencies':
+        return {
+          title: 'Assignments & Projects',
+          subtitle: 'Coursework submissions, practical github capstones, and mentor evaluation reports.',
+          badge: <Badge variant="blue">{assignments?.length || 0} Assignments</Badge>,
+        };
+      case 'attendance':
+        return {
+          title: 'Timetable & Attendance Register',
+          subtitle: 'Verified cohort session attendance log and participation compliance record.',
+          badge: <Badge variant="green">{metrics?.attendanceRate || 100}% Attendance</Badge>,
+        };
+      case 'finance':
+        return {
+          title: 'Tuition & Clearance',
+          subtitle: 'Tuition billing ledger, payment receipts, and official institutional financial clearance.',
+          badge: <Badge variant="blue">{invoices?.length || 0} Invoices</Badge>,
+        };
+      case 'certificates':
+      case 'completion':
+        return {
+          title: 'Completion Readiness & Certificates',
+          subtitle: 'Graduation criteria checklist and cryptographically verifiable academic certificates.',
+          badge: <Badge variant="purple">{certificates?.length || 0} Issued</Badge>,
+        };
+      case 'overview':
+      default:
+        return null;
+    }
+  };
+
+  const studentPageHeader = getPageHeaderConfig();
+
+  return (
+    <PortalLayout activeTab={activeTab === 'certificates' ? 'certificates' : activeTab} onTabChange={handleTabChange}>
+      <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
+        {/* Dynamic Header: If on overview, show learner identity banner; otherwise show PageHeader */}
+        {studentPageHeader ? (
+          <PageHeader
+            title={studentPageHeader.title}
+            subtitle={studentPageHeader.subtitle}
+            badge={studentPageHeader.badge}
+            actions={studentPageHeader.actions}
+          />
+        ) : (
+          /* Top Student Institutional Banner for Overview */
+          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white font-black text-2xl flex items-center justify-center shadow-lg border border-blue-400/30">
+                {profile.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-blue-300 bg-blue-900/60 px-2.5 py-0.5 rounded-full border border-blue-700/60">
+                    ID: {profile.studentIdNumber}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-800">
+                    ACTIVE LEARNER
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                  {profile.fullName}
+                </h1>
+                <p className="text-xs text-slate-300">
+                  {program?.name || 'Academic Specialization'} • Cohort: <strong>{cohort?.cohortCode || cohort?.name}</strong> • Level: <strong>{profile.currentLevel}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 relative z-10">
+              <button
+                type="button"
+                onClick={() => setShowCopilot(true)}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition cursor-pointer"
               >
-                <MessageSquare className="w-4 h-4" />
-                <span>Class Community</span>
-              </a>
-            )}
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>Ask AI Copilot</span>
+              </button>
+              {cohort?.whatsappGroupUrl && (
+                <a
+                  href={cohort.whatsappGroupUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Class Community</span>
+                </a>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Global Feedback Notifications */}
         {actionSuccess && (
@@ -389,89 +453,103 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Learning Workflow Metrics Grid: Today -> Learning -> Practice -> Progress */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Syllabus Progress</span>
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {metrics?.progressPercentage || 0}%
-            </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                style={{ width: `${metrics?.progressPercentage || 0}%` }}
-              ></div>
-            </div>
-          </Card>
+        {/* Learning Workflow Metrics Grid: Only on Overview */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="p-5 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                <span>Syllabus Progress</span>
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                {metrics?.progressPercentage || 0}%
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${metrics?.progressPercentage || 0}%` }}
+                ></div>
+              </div>
+            </Card>
 
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Attendance Rate</span>
-              <Calendar className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {metrics?.attendanceRate || 100}%
-            </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${metrics?.attendanceRate || 100}%` }}
-              ></div>
-            </div>
-          </Card>
+            <Card className="p-5 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                <span>Attendance Rate</span>
+                <Calendar className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                {metrics?.attendanceRate || 100}%
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${metrics?.attendanceRate || 100}%` }}
+                ></div>
+              </div>
+            </Card>
 
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Lessons Mastered</span>
-              <BookOpen className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {metrics?.completedLessonsCount || 0} / {metrics?.totalLessonsCount || 0}
-            </div>
-            <div className="text-[11px] text-slate-400">Curriculum Units</div>
-          </Card>
+            <Card className="p-5 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                <span>Lessons Mastered</span>
+                <BookOpen className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                {metrics?.completedLessonsCount || 0} / {metrics?.totalLessonsCount || 0}
+              </div>
+              <div className="text-[11px] text-slate-400">Curriculum Units</div>
+            </Card>
 
-          <Card className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Competencies Verified</span>
-              <Award className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl font-black text-slate-900">
-              {metrics?.achievedCompetenciesCount || 0} / {metrics?.totalCompetenciesCount || 0}
-            </div>
-            <div className="text-[11px] text-slate-400">Industry Skills</div>
-          </Card>
-        </div>
+            <Card className="p-5 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
+                <span>Competencies Verified</span>
+                <Award className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                {metrics?.achievedCompetenciesCount || 0} / {metrics?.totalCompetenciesCount || 0}
+              </div>
+              <div className="text-[11px] text-slate-400">Industry Skills</div>
+            </Card>
+          </div>
+        )}
 
-        {/* Tab Navigation Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
-          {[
-            { id: 'overview', name: 'Today & Overview' },
-            { id: 'curriculum', name: 'Curriculum & Lessons' },
-            { id: 'assignments', name: 'Assignments & Submissions' },
-            { id: 'projects', name: 'Practical Projects' },
-            { id: 'competencies', name: 'Competencies' },
-            { id: 'attendance', name: 'Attendance Register' },
-            { id: 'finance', name: 'Tuition & Clearance' },
-            { id: 'completion', name: 'Completion & Readiness' },
-          ].map((tab) => (
+        {/* Contextual subtabs for assignments / projects / competencies */}
+        {['assignments', 'projects', 'competencies'].includes(activeTab) && (
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
             <button
-              key={tab.id}
               type="button"
-              onClick={() => handleTabChange(tab.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow-sm'
+              onClick={() => handleTabChange('assignments')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'assignments'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              {tab.name}
+              Assignments & Tasks ({assignments?.length || 0})
             </button>
-          ))}
-        </div>
+            <button
+              type="button"
+              onClick={() => handleTabChange('projects')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'projects'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              Practical Projects ({projects?.length || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('competencies')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'competencies'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              Competencies ({competencies?.length || 0})
+            </button>
+          </div>
+        )}
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
@@ -1096,8 +1174,8 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 8: COMPLETION & READINESS (Configurable Policy Support) */}
-        {activeTab === 'completion' && (
+        {/* TAB 8: COMPLETION & READINESS / CERTIFICATES */}
+        {(activeTab === 'completion' || activeTab === 'certificates') && (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Graduation & Certificate Status</h2>

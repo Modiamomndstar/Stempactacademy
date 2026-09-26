@@ -261,7 +261,7 @@ export const HomePage: React.FC = () => {
             <div>
               <Badge variant="purple">Academic Structure</Badge>
               <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-2">
-                Our 8 Academic Schools
+                {schools.length > 0 ? `Our ${schools.length} Academic Schools` : 'Academic Schools'}
               </h2>
               <p className="text-slate-600 text-sm mt-1">
                 Explore specialized disciplines designed for deep technical and vocational competence.
@@ -271,7 +271,7 @@ export const HomePage: React.FC = () => {
               to="/schools"
               className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 group"
             >
-              <span>View All 8 Schools in Detail</span>
+              <span>View All Schools in Detail</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
