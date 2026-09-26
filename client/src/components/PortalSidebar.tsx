@@ -15,34 +15,33 @@ import {
   Award,
   Bell,
   CheckCircle2,
-  Clock,
   Layers,
-  FileText,
-  UserCheck,
-  FolderGit2,
   Compass,
-  ArrowLeft,
   LogOut,
   X,
   ExternalLink,
+  History,
+  Send,
+  DollarSign,
+  UserPlus,
   HeartPulse,
   Lightbulb,
-  Megaphone,
   Briefcase,
-  UserPlus,
-  Sliders,
-  History,
-  AlertTriangle,
+  Megaphone,
 } from 'lucide-react';
 
-interface PortalSidebarProps {
+export interface PortalSidebarProps {
   onCloseMobile?: () => void;
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
 }
 
 export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onCloseMobile,
+  activeSection,
+  onSectionChange,
   activeTab,
   onTabChange,
 }) => {
@@ -52,12 +51,13 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   if (!user) return null;
 
-  const handleLinkClick = (tabKey?: string, itemRoute?: string) => {
-    if (itemRoute && location.pathname !== itemRoute) {
-      navigate(itemRoute);
+  const handleNavigate = (route: string, sectionKey?: string) => {
+    if (sectionKey) {
+      if (onSectionChange) onSectionChange(sectionKey);
+      if (onTabChange) onTabChange(sectionKey);
     }
-    if (tabKey && onTabChange) {
-      onTabChange(tabKey);
+    if (location.pathname !== route) {
+      navigate(route);
     }
     if (onCloseMobile) {
       onCloseMobile();
@@ -66,265 +66,210 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   const getRoleDisplayName = () => {
     switch (user.role) {
-      case 'SUPER_ADMIN': return 'SUPER ADMINISTRATOR';
-      case 'ACADEMIC_ADMIN': return 'ACADEMIC ADMINISTRATOR';
-      case 'FINANCE_ADMIN': return 'FINANCE ADMINISTRATOR';
-      case 'ADMISSIONS_ADMIN': return 'ADMISSIONS ADMINISTRATOR';
+      case 'SUPER_ADMIN':
+        return 'SUPER ADMINISTRATOR';
+      case 'ACADEMIC_ADMIN':
+        return 'ACADEMIC ADMINISTRATOR';
+      case 'FINANCE_ADMIN':
+        return 'FINANCE ADMINISTRATOR';
+      case 'ADMISSIONS_ADMIN':
+        return 'ADMISSIONS ADMINISTRATOR';
       case 'PROGRAM_COORDINATOR':
-      case 'COORDINATOR_ADMIN': return 'PROGRAM COORDINATOR';
-      case 'INSTRUCTOR': return 'FACULTY INSTRUCTOR';
-      case 'STUDENT': return 'STUDENT LEARNER';
-      case 'PARENT': return 'PARENT & GUARDIAN';
-      case 'COUNSELOR': return 'STUDENT COUNSELOR';
-      case 'CONTENT_MANAGER': return 'CONTENT & LMS MANAGER';
-      case 'INNOVATION_MANAGER': return 'INNOVATION & CHALLENGE MGR';
-      case 'MARKETING_MANAGER': return 'MARKETING & COMMS MGR';
-      case 'PARTNER': return 'CORPORATE & NGO PARTNER';
-      case 'APPLICANT': return 'PROSPECTIVE APPLICANT';
-      default: return (user.role as string)?.replace('_', ' ') || 'PORTAL USER';
+      case 'COORDINATOR_ADMIN':
+        return 'PROGRAM COORDINATOR';
+      case 'INSTRUCTOR':
+        return 'FACULTY MENTOR';
+      case 'STUDENT':
+        return 'ENROLLED LEARNER';
+      case 'PARENT':
+        return 'PARENT & GUARDIAN';
+      case 'COUNSELOR':
+        return 'STUDENT COUNSELOR';
+      case 'INNOVATION_MANAGER':
+        return 'INNOVATION MANAGER';
+      case 'PARTNER':
+        return 'CORPORATE & NGO PARTNER';
+      case 'APPLICANT':
+        return 'PROSPECTIVE APPLICANT';
+      default:
+        return (user.role as string)?.replace(/_/g, ' ') || 'PORTAL USER';
     }
   };
 
-  // Determine role-based menu sections strictly tailored to each of the 14 personas
-  const getNavSections = () => {
+  // Determine section navigation based on role
+  const getNavigationGroups = () => {
     // 1. Prospective Applicant
     if (user.role === 'APPLICANT' || location.pathname.startsWith('/portal/applicant')) {
       return [
         {
-          title: 'Enrollment Journey',
+          title: 'ENROLLMENT DESK',
           items: [
-            { key: 'status', label: 'Application Status', icon: ClipboardList, route: '/portal/applicant', badge: 'Active', badgeColor: 'bg-blue-600' },
+            { key: 'status', label: 'Application Status', icon: ClipboardList, route: '/portal/applicant' },
             { key: 'assessment', label: 'Diagnostic Assessment', icon: Sparkles, route: '/portal/applicant' },
             { key: 'admission', label: 'Offer of Admission', icon: Award, route: '/portal/applicant' },
-            { key: 'tuition', label: 'Tuition & Enrollment', icon: CreditCard, route: '/portal/applicant' },
+            { key: 'tuition', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/applicant' },
           ],
         },
       ];
     }
 
-    // 2. Faculty Instructor
+    // 2. Student Learner
+    if (user.role === 'STUDENT' || location.pathname.startsWith('/portal/student')) {
+      return [
+        {
+          title: 'LEARNING JOURNEY',
+          items: [
+            { key: 'overview', label: 'Learning Cockpit', icon: TrendingUp, route: '/portal/student' },
+            { key: 'curriculum', label: 'Curriculum & Lessons', icon: BookOpen, route: '/portal/student' },
+            { key: 'assignments', label: 'Assignments & Projects', icon: ClipboardList, route: '/portal/student' },
+            { key: 'attendance', label: 'Timetable & Attendance', icon: Calendar, route: '/portal/student' },
+          ],
+        },
+        {
+          title: 'STUDENT SERVICES',
+          items: [
+            { key: 'finance', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/student' },
+            { key: 'certificates', label: 'Earned Certificates', icon: Award, route: '/portal/student' },
+          ],
+        },
+      ];
+    }
+
+    // 3. Faculty Mentor / Instructor
     if (user.role === 'INSTRUCTOR' || location.pathname.startsWith('/portal/instructor')) {
       return [
         {
-          title: 'Faculty Workstation',
+          title: 'TEACHING WORKSPACE',
           items: [
-            { key: 'cohorts', label: 'Assigned Cohorts & Rosters', icon: BookOpen, route: '/portal/instructor' },
-            { key: 'sessions', label: 'Class Sessions & Timetable', icon: Calendar, route: '/portal/instructor' },
-            { key: 'attendance', label: 'Mark Class Attendance', icon: CheckCircle2, route: '/portal/instructor', badge: 'Live', badgeColor: 'bg-emerald-600' },
-            { key: 'grading', label: 'Submissions & Grading', icon: ClipboardList, route: '/portal/instructor', badge: 'Tasks', badgeColor: 'bg-amber-600' },
+            { key: 'cockpit', label: 'Faculty Cockpit', icon: TrendingUp, route: '/portal/instructor' },
+            { key: 'cohorts', label: 'Assigned Cohorts', icon: Users, route: '/portal/instructor' },
+            { key: 'attendance', label: 'Mark Attendance', icon: CheckCircle2, route: '/portal/instructor' },
+            { key: 'grading', label: 'Submissions & Grading', icon: ClipboardList, route: '/portal/instructor' },
             { key: 'competencies', label: 'Competency Evaluation', icon: Award, route: '/portal/instructor' },
           ],
         },
       ];
     }
 
-    // 3. Parent & Guardian
+    // 4. Parent & Guardian
     if (user.role === 'PARENT' || location.pathname.startsWith('/portal/parent')) {
       return [
         {
-          title: 'Guardian Overview',
+          title: 'WARD OVERSIGHT',
           items: [
-            { key: 'overview', label: 'Enrolled Wards Overview', icon: Users, route: '/portal/parent' },
-            { key: 'progress', label: 'Academic & Curriculum Progress', icon: BookOpen, route: '/portal/parent' },
-            { key: 'assignments', label: 'Assignments & Grades', icon: ClipboardList, route: '/portal/parent' },
-            { key: 'attendance', label: 'Attendance Records', icon: CheckCircle2, route: '/portal/parent' },
-            { key: 'finance', label: 'Tuition & Payment Schedule', icon: CreditCard, route: '/portal/parent' },
+            { key: 'overview', label: 'Ward Cockpit', icon: Users, route: '/portal/parent' },
+            { key: 'progress', label: 'Academic Progress', icon: BookOpen, route: '/portal/parent' },
+            { key: 'attendance', label: 'Attendance History', icon: CheckCircle2, route: '/portal/parent' },
+            { key: 'finance', label: 'Tuition & Statements', icon: CreditCard, route: '/portal/parent' },
           ],
         },
       ];
     }
 
-    // 4. Student Learner
-    if (user.role === 'STUDENT' || location.pathname.startsWith('/portal/student')) {
+    // 5. Program Coordinator
+    if (user.role === 'PROGRAM_COORDINATOR' || user.role === 'COORDINATOR_ADMIN' || location.pathname.startsWith('/portal/coordinator')) {
       return [
         {
-          title: 'Learning Ledger',
+          title: 'OPERATIONS',
           items: [
-            { key: 'overview', label: 'My Learning Cockpit', icon: TrendingUp, route: '/portal/student' },
-            { key: 'curriculum', label: 'Curriculum & Lessons', icon: BookOpen, route: '/portal/student' },
-            { key: 'assignments', label: 'Assignments & Submissions', icon: ClipboardList, route: '/portal/student' },
-            { key: 'projects', label: 'Practical Projects', icon: FolderGit2, route: '/portal/student' },
-            { key: 'competencies', label: 'Competency Development', icon: Award, route: '/portal/student' },
-            { key: 'attendance', label: 'Attendance Record', icon: CheckCircle2, route: '/portal/student' },
-            { key: 'finance', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/student' },
-            { key: 'completion', label: 'Completion & Readiness', icon: GraduationCap, route: '/portal/student' },
+            { key: 'overview', label: 'Pacing Cockpit', icon: Compass, route: '/portal/coordinator' },
+            { key: 'cohorts', label: 'Cohorts & Rosters', icon: Users, route: '/portal/coordinator' },
+            { key: 'sessions', label: 'Timetable & Sessions', icon: Calendar, route: '/portal/coordinator' },
+            { key: 'attendance', label: 'Attendance Oversight', icon: CheckCircle2, route: '/portal/coordinator' },
           ],
         },
       ];
     }
 
-    // 5. Counselor / Student Support Officer
+    // 6. Counselor
     if (user.role === 'COUNSELOR' || location.pathname.startsWith('/portal/counselor')) {
       return [
         {
-          title: 'Pastoral Care & Guidance',
+          title: 'STUDENT SUPPORT',
           items: [
-            { key: 'atrisk', label: 'At-Risk Watchlist', icon: AlertTriangle, route: '/portal/counselor', badge: 'Alerts', badgeColor: 'bg-rose-600' },
-            { key: 'records', label: 'Counseling & Case Records', icon: HeartPulse, route: '/portal/counselor' },
-            { key: 'interventions', label: 'Intervention Plans', icon: ClipboardList, route: '/portal/counselor' },
+            { key: 'atrisk', label: 'At-Risk Watchlist', icon: HeartPulse, route: '/portal/counselor' },
+            { key: 'records', label: 'Counseling Records', icon: ClipboardList, route: '/portal/counselor' },
           ],
         },
       ];
     }
 
-    // 6. Program Coordinator
-    if (user.role === 'PROGRAM_COORDINATOR' || location.pathname.startsWith('/portal/coordinator')) {
-      return [
-        {
-          title: 'Program Operations',
-          items: [
-            { key: 'overview', label: 'Program Pacing & Cohorts', icon: Compass, route: '/portal/coordinator' },
-            { key: 'cohorts', label: 'Cohort Rosters & Capacity', icon: Users, route: '/portal/coordinator' },
-            { key: 'sessions', label: 'Timetable & Sessions', icon: Calendar, route: '/portal/coordinator' },
-            { key: 'attendance', label: 'Attendance Oversight', icon: CheckCircle2, route: '/portal/coordinator' },
-            { key: 'progress', label: 'Academic Delivery Progress', icon: BookOpen, route: '/portal/coordinator' },
-          ],
-        },
-      ];
-    }
-
-    // 7. Innovation & Challenge Manager
+    // 7. Innovation & Partner Roles
     if (user.role === 'INNOVATION_MANAGER' || location.pathname.startsWith('/portal/innovation')) {
       return [
         {
-          title: 'Innovation & Hackathons',
+          title: 'INNOVATION HUB',
           items: [
-            { key: 'competitions', label: 'Competitions & Hackathons', icon: Lightbulb, route: '/portal/innovation', badge: 'Active', badgeColor: 'bg-amber-600' },
-            { key: 'squads', label: 'Student Innovation Squads', icon: Users, route: '/portal/innovation' },
-            { key: 'judging', label: 'Project Submissions & Judging', icon: Award, route: '/portal/innovation' },
+            { key: 'competitions', label: 'Competitions & Teams', icon: Lightbulb, route: '/portal/innovation' },
           ],
         },
       ];
     }
-
-    // 8. Corporate / NGO Partner
     if (user.role === 'PARTNER' || location.pathname.startsWith('/portal/partner')) {
       return [
         {
-          title: 'Partnership & CSR Hub',
+          title: 'PARTNERSHIP DESK',
           items: [
-            { key: 'overview', label: 'Partnership Overview', icon: Briefcase, route: '/portal/partner' },
-            { key: 'students', label: 'Sponsored Scholars Roster', icon: Users, route: '/portal/partner' },
-            { key: 'reports', label: 'CSR Impact Reports', icon: FileText, route: '/portal/partner' },
+            { key: 'overview', label: 'CSR & Scholars Roster', icon: Briefcase, route: '/portal/partner' },
           ],
         },
       ];
     }
 
-    // 9. Content & LMS Manager
-    if (user.role === 'CONTENT_MANAGER' || location.pathname.startsWith('/portal/content')) {
-      return [
-        {
-          title: 'Curriculum & LMS Vault',
-          items: [
-            { key: 'programs', label: 'Schools & Curriculum', icon: BookOpen, route: '/portal/admin' },
-            { key: 'cms', label: 'Campus Content & CMS', icon: Bell, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    // 10. Marketing & Comms Manager
-    if (user.role === 'MARKETING_MANAGER' || location.pathname.startsWith('/portal/marketing')) {
-      return [
-        {
-          title: 'Marketing & Outreach',
-          items: [
-            { key: 'cms', label: 'Campus Bulletins & Blog', icon: Megaphone, route: '/portal/admin' },
-            { key: 'applications', label: 'Inbound Inquiries & Leads', icon: ClipboardList, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    // 11. Finance Administrator
-    if (user.role === 'FINANCE_ADMIN') {
-      return [
-        {
-          title: 'Financial Management',
-          items: [
-            { key: 'analytics', label: 'Financial Overview', icon: TrendingUp, route: '/portal/admin' },
-            { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin', badge: 'Billing', badgeColor: 'bg-emerald-600' },
-            { key: 'transfers', label: 'Bank Transfer Approvals', icon: CheckCircle2, route: '/portal/admin', badge: 'Review', badgeColor: 'bg-amber-600' },
-            { key: 'cohorts', label: 'Cohort Fee Structures', icon: Calendar, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    // 12. Admissions Administrator
-    if (user.role === 'ADMISSIONS_ADMIN') {
-      return [
-        {
-          title: 'Admissions & Enrollment',
-          items: [
-            { key: 'applications', label: 'Applicant Intake Pipeline', icon: UserPlus, route: '/portal/admin', badge: 'Intake', badgeColor: 'bg-blue-600' },
-            { key: 'placements', label: 'Placement Confirmation', icon: Sparkles, route: '/portal/admin' },
-            { key: 'cohorts', label: 'Cohort Enrollment Roster', icon: Calendar, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    // 13. Academic Administrator
-    if (user.role === 'ACADEMIC_ADMIN') {
-      return [
-        {
-          title: 'Academic Board',
-          items: [
-            { key: 'analytics', label: 'Academic Overview', icon: TrendingUp, route: '/portal/admin' },
-            { key: 'programs', label: 'Schools & Syllabi', icon: BookOpen, route: '/portal/admin' },
-            { key: 'cohorts', label: 'Cohorts & Timetables', icon: Calendar, route: '/portal/admin' },
-            { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
-            { key: 'instructors', label: 'Faculty Directory', icon: Users, route: '/portal/admin' },
-            { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
-          ],
-        },
-      ];
-    }
-
-    // 14. Super Administrator (Omnipotent Platform Owner)
+    // 8. Super Admin & Academic Administration (Full Multi-Section Management Suite)
     return [
       {
-        title: 'Executive & Governance',
+        title: 'OVERVIEW',
         items: [
-          { key: 'analytics', label: 'Executive KPIs', icon: TrendingUp, route: '/portal/admin' },
-          { key: 'admins', label: 'Admin Accounts', icon: ShieldAlert, route: '/portal/admin', badge: 'Super', badgeColor: 'bg-indigo-600' },
-          { key: 'instructors', label: 'Faculty & Instructors', icon: Users, route: '/portal/admin', badge: 'Staff', badgeColor: 'bg-blue-600' },
-          { key: 'audit', label: 'System Audit Trail', icon: History, route: '/portal/admin', badge: 'Security', badgeColor: 'bg-purple-600' },
+          { key: 'analytics', label: 'Executive Dashboard', icon: TrendingUp, route: '/portal/admin' },
         ],
       },
       {
-        title: 'Academic Core',
+        title: 'ACADEMIC OPERATIONS',
         items: [
-          { key: 'programs', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
-          { key: 'cohorts', label: 'Cohorts & Scheduling', icon: Calendar, route: '/portal/admin' },
-          { key: 'placements', label: 'Placement Review Queue', icon: Sparkles, route: '/portal/admin', badge: 'Board', badgeColor: 'bg-amber-600' },
-          { key: 'applications', label: 'Admissions Intake', icon: ClipboardList, route: '/portal/admin' },
+          { key: 'academics', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
+          { key: 'cohorts', label: 'Cohorts & Timetables', icon: Calendar, route: '/portal/admin' },
+          { key: 'admissions', label: 'Admissions Pipeline', icon: UserPlus, route: '/portal/admin' },
+          { key: 'finance', label: 'Tuition & Ledger', icon: DollarSign, route: '/portal/admin' },
+          { key: 'certificates', label: 'Certifications', icon: Award, route: '/portal/admin' },
         ],
       },
       {
-        title: 'Finances & Operations',
+        title: 'FACULTY & AI',
         items: [
-          { key: 'invoices', label: 'Tuition & Invoices', icon: CreditCard, route: '/portal/admin' },
-          { key: 'certificates', label: 'Certificates & Clearances', icon: Award, route: '/portal/admin' },
-          { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Bell, route: '/portal/admin' },
+          { key: 'instructors', label: 'Faculty Mentors', icon: GraduationCap, route: '/portal/admin' },
+          { key: 'ai', label: 'AI Studio & Governance', icon: Sparkles, route: '/portal/admin' },
+        ],
+      },
+      {
+        title: 'COMMUNICATIONS',
+        items: [
+          { key: 'cms', label: 'Campus Bulletins (CMS)', icon: Megaphone, route: '/portal/admin' },
+          { key: 'deliveries', label: 'Notification Outbox', icon: Send, route: '/portal/admin' },
+        ],
+      },
+      {
+        title: 'GOVERNANCE',
+        items: [
+          { key: 'admins', label: 'Admin Accounts', icon: ShieldAlert, route: '/portal/admin' },
+          { key: 'audit', label: 'System Audit Trail', icon: History, route: '/portal/admin' },
         ],
       },
     ];
   };
 
-  const sections = getNavSections();
+  const navGroups = getNavigationGroups();
+  const currentKey = activeSection || activeTab;
 
   return (
-    <aside className="h-full flex flex-col bg-slate-900 text-white border-r border-slate-800 select-none">
-      {/* Brand Header */}
-      <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950">
+    <aside className="h-full flex flex-col bg-[#070c14] text-white border-r border-[#1a2538] select-none">
+      {/* Top Brand Header */}
+      <div className="p-4 border-b border-[#1a2538] flex items-center justify-between bg-[#04080e]">
         <Link to="/" className="flex items-center gap-2.5">
           <STEMLogo size="sm" showSubtitle={false} />
           <div>
             <div className="text-xs font-black tracking-tight text-white uppercase">
-              STEMPACT PORTAL
+              STEMPACT ACADEMY
             </div>
             <div className="text-[10px] text-blue-400 font-mono font-bold tracking-tight">
               {getRoleDisplayName()}
@@ -333,84 +278,49 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </Link>
         {onCloseMobile && (
           <button
+            type="button"
             onClick={onCloseMobile}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden"
-            aria-label="Close sidebar"
+            className="p-1 rounded-lg text-slate-400 hover:text-white lg:hidden cursor-pointer"
+            aria-label="Close navigation"
           >
             <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      {/* User Profile Card */}
-      <div className="p-3 mx-3 mt-3 rounded-xl bg-slate-800/80 border border-slate-700/60">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 text-white font-black text-sm flex items-center justify-center shadow-md">
-            {user.firstName ? user.firstName[0] : 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-white truncate">
-              {user.firstName} {user.lastName}
+      {/* Main Nav Scroll View */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 sidebar-scroll">
+        {navGroups.map((group, gIdx) => (
+          <div key={gIdx} className="space-y-1">
+            <div className="px-3 text-[10px] font-bold text-slate-500 tracking-wider uppercase mb-2">
+              {group.title}
             </div>
-            <div className="text-[10px] text-blue-400 font-mono truncate">
-              {user.username ? `@${user.username}` : user.email}
-            </div>
-          </div>
-        </div>
-        <div className="mt-2.5 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[10px]">
-          <span className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full font-semibold">
-            ● Active Session
-          </span>
-          <button
-            onClick={() => {
-              logout();
-              navigate('/');
-            }}
-            className="text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors"
-          >
-            <LogOut className="w-3 h-3" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Role-Specific Navigation Groups */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin scrollbar-thumb-slate-700">
-        {sections.map((section) => (
-          <div key={section.title} className="space-y-1">
-            <div className="px-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-              {section.title}
-            </div>
-
             <div className="space-y-0.5">
-              {section.items.map((item) => {
+              {group.items.map((item) => {
                 const Icon = item.icon;
-                const isTabActive = activeTab === item.key;
+                const isCurrent =
+                  currentKey === item.key ||
+                  (item.route === location.pathname && !currentKey);
 
                 return (
                   <button
                     key={item.key}
-                    onClick={() => handleLinkClick(item.key, item.route)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
-                      isTabActive
-                        ? 'bg-blue-600 text-white font-bold shadow-md'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    type="button"
+                    onClick={() => handleNavigate(item.route, item.key)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 text-left outline-none cursor-pointer ${
+                      isCurrent
+                        ? 'bg-blue-600/15 text-white border-l-2 border-blue-500 font-bold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-[#0e1626]'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 truncate">
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isTabActive ? 'text-white' : 'text-slate-400'}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors ${
+                          isCurrent ? 'text-blue-400' : 'text-slate-500'
+                        }`}
+                      />
                       <span className="truncate">{item.label}</span>
                     </div>
-
-                    {item.badge && (
-                      <span
-                        className={`text-[9px] font-bold text-white px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                          item.badgeColor || 'bg-blue-500'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -419,21 +329,31 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         ))}
       </div>
 
-      {/* Bottom Switcher: Return to Public Site */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/80 space-y-2">
-        <Link
-          to="/"
-          onClick={() => {
-            if (onCloseMobile) onCloseMobile();
-          }}
-          className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Public Website</span>
-        </Link>
-
-        <div className="text-center text-[10px] text-slate-500 font-mono">
-          STEMPACT ACADEMY • Ile-Ife Campus
+      {/* Bottom Profile Footer */}
+      <div className="p-3 border-t border-[#1a2538] bg-[#04080e]">
+        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[#0a101b] border border-[#1a2538]/70">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">
+              {user.firstName?.[0] || 'U'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">
+                {user.firstName} {user.lastName}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                {user.email}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+            title="Sign out of portal"
+            aria-label="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

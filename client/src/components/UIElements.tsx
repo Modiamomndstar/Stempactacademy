@@ -1,5 +1,14 @@
 import React from 'react';
 
+// Re-export modern UI primitives
+export { StatCard } from './StatCard';
+export { StatusBadge } from './StatusBadge';
+export { ContextualTabs } from './ContextualTabs';
+export { DataTable } from './DataTable';
+export { EmptyState } from './EmptyState';
+export { LoadingSkeleton } from './LoadingSkeleton';
+export { PageHeader } from './PageHeader';
+
 export const Badge: React.FC<{
   children: React.ReactNode;
   variant?: 'blue' | 'green' | 'red' | 'amber' | 'purple' | 'slate';
@@ -38,7 +47,7 @@ export const Card: React.FC<{
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden ${
+      className={`bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden ${
         hoverable ? 'transition-all duration-200 hover:shadow-md hover:border-blue-300 transform hover:-translate-y-0.5' : ''
       } ${className}`}
     >
@@ -53,7 +62,7 @@ export const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Load
       <div className="relative w-12 h-12">
         <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin"></div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse"></div>
+          <div className="w-3.5 h-3.5 rounded-full bg-blue-600 animate-pulse"></div>
         </div>
       </div>
       <p className="text-xs font-medium text-slate-500 animate-pulse">{message}</p>
