@@ -833,4 +833,73 @@ Return a JSON object containing a "schedules" array of objects with keys: "progr
   }
 };
 
+// ---------------------------------------------------------------------------
+// 15. ACADEMIC BOARD PLACEMENT RATIONALE GENERATOR
+// ---------------------------------------------------------------------------
+export const generatePlacementRationale = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      applicantName,
+      programName,
+      action,
+      level,
+      score,
+      experience,
+      previousProjects,
+      careerGoals,
+    } = req.body;
+
+    const actionText =
+      action === 'APPROVE'
+        ? 'Approving curriculum placement'
+        : action === 'MODIFY'
+        ? `Modifying program track/level to ${level || 'recommended tier'}`
+        : action === 'RETURN_FOR_REASSESSMENT'
+        ? 'Returning candidate to retake the diagnostic assessment'
+        : 'Declining admission / placement';
+
+    const systemInstruction = `You are the Secretary of the STEMPACT Academy Academic Admissions Board.
+Your role is to draft concise, authoritative, objective, and professional institutional rationale notes (2 to 3 sentences maximum) for admission and placement decisions.
+Mention technical readiness, diagnostic score context if provided, and academic trajectory.
+Do not use bullet points, markdown quotes, or headings. Write directly in plain professional prose.`;
+
+    const userPrompt = `Draft an official Academic Admissions Board decision rationale note:
+- Candidate Name: ${applicantName || 'Candidate'}
+- Target Program: ${programName || 'Applied Program'}
+- Board Action: ${actionText}
+- Diagnostic Test Score: ${score !== undefined ? `${score}%` : 'Not recorded'}
+- Assigned/Recommended Level: ${level || 'Standard Foundation'}
+- Candidate Background & Experience: ${experience || 'Standard technical background'}
+- Previous Projects / Goals: ${previousProjects || careerGoals || 'Advancement in STEM competencies'}`;
+
+    let rationale = '';
+    try {
+      rationale = await AIOrchestrator.generateTextResponse(
+        req.user!.id,
+        req.user!.role,
+        AIActionType.ADMIN_ASSISTANT,
+        userPrompt,
+        systemInstruction
+      );
+    } catch {
+      // Direct high quality pedagogical fallback
+      if (action === 'RETURN_FOR_REASSESSMENT') {
+        rationale = `Following an initial review of ${applicantName || 'the candidate'}'s diagnostic assessment, the Academic Admissions Board requests a reassessment attempt to accurately calibrate technical aptitude and ensure appropriate curriculum tier placement.`;
+      } else if (action === 'MODIFY') {
+        rationale = `Candidate demonstrated prerequisite competence but would benefit most from placement into ${level || 'an adapted track'} to align with practical experience and baseline technical evaluation.`;
+      } else if (action === 'REJECT') {
+        rationale = `Based on current diagnostic results and technical entry criteria for ${programName || 'this program'}, the Academic Board cannot recommend placement in this cohort at this time.`;
+      } else {
+        rationale = `Candidate demonstrated satisfactory technical readiness and baseline aptitude matching the requirements for ${programName || 'the program'} at ${level || 'Level 1'}. Placement is formally ratified.`;
+      }
+    }
+
+    res.status(200).json({ success: true, rationale });
+  } catch (error: any) {
+    console.error('[generatePlacementRationale error]:', error);
+    res.status(500).json({ message: error.message || 'Failed to generate placement rationale.' });
+  }
+};
+
+
 

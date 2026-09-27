@@ -63,6 +63,15 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
     } else if (placement && placement.status === 'APPROVED') {
       currentStage = 'PLACEMENT_APPROVED';
       nextAction = 'Awaiting Admission Letter Generation';
+    } else if (placement && placement.status === 'MODIFIED') {
+      currentStage = 'PLACEMENT_APPROVED';
+      nextAction = 'Awaiting Admission Letter Generation (Modified Program Track)';
+    } else if (placement && placement.status === 'RETURNED_FOR_REASSESSMENT') {
+      currentStage = 'REASSESSMENT_REQUIRED';
+      nextAction = 'Retake Diagnostic Assessment (Returned by Academic Board)';
+    } else if (placement && placement.status === 'REJECTED') {
+      currentStage = 'DECLINED';
+      nextAction = 'Application Review Concluded';
     } else if (latestAttempt) {
       currentStage = 'ASSESSMENT_COMPLETED';
       nextAction = 'Academic Board Reviewing Placement';

@@ -24,6 +24,7 @@ import {
   FileCheck,
   DollarSign,
   Download,
+  RotateCcw,
 } from 'lucide-react';
 
 export const ApplicantDashboardPage: React.FC = () => {
@@ -234,10 +235,27 @@ export const ApplicantDashboardPage: React.FC = () => {
   const invoice = dashboardData?.invoice;
   const attempt = dashboardData?.assessmentAttempt;
 
+  const isReassessmentRequired = placement?.status === 'RETURNED_FOR_REASSESSMENT';
+
   const stages = [
     { key: 'APPLICATION', title: 'Application', desc: 'Application profile submitted', done: true },
-    { key: 'ASSESSMENT', title: 'Assessment', desc: 'Diagnostic assessment completed', done: !!attempt },
-    { key: 'PLACEMENT', title: 'Placement / Decision', desc: 'Track verified by Academic Board', done: placement?.status === 'APPROVED' || !!admission },
+    {
+      key: 'ASSESSMENT',
+      title: 'Assessment',
+      desc: isReassessmentRequired
+        ? 'Reassessment requested by Board'
+        : attempt
+        ? 'Diagnostic assessment completed'
+        : 'Diagnostic assessment pending',
+      done: !!attempt && !isReassessmentRequired,
+      warning: isReassessmentRequired,
+    },
+    {
+      key: 'PLACEMENT',
+      title: 'Placement / Decision',
+      desc: isReassessmentRequired ? 'Awaiting test retake' : 'Track verified by Academic Board',
+      done: !isReassessmentRequired && (placement?.status === 'APPROVED' || placement?.status === 'MODIFIED' || !!admission),
+    },
     { key: 'ADMISSION_OFFER', title: 'Admission Offer', desc: 'Provisional offer issued', done: !!admission },
     { key: 'FINANCIAL_CLEARANCE', title: 'Financial Clearance', desc: 'Tuition clearance verified', done: !!clearanceData?.cleared },
     { key: 'ENROLLMENT', title: 'Enrollment', desc: 'Official letter delivered & enrolled', done: admission?.status === 'ENROLLED' || user?.role === 'STUDENT' },
@@ -318,14 +336,18 @@ export const ApplicantDashboardPage: React.FC = () => {
               <div
                 key={stage.key}
                 className={`p-3.5 rounded-xl border transition-all ${
-                  stage.done
+                  stage.warning
+                    ? 'bg-amber-50/90 border-amber-300 text-amber-950 ring-2 ring-amber-300/80 shadow-xs'
+                    : stage.done
                     ? 'bg-emerald-50/70 border-emerald-300/80 text-emerald-950'
                     : 'bg-slate-50 border-slate-200/80 text-slate-500'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-mono font-bold">Stage 0{idx + 1}</span>
-                  {stage.done ? (
+                  {stage.warning ? (
+                    <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse" />
+                  ) : stage.done ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   ) : (
                     <Clock className="w-4 h-4 text-slate-400" />
@@ -443,12 +465,15 @@ export const ApplicantDashboardPage: React.FC = () => {
                 </p>
               </div>
 
-              {!attempt && (
+              {(!attempt || isReassessmentRequired) && (
                 <Link
                   to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-center"
+                  className={`w-full py-3 px-4 ${
+                    isReassessmentRequired ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'
+                  } text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-center`}
                 >
-                  <span>Launch Diagnostic Test</span>
+                  {isReassessmentRequired ? <RotateCcw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                  <span>{isReassessmentRequired ? 'Retake Diagnostic Assessment' : 'Launch Diagnostic Test'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               )}
@@ -475,15 +500,59 @@ export const ApplicantDashboardPage: React.FC = () => {
                 <h3 className="text-lg font-bold text-slate-900">Diagnostic Placement Assessment</h3>
                 <p className="text-xs text-slate-500">Evaluates your baseline competency for optimal cohort allocation.</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                attempt ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                isReassessmentRequired
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : attempt
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-100 text-amber-800 border-amber-300'
               }`}>
-                {attempt ? 'COMPLETED' : 'PENDING'}
+                {isReassessmentRequired ? 'REASSESSMENT REQUIRED' : attempt ? 'COMPLETED' : 'PENDING'}
               </span>
             </div>
 
+            {/* Reassessment Alert Callout */}
+            {isReassessmentRequired && (
+              <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 shadow-xs space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-200/70 text-amber-900">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-950 text-sm">Diagnostic Reassessment Required</h4>
+                    <p className="text-xs text-amber-800">The Academic Admissions Board reviewed your file and requested that you retake the diagnostic test.</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-amber-200 text-xs text-amber-950 shadow-xs">
+                  <strong className="block text-[11px] font-bold uppercase tracking-wider text-amber-900 mb-1">
+                    Academic Board Rationale / Feedback:
+                  </strong>
+                  <p className="leading-relaxed">
+                    {placement?.adminNotes || 'The Academic Admissions Board has requested that you retake the diagnostic assessment to recalibrate your competency level.'}
+                  </p>
+                </div>
+
+                <div className="pt-1">
+                  <Link
+                    to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
+                    className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Retake Diagnostic Assessment Now</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            )}
+
             {attempt ? (
               <div className="space-y-6">
+                {isReassessmentRequired && (
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <span>Previous Diagnostic Attempt (Superseded)</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <span className="text-slate-400 block text-[10px] font-bold uppercase">Raw Score</span>
@@ -516,12 +585,14 @@ export const ApplicantDashboardPage: React.FC = () => {
                   <p className="text-blue-900 leading-relaxed">{attempt.recommendationReason}</p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-                  <ShieldCheck className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="font-bold">Academic Board Ratification:</strong> Diagnostic test results are submitted to the Academic Admissions Committee for cohort assignment ratification.
+                {!isReassessmentRequired && (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                    <ShieldCheck className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold">Academic Board Ratification:</strong> Diagnostic test results are submitted to the Academic Admissions Committee for cohort assignment ratification.
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-3">

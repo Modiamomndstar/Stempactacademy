@@ -345,6 +345,72 @@ class EmailService {
     `;
     return this.send({ to: params.to, subject, html: this.wrapTemplate('Graduation Certificate Issued', content) });
   }
+
+  /**
+   * 7. Placement & Reassessment Decision Email
+   */
+  async sendPlacementDecisionEmail(params: {
+    to: string;
+    fullName: string;
+    action: 'APPROVE' | 'MODIFY' | 'REJECT' | 'RETURN_FOR_REASSESSMENT';
+    programName: string;
+    levelName?: string;
+    adminNotes?: string;
+    reassessmentLink?: string;
+  }) {
+    let subject = `STEMPACT Academy Academic Decision: ${params.programName}`;
+    let heading = 'Academic Board Decision';
+    let body = '';
+
+    if (params.action === 'RETURN_FOR_REASSESSMENT') {
+      subject = `Diagnostic Reassessment Requested: ${params.programName}`;
+      heading = 'Diagnostic Reassessment Required';
+      body = `
+        <p>Dear <strong>${params.fullName}</strong>,</p>
+        <p>The Academic Admissions Board has reviewed your diagnostic assessment for <strong>${params.programName}</strong> and requested that you retake the diagnostic test.</p>
+        <div class="callout">
+          <p style="margin: 0; font-size: 13px; color: #64748b;"><strong>Academic Board Guidance:</strong></p>
+          <p style="margin: 6px 0 0 0; font-size: 14px; color: #1e293b;">${params.adminNotes || 'Please retake the diagnostic assessment to ensure accurate curriculum placement.'}</p>
+        </div>
+        <p>Retaking the diagnostic allows the academic committee to accurately calibrate your competency tier and assign you to the most effective cohort track.</p>
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${params.reassessmentLink || `${this.getClientUrl()}/portal/applicant`}" class="btn">Retake Diagnostic Assessment &rarr;</a>
+        </div>
+      `;
+    } else if (params.action === 'APPROVE') {
+      subject = `Track Placement Approved: ${params.programName}`;
+      heading = 'Placement Ratified';
+      body = `
+        <p>Dear <strong>${params.fullName}</strong>,</p>
+        <p>Congratulations! The Academic Admissions Board has approved your placement for <strong>${params.programName}</strong> at <strong>${params.levelName || 'Recommended Level'}</strong>.</p>
+        <p>Your provisional admission offer is being processed. You may log in to your applicant portal to monitor next steps.</p>
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${this.getClientUrl()}/portal/applicant" class="btn">View Admissions Portal &rarr;</a>
+        </div>
+      `;
+    } else if (params.action === 'MODIFY') {
+      subject = `Track Placement Adjusted: ${params.programName}`;
+      heading = 'Placement Adjusted';
+      body = `
+        <p>Dear <strong>${params.fullName}</strong>,</p>
+        <p>The Academic Admissions Board has reviewed your background and adjusted your recommended placement to <strong>${params.programName}</strong> (${params.levelName || 'Updated Level'}).</p>
+        ${params.adminNotes ? `<div class="callout"><p style="margin: 0; font-size: 14px; color: #1e293b;">${params.adminNotes}</p></div>` : ''}
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${this.getClientUrl()}/portal/applicant" class="btn">View Admissions Portal &rarr;</a>
+        </div>
+      `;
+    } else {
+      subject = `Admissions Review Update: ${params.programName}`;
+      heading = 'Admissions Review Concluded';
+      body = `
+        <p>Dear <strong>${params.fullName}</strong>,</p>
+        <p>The Academic Admissions Board has concluded review of your application for <strong>${params.programName}</strong>. We regret to inform you that we are unable to offer admission at this time.</p>
+        ${params.adminNotes ? `<div class="callout"><p style="margin: 0; font-size: 14px; color: #1e293b;">${params.adminNotes}</p></div>` : ''}
+      `;
+    }
+
+    return this.send({ to: params.to, subject, html: this.wrapTemplate(heading, body) });
+  }
 }
 
 export const emailService = new EmailService();

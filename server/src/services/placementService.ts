@@ -2,6 +2,7 @@ import { AcademicLevel, ApplicationStatus, Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AssessmentService } from './assessmentService.js';
 import { emailService } from './emailService.js';
+import { createNotification } from './notificationService.js';
 
 export const CURRENT_PLACEMENT_RULE_VERSION = 'STEMPACT_RULES_V1';
 
@@ -449,6 +450,74 @@ export class PlacementService {
 
       return { updatedPlacement, decisionRecord };
     });
+
+    // 4. Resolve applicant user ID for in-app notification delivery
+    let targetUserId = placement.application.userId;
+    if (!targetUserId && placement.application.email) {
+      try {
+        const u = await prisma.user.findUnique({
+          where: { email: placement.application.email },
+          select: { id: true },
+        });
+        targetUserId = u?.id || null;
+      } catch (err) {
+        console.warn('Could not resolve applicant userId by email:', err);
+      }
+    }
+
+    if (targetUserId) {
+      let notifTitle = 'Academic Admissions Decision';
+      let notifMessage = '';
+      let notifType: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT' = 'INFO';
+      let notifLink = '/portal/applicant';
+
+      if (decisionStatus === 'RETURNED_FOR_REASSESSMENT') {
+        notifTitle = 'Diagnostic Reassessment Required';
+        notifMessage = `The Academic Board reviewed your diagnostic test for ${placement.application.program.name} and requested that you retake the assessment. Notes: ${adminNotes || 'Please retake your diagnostic assessment.'}`;
+        notifType = 'WARNING';
+        notifLink = `/portal/applicant/assessment?appId=${placement.applicationId}&programId=${placement.application.programId}`;
+      } else if (decisionStatus === 'APPROVED') {
+        notifTitle = 'Curriculum Track Approved';
+        notifMessage = `Congratulations! The Academic Admissions Board has approved your placement for ${finalProgramName} at ${finalLevel}. Your provisional admission letter is being prepared.`;
+        notifType = 'SUCCESS';
+        notifLink = '/portal/applicant';
+      } else if (decisionStatus === 'MODIFIED') {
+        notifTitle = 'Track Placement Adjusted by Board';
+        notifMessage = `The Academic Admissions Board has adjusted your placement to ${finalProgramName} (${finalLevel}). Notes: ${adminNotes || 'Adjusted for optimal cohort track.'}`;
+        notifType = 'INFO';
+        notifLink = '/portal/applicant';
+      } else if (decisionStatus === 'REJECTED') {
+        notifTitle = 'Admissions Review Update';
+        notifMessage = `The Academic Admissions Board has concluded review of your application for ${placement.application.program.name}. Notes: ${adminNotes || 'Application declined.'}`;
+        notifType = 'ALERT';
+        notifLink = '/portal/applicant';
+      }
+
+      await createNotification({
+        userId: targetUserId,
+        title: notifTitle,
+        message: notifMessage,
+        type: notifType,
+        link: notifLink,
+        relatedEntity: 'PLACEMENT',
+        relatedEntityId: placement.id,
+      });
+    }
+
+    // 5. Send Transactional Placement Email
+    if (placement.application.email) {
+      emailService
+        .sendPlacementDecisionEmail({
+          to: placement.application.email,
+          fullName: placement.application.fullName,
+          action: decisionStatus as any,
+          programName: finalProgramName,
+          levelName: finalLevel,
+          adminNotes: adminNotes || undefined,
+          reassessmentLink: `${emailService.getClientUrl()}/portal/applicant/assessment?appId=${placement.applicationId}&programId=${placement.application.programId}`,
+        })
+        .catch((err) => console.error('Failed to send placement decision email:', err));
+    }
 
     return {
       placement: updated.updatedPlacement,

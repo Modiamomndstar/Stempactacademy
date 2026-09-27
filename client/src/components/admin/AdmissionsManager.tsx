@@ -22,6 +22,10 @@ import {
   RotateCcw,
   Ban,
   UserCheck,
+  DollarSign,
+  GraduationCap,
+  Briefcase,
+  User,
 } from 'lucide-react';
 
 interface AdmissionsManagerProps {
@@ -62,6 +66,7 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
   const [approvedProgramId, setApprovedProgramId] = useState('');
   const [approvedCohortId, setApprovedCohortId] = useState('');
   const [boardNotes, setBoardNotes] = useState('');
+  const [isGeneratingRationale, setIsGeneratingRationale] = useState(false);
 
   // Issue Admission Modal State
   const [issuingApp, setIssuingApp] = useState<any | null>(null);
@@ -86,6 +91,33 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
     }
     return true;
   });
+
+  // AI Assistant for Drafting Academic Board Placement Rationale
+  const handleGenerateAiRationale = async () => {
+    if (!reviewingPlacement) return;
+    setIsGeneratingRationale(true);
+    setActionError('');
+    try {
+      const res = await api.generatePlacementRationale({
+        applicantName: reviewingPlacement.application?.fullName,
+        programName: reviewingPlacement.application?.program?.name,
+        action: boardAction,
+        level: approvedLevel,
+        score: reviewingPlacement.assessmentAttempt?.percentage,
+        experience: reviewingPlacement.application?.technicalExperience,
+        previousProjects: reviewingPlacement.application?.previousProjects,
+        careerGoals: reviewingPlacement.application?.careerGoals,
+      });
+      if (res.rationale) {
+        setBoardNotes(res.rationale);
+      }
+    } catch (err: any) {
+      console.error('Failed to generate AI rationale:', err);
+      setActionError('AI Rationale draft failed: ' + (err.message || 'Service unavailable'));
+    } finally {
+      setIsGeneratingRationale(false);
+    }
+  };
 
   // 1. Submit Academic Board Placement Decision
   const handlePlacementDecision = async (e: React.FormEvent) => {
@@ -603,14 +635,25 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Academic Board Rationale / Notes *</label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700 text-xs">Academic Board Rationale / Notes *</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiRationale}
+                    disabled={isGeneratingRationale}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition-all border border-indigo-200 cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{isGeneratingRationale ? 'Drafting Rationale...' : 'Draft Rationale with AI'}</span>
+                  </button>
+                </div>
                 <textarea
                   rows={3}
                   value={boardNotes}
                   onChange={(e) => setBoardNotes(e.target.value)}
                   placeholder="Record official academic evaluation notes, assessment review findings, or placement rationale..."
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                   required
                 />
               </div>
@@ -735,46 +778,209 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
               </button>
             </div>
 
-            {/* Application Overview */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">Email Address</span>
-                <strong className="text-slate-800">{selectedApp.email}</strong>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">Phone Number</span>
-                <strong className="text-slate-800">{selectedApp.phone}</strong>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">Target Program</span>
-                <strong className="text-slate-800">{selectedApp.program?.name}</strong>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-slate-400 block text-[10px]">Target Cohort</span>
-                <strong className="text-slate-800">{selectedApp.cohort?.name || 'Open Cohort'}</strong>
+            {/* Basic Overview & Demographics */}
+            <div className="space-y-3 text-xs">
+              <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-blue-600" />
+                <span>Contact & Demographic Information</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Email Address</span>
+                  <strong className="text-slate-800 break-all">{selectedApp.email}</strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Phone Number</span>
+                  <strong className="text-slate-800">{selectedApp.phone}</strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Gender</span>
+                  <strong className="text-slate-800 capitalize">{selectedApp.gender || 'Not specified'}</strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Date of Birth</span>
+                  <strong className="text-slate-800">
+                    {selectedApp.dateOfBirth ? new Date(selectedApp.dateOfBirth).toLocaleDateString('en-GB') : 'Not specified'}
+                  </strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl col-span-2">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Residential Address / City</span>
+                  <strong className="text-slate-800">{selectedApp.address || 'Not specified'}</strong>
+                </div>
               </div>
             </div>
 
-            {/* Academic Background & Motivation */}
+            {/* Target Program & Schedule */}
             <div className="space-y-3 text-xs">
-              <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1">Academic & Technical Background</h4>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-slate-400 block">Education Level & Institution:</span>
-                  <span className="text-slate-800 font-medium">
-                    {selectedApp.educationLevel || 'Tertiary'} — {selectedApp.institution || 'OAU Ile-Ife'}
-                  </span>
+              <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                <span>Academic Program & Schedule Preference</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Applied Program</span>
+                  <strong className="text-slate-800">{selectedApp.program?.name}</strong>
+                  <span className="text-[10px] text-slate-500 block">{selectedApp.program?.school?.name}</span>
                 </div>
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Target Cohort</span>
+                  <strong className="text-slate-800">{selectedApp.cohort?.name || 'Open Intake'}</strong>
+                  {selectedApp.cohort?.cohortCode && (
+                    <span className="text-[10px] font-mono text-slate-500 block">{selectedApp.cohort.cohortCode}</span>
+                  )}
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl col-span-2">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Preferred Class Schedule / Timing</span>
+                  <strong className="text-blue-700">{selectedApp.preferredSchedule || 'Standard Academic Schedule'}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial & Tuition Preferences */}
+            <div className="space-y-3 text-xs">
+              <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Financial & Tuition Preferences</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Requested Payment Plan</span>
+                  <strong className="text-slate-800 uppercase">
+                    {selectedApp.requestedPaymentPlan ? selectedApp.requestedPaymentPlan.replace('_', ' ') : 'Full Payment'}
+                  </strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Funding Source</span>
+                  <strong className="text-slate-800 uppercase">
+                    {selectedApp.fundingSourcePreference ? selectedApp.fundingSourcePreference.replace('_', ' ') : 'Self-Funded'}
+                  </strong>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl col-span-2 flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Scholarship / Assistance Requested</span>
+                    <strong className="text-slate-800">
+                      {selectedApp.scholarshipRequested ? 'Yes — Candidate applied for tuition support' : 'No scholarship requested'}
+                    </strong>
+                  </div>
+                  <Badge variant={selectedApp.scholarshipRequested ? 'purple' : 'slate'}>
+                    {selectedApp.scholarshipRequested ? 'SCHOLARSHIP SEEKER' : 'STANDARD'}
+                  </Badge>
+                </div>
+                {selectedApp.financialAssistanceReason && (
+                  <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl col-span-2">
+                    <span className="text-amber-900 block text-[10px] font-bold uppercase">Financial Assistance Reason:</span>
+                    <p className="text-amber-950 mt-1 leading-relaxed">{selectedApp.financialAssistanceReason}</p>
+                  </div>
+                )}
+                {selectedApp.sponsorshipDetails && (
+                  <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl col-span-2">
+                    <span className="text-blue-900 block text-[10px] font-bold uppercase">Sponsorship / Organization Details:</span>
+                    <p className="text-blue-950 mt-1 leading-relaxed">{selectedApp.sponsorshipDetails}</p>
+                  </div>
+                )}
+                {selectedApp.financialNotes && (
+                  <div className="p-3 bg-slate-50 rounded-xl col-span-2">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Additional Financial Notes:</span>
+                    <p className="text-slate-700 mt-1 leading-relaxed">{selectedApp.financialNotes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Academic Background & Technical Profile */}
+            <div className="space-y-3 text-xs">
+              <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                <span>Academic & Technical Profile</span>
+              </h4>
+              <div className="space-y-2.5">
+                <div className="p-3 bg-slate-50 rounded-xl">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Education Level & Institution</span>
+                  <strong className="text-slate-800">
+                    {selectedApp.educationLevel || 'Tertiary'} {selectedApp.institution ? `— ${selectedApp.institution}` : ''}
+                  </strong>
+                </div>
+
+                {selectedApp.technicalExperience && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Prior Technical Experience</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.technicalExperience}</p>
+                  </div>
+                )}
+
+                {selectedApp.previousTraining && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Previous Training / Certifications</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.previousTraining}</p>
+                  </div>
+                )}
+
+                {selectedApp.relevantSkills && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Relevant Skills & Technologies</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.relevantSkills}</p>
+                  </div>
+                )}
+
+                {selectedApp.previousProjects && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Previous Projects / Portfolio Work</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.previousProjects}</p>
+                  </div>
+                )}
+
+                {selectedApp.careerGoals && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Career Ambitions & Target Roles</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.careerGoals}</p>
+                  </div>
+                )}
+
+                {selectedApp.learningObjectives && (
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Learning Objectives at STEMPACT</span>
+                    <p className="text-slate-800 mt-1 leading-relaxed">{selectedApp.learningObjectives}</p>
+                  </div>
+                )}
+
                 {selectedApp.statementOfPurpose && (
                   <div>
-                    <span className="text-slate-400 block">Statement of Purpose:</span>
-                    <p className="text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 mt-1 whitespace-pre-wrap">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase mb-1">Statement of Purpose</span>
+                    <p className="text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200 whitespace-pre-wrap leading-relaxed">
                       {selectedApp.statementOfPurpose}
                     </p>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Parent / Guardian Information (if applicable) */}
+            {(selectedApp.isMinor || selectedApp.parentName || selectedApp.parentPhone || selectedApp.parentEmail) && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Parent / Guardian Information {selectedApp.isMinor && <Badge variant="amber">Minor Candidate</Badge>}</span>
+                </h4>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Guardian Name</span>
+                    <strong className="text-slate-800">{selectedApp.parentName || 'Not specified'}</strong>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Relationship</span>
+                    <strong className="text-slate-800">{selectedApp.parentRelationship || 'Parent / Guardian'}</strong>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Guardian Phone</span>
+                    <strong className="text-slate-800">{selectedApp.parentPhone || 'Not specified'}</strong>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-400 block text-[10px] font-bold uppercase">Guardian Email</span>
+                    <strong className="text-slate-800 break-all">{selectedApp.parentEmail || 'Not specified'}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Lifecycle Stages */}
             <div className="space-y-3 text-xs">

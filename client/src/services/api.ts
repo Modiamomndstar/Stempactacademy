@@ -303,6 +303,16 @@ export const api = {
   publishProgram: (data: any) => apiRequest('/ai/publish-program', { method: 'POST', body: JSON.stringify(data) }),
   optimizeCohortSchedule: (data: { programs: any[]; preferredTiming?: string; hubLocation?: string }) =>
     apiRequest('/ai/optimize-schedule', { method: 'POST', body: JSON.stringify(data) }),
+  generatePlacementRationale: (data: {
+    applicantName: string;
+    programName: string;
+    action: string;
+    level?: string;
+    score?: number;
+    experience?: string;
+    previousProjects?: string;
+    careerGoals?: string;
+  }) => apiRequest('/ai/placement-rationale', { method: 'POST', body: JSON.stringify(data) }),
   getAIGenerations: (params?: { entityType?: string; entityId?: string; actionType?: string }) => {
     const query = new URLSearchParams();
     if (params?.entityType) query.append('entityType', params.entityType);
