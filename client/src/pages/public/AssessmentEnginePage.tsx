@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Assessment, AssessmentQuestion } from '../../types';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { PortalLayout } from '../../components/PortalLayout';
 import {
   Clock,
   Sparkles,
@@ -19,7 +20,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 
-export const AssessmentEnginePage: React.FC = () => {
+export const AssessmentEnginePage: React.FC<{ portalMode?: boolean }> = ({ portalMode = false }) => {
   const [searchParams] = useSearchParams();
   const applicationId = searchParams.get('appId') || searchParams.get('applicationId');
   const programId = searchParams.get('programId');
@@ -116,25 +117,38 @@ export const AssessmentEnginePage: React.FC = () => {
   }
 
   if (!assessment || !assessment.questions || assessment.questions.length === 0) {
-    return (
+    const noAssessmentContent = (
       <div className="max-w-xl mx-auto py-20 px-4 text-center space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
           <HelpCircle className="w-6 h-6" />
         </div>
         <h2 className="text-xl font-bold text-slate-800">No Assessment Found</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Diagnostic assessments are linked to an active student application. Please start by submitting an online application first.
+          {portalMode
+            ? 'Your diagnostic assessment has not been configured yet. The Academic Board will make it available once your application is reviewed. Please check back shortly or contact admissions.'
+            : 'Diagnostic assessments are linked to an active student application. Please start by submitting an online application first.'}
         </p>
-        <Link to="/apply" className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md">
-          Start Application
-        </Link>
+        {portalMode ? (
+          <Link to="/portal/applicant" className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md">
+            Back to My Portal
+          </Link>
+        ) : (
+          <Link to="/apply" className="inline-block px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md">
+            Start Application
+          </Link>
+        )}
       </div>
     );
+
+    if (portalMode) {
+      return <PortalLayout>{noAssessmentContent}</PortalLayout>;
+    }
+    return noAssessmentContent;
   }
 
   // Pre-test Instructions Screen
   if (!hasStarted) {
-    return (
+    const preTestContent = (
       <div className="max-w-2xl mx-auto py-16 px-4 space-y-8">
         <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 shadow-xl space-y-6">
           <div className="flex items-center gap-3">
@@ -206,11 +220,13 @@ export const AssessmentEnginePage: React.FC = () => {
         </div>
       </div>
     );
+    if (portalMode) return <PortalLayout>{preTestContent}</PortalLayout>;
+    return preTestContent;
   }
 
   // Completed / Submitted Screen
   if (isSubmitted && resultData) {
-    return (
+    const submittedContent = (
       <div className="max-w-3xl mx-auto py-16 px-4 space-y-8">
         <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 shadow-xl text-center space-y-6">
           <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto">
@@ -294,6 +310,8 @@ export const AssessmentEnginePage: React.FC = () => {
         </div>
       </div>
     );
+    if (portalMode) return <PortalLayout>{submittedContent}</PortalLayout>;
+    return submittedContent;
   }
 
   const currentQ = assessment.questions[currentQuestionIndex];
@@ -306,7 +324,7 @@ export const AssessmentEnginePage: React.FC = () => {
 
   const answeredCount = Object.keys(answers).length;
 
-  return (
+  const testContent = (
     <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Assessment Header with Countdown Timer */}
       <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
@@ -508,4 +526,6 @@ export const AssessmentEnginePage: React.FC = () => {
       )}
     </div>
   );
+  if (portalMode) return <PortalLayout>{testContent}</PortalLayout>;
+  return testContent;
 };

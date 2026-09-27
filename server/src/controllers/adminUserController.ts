@@ -256,3 +256,101 @@ export const getInstructors = async (req: AuthRequest, res: Response): Promise<v
     res.status(500).json({ message: 'Failed to load instructors.' });
   }
 };
+
+// 5. Update Admin User (role change, etc.) - SUPER_ADMIN only
+export const updateAdminUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { role, firstName, lastName, phone } = req.body;
+
+    const allowedAdminRoles = [
+      Role.SUPER_ADMIN,
+      Role.ACADEMIC_ADMIN,
+      Role.FINANCE_ADMIN,
+      Role.ADMISSIONS_ADMIN,
+      Role.COORDINATOR_ADMIN,
+      Role.PROGRAM_COORDINATOR,
+      Role.COUNSELOR,
+      Role.CONTENT_MANAGER,
+      Role.INNOVATION_MANAGER,
+      Role.MARKETING_MANAGER,
+      Role.PARTNER,
+    ];
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
+    const updateData: any = {};
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (role && allowedAdminRoles.includes(role)) updateData.role = role;
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        username: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json({ message: 'User account updated successfully.', admin: updated });
+  } catch (error: any) {
+    console.error('Error updating admin user:', error);
+    res.status(500).json({ message: 'Failed to update user account.' });
+  }
+};
+
+// 6. Ban / Unban a User - SUPER_ADMIN only
+export const toggleUserBan = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { action, reason } = req.body; // action: 'BAN' | 'UNBAN'
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
+    // Prevent super admin from banning themselves
+    if (req.user?.id === id) {
+      res.status(400).json({ message: 'You cannot ban your own account.' });
+      return;
+    }
+
+    const newActiveState = action === 'UNBAN';
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isActive: newActiveState },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    const statusLabel = newActiveState ? 'reactivated' : 'banned';
+    res.status(200).json({
+      message: `User account has been ${statusLabel} successfully.${reason ? ` Reason: ${reason}` : ''}`,
+      admin: updated,
+    });
+  } catch (error: any) {
+    console.error('Error toggling user ban:', error);
+    res.status(500).json({ message: 'Failed to update user status.' });
+  }
+};

@@ -78,6 +78,11 @@ export const AdminDashboardPage: React.FC = () => {
   const [showCreateInstructorModal, setShowCreateInstructorModal] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showInstructorPassword, setShowInstructorPassword] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ firstName: '', lastName: '', phone: '', role: '' });
+  const [banTarget, setBanTarget] = useState<any | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [banProcessing, setBanProcessing] = useState(false);
 
   // Cohort Fee Edit Modal State
   const [editingCohort, setEditingCohort] = useState<any | null>(null);
@@ -388,6 +393,71 @@ export const AdminDashboardPage: React.FC = () => {
       alert(err.message || 'Failed to create instructor');
     } finally {
       setProcessingAction(false);
+    }
+  };
+
+  // Open Edit User Modal
+  const handleOpenEditUser = (adm: any) => {
+    setEditingUser(adm);
+    setEditUserForm({
+      firstName: adm.firstName || '',
+      lastName: adm.lastName || '',
+      phone: adm.phone || '',
+      role: adm.role || '',
+    });
+  };
+
+  // Save Edited User
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setProcessingAction(true);
+    try {
+      const isInstructor = editingUser.role === 'INSTRUCTOR';
+      if (isInstructor) {
+        await api.updateInstructor(editingUser.id, {
+          firstName: editUserForm.firstName,
+          lastName: editUserForm.lastName,
+          phone: editUserForm.phone,
+        });
+      } else {
+        await api.updateAdminUser(editingUser.id, {
+          firstName: editUserForm.firstName,
+          lastName: editUserForm.lastName,
+          phone: editUserForm.phone,
+          role: editUserForm.role,
+        });
+      }
+      setActionSuccess(`${editUserForm.firstName} ${editUserForm.lastName}'s account updated successfully.`);
+      setEditingUser(null);
+      await loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update user');
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  // Ban / Unban a User
+  const handleToggleBan = async (action: 'BAN' | 'UNBAN') => {
+    if (!banTarget) return;
+    setBanProcessing(true);
+    try {
+      const isInstructor = banTarget.role === 'INSTRUCTOR';
+      if (isInstructor) {
+        await api.toggleInstructorBan(banTarget.id, action, banReason);
+      } else {
+        await api.toggleUserBan(banTarget.id, action, banReason);
+      }
+      const label = action === 'BAN' ? 'banned' : 'reactivated';
+      setActionSuccess(`${banTarget.firstName} ${banTarget.lastName}'s account has been ${label}.`);
+      setBanTarget(null);
+      setBanReason('');
+      await loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update user status');
+    } finally {
+      setBanProcessing(false);
     }
   };
 
@@ -927,6 +997,36 @@ export const AdminDashboardPage: React.FC = () => {
                         <span className="text-slate-500">Email:</span>
                         <span className="text-slate-300 font-mono text-[11px]">{inst.email}</span>
                       </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Status:</span>
+                        <span className={`font-bold ${inst.isActive !== false ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {inst.isActive !== false ? 'Active' : 'Banned'}
+                        </span>
+                      </div>
+                      {isSuperAdmin && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditUser(inst)}
+                            className="flex-1 py-1.5 px-3 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <UserCheck className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBanTarget(inst)}
+                            className={`flex-1 py-1.5 px-3 rounded-lg font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              inst.isActive !== false
+                                ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300'
+                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                            }`}
+                          >
+                            <ShieldAlert className="w-3 h-3" />
+                            {inst.isActive !== false ? 'Ban' : 'Unban'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1055,9 +1155,33 @@ export const AdminDashboardPage: React.FC = () => {
                             <span className="font-medium text-slate-200">{adm.phone}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span className="text-slate-500">Status:</span>
-                          <span className="font-bold text-emerald-400">Active</span>
+                          <span className={`font-bold ${adm.isActive !== false ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {adm.isActive !== false ? 'Active' : 'Banned'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditUser(adm)}
+                            className="flex-1 py-1.5 px-3 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <UserCheck className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBanTarget(adm)}
+                            className={`flex-1 py-1.5 px-3 rounded-lg font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              adm.isActive !== false
+                                ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300'
+                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                            }`}
+                          >
+                            <ShieldAlert className="w-3 h-3" />
+                            {adm.isActive !== false ? 'Ban' : 'Unban'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1689,6 +1813,195 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT USER MODAL */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Edit User Account</h3>
+                  <p className="text-xs text-slate-400">
+                    Modify profile information, contact number, and institutional authorization role.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="text-slate-400 hover:text-white transition text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    value={editUserForm.firstName}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, firstName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    value={editUserForm.lastName}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, lastName: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Email (Immutable)</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  disabled
+                  className="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-400 cursor-not-allowed font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={editUserForm.phone}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Institutional Role</label>
+                  <select
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                    disabled={editingUser.role === 'INSTRUCTOR'}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                  >
+                    <option value="ACADEMIC_ADMIN">Academic Administrator</option>
+                    <option value="FINANCE_ADMIN">Finance Administrator</option>
+                    <option value="ADMISSIONS_ADMIN">Admissions Administrator</option>
+                    <option value="PROGRAM_COORDINATOR">Program Coordinator</option>
+                    <option value="COORDINATOR_ADMIN">Coordinator Admin</option>
+                    <option value="COUNSELOR">Student Counselor</option>
+                    <option value="INNOVATION_MANAGER">Innovation Manager</option>
+                    <option value="CONTENT_MANAGER">Content & LMS Manager</option>
+                    <option value="MARKETING_MANAGER">Marketing Manager</option>
+                    <option value="PARTNER">Corporate & NGO Partner</option>
+                    <option value="INSTRUCTOR">Faculty Instructor</option>
+                    <option value="SUPER_ADMIN">Super Administrator</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={processingAction}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-semibold transition shadow-md"
+                >
+                  {processingAction ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* BAN / UNBAN CONFIRMATION MODAL */}
+      {banTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  banTarget.isActive !== false
+                    ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                    : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                }`}
+              >
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {banTarget.isActive !== false ? 'Ban User Account' : 'Reactivate User Account'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {banTarget.firstName} {banTarget.lastName} ({banTarget.role.replace('_', ' ')})
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {banTarget.isActive !== false
+                ? 'Banning this user will immediately revoke portal access and session authentication across all devices. Their historical records will remain intact for institutional auditing.'
+                : 'Reactivating this user will restore their authorization and allow them to log into their assigned academy portal.'}
+            </p>
+
+            {banTarget.isActive !== false && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Reason for Ban (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Policy violation, administrative reassignment"
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  setBanTarget(null);
+                  setBanReason('');
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={banProcessing}
+                onClick={() => handleToggleBan(banTarget.isActive !== false ? 'BAN' : 'UNBAN')}
+                className={`px-5 py-2 text-white rounded-xl text-xs font-bold transition shadow-md ${
+                  banTarget.isActive !== false
+                    ? 'bg-rose-600 hover:bg-rose-500 disabled:opacity-50'
+                    : 'bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50'
+                }`}
+              >
+                {banProcessing
+                  ? 'Processing...'
+                  : banTarget.isActive !== false
+                  ? 'Confirm Ban'
+                  : 'Reactivate Account'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -148,8 +148,12 @@ router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDI
 // 16. Admin & Staff Management
 router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);
 router.get('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.getAdmins);
+router.patch('/admin/admins/:id', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.updateAdminUser);
+router.post('/admin/admins/:id/ban', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.toggleUserBan);
 router.post('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR), adminUserController.createInstructor);
 router.get('/admin/instructors', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN), adminUserController.getInstructors);
+router.patch('/admin/instructors/:id', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.updateAdminUser);
+router.post('/admin/instructors/:id/ban', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.toggleUserBan);
 
 // 17. In-App Notifications & Preferences
 router.get('/notifications', authenticate, notificationController.getNotifications);

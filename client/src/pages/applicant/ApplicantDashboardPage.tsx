@@ -445,7 +445,7 @@ export const ApplicantDashboardPage: React.FC = () => {
 
               {!attempt && (
                 <Link
-                  to={`/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
+                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
                   className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-center"
                 >
                   <span>Launch Diagnostic Test</span>
@@ -531,7 +531,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                   The assessment takes approximately 25–30 minutes. Ensure you have a quiet environment and stable internet connection.
                 </p>
                 <Link
-                  to={`/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
+                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
                 >
                   <span>Launch Diagnostic Test</span>

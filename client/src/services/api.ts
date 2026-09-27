@@ -233,8 +233,16 @@ export const api = {
   // Admin & Instructor Management
   getAdmins: () => apiRequest('/admin/admins'),
   createAdmin: (data: any) => apiRequest('/admin/admins', { method: 'POST', body: JSON.stringify(data) }),
+  updateAdminUser: (id: string, data: { firstName?: string; lastName?: string; phone?: string; role?: string }) =>
+    apiRequest(`/admin/admins/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  toggleUserBan: (id: string, action: 'BAN' | 'UNBAN', reason?: string) =>
+    apiRequest(`/admin/admins/${id}/ban`, { method: 'POST', body: JSON.stringify({ action, reason }) }),
   getInstructors: () => apiRequest('/admin/instructors'),
   createInstructor: (data: any) => apiRequest('/admin/instructors', { method: 'POST', body: JSON.stringify(data) }),
+  updateInstructor: (id: string, data: { firstName?: string; lastName?: string; phone?: string }) =>
+    apiRequest(`/admin/instructors/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  toggleInstructorBan: (id: string, action: 'BAN' | 'UNBAN', reason?: string) =>
+    apiRequest(`/admin/instructors/${id}/ban`, { method: 'POST', body: JSON.stringify({ action, reason }) }),
 
   // In-App Notifications
   getNotifications: (limit?: number) => apiRequest(`/notifications${limit ? `?limit=${limit}` : ''}`),

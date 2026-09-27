@@ -85,6 +85,7 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
         email: application.email,
         phone: application.phone,
         preferredSchedule: application.preferredSchedule,
+        programId: application.programId,
         programName: application.program.name,
         schoolName: application.program.school.name,
         cohortName: application.cohort?.name || 'Assigned upon admission',

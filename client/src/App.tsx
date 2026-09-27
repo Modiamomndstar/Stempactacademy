@@ -65,14 +65,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 // Main App Navigation Shell
 const AppShell: React.FC = () => {
   const location = useLocation();
+  const { user, loading } = useAuth();
 
   // Check if current route is an authenticated portal viewport
   const isPortalRoute =
-    location.pathname.startsWith('/portal/') && !location.pathname.includes('/login') ||
+    (location.pathname.startsWith('/portal/') && !location.pathname.includes('/login')) ||
     location.pathname === '/admin' ||
     location.pathname === '/instructor' ||
     location.pathname === '/student' ||
     location.pathname === '/parent';
+
+  // Authenticated applicants hitting /assessment should be taken to the portal assessment environment
+  if (!loading && user && location.pathname === '/assessment') {
+    if (user.role === 'APPLICANT' || user.role === 'SUPER_ADMIN') {
+      return <Navigate to={`/portal/applicant/assessment${location.search}`} replace />;
+    }
+  }
 
   const routes = (
     <Routes>
@@ -87,6 +95,7 @@ const AppShell: React.FC = () => {
       <Route path="/apply" element={<ApplicationWizardPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/application-wizard" element={<ApplicationWizardPage />} />
+      {/* Public assessment — for unauthenticated visitors; authenticated users are redirected above */}
       <Route path="/assessment" element={<AssessmentEnginePage />} />
       <Route path="/innovation-lab" element={<InnovationLabPage />} />
       <Route path="/startup-lab" element={<StartupLabPage />} />
@@ -171,6 +180,15 @@ const AppShell: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'APPLICANT']}>
             <ApplicantDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Authenticated Diagnostic Assessment — inside portal shell, no public Navbar/Footer */}
+      <Route
+        path="/portal/applicant/assessment"
+        element={
+          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'APPLICANT']}>
+            <AssessmentEnginePage portalMode />
           </ProtectedRoute>
         }
       />
