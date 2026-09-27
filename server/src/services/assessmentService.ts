@@ -111,9 +111,37 @@ export class AssessmentService {
   }
 
   /**
+   * Validates whether a question contains authentic technical content
+   * rather than generic mock placeholders (e.g. "Assessment Question", "Option A").
+   */
+  static isQuestionValid(q: any): boolean {
+    if (!q) return false;
+    const prompt = String(q.prompt || q.questionText || '').trim().toLowerCase();
+    if (!prompt || prompt === 'assessment question' || prompt.length < 12) return false;
+
+    let opts: string[] = [];
+    if (Array.isArray(q.options)) {
+      opts = q.options;
+    } else if (typeof q.options === 'string') {
+      try {
+        opts = JSON.parse(q.options);
+      } catch {
+        opts = [];
+      }
+    }
+    if (!Array.isArray(opts) || opts.length < 2) return false;
+
+    const optJoined = opts.map((o) => String(o).trim().toLowerCase()).join(' | ');
+    if (optJoined.includes('option a | option b | option c') || optJoined === 'option a | option b | option c | option d') {
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Resolves the canonical Assessment and current AssessmentVersion for a program or application.
-   * If no assessment exists for the chosen program, AI automatically generates and stores
-   * a tailored diagnostic assessment specifically for that program.
+   * If no assessment exists for the chosen program or if only corrupted placeholder questions exist,
+   * AI automatically generates and stores an authentic tailored diagnostic assessment.
    */
   static async getAssessmentForProgram(params: {
     programId?: string;
@@ -149,7 +177,23 @@ export class AssessmentService {
         })
       : null;
 
-    // 2. Fallback to school assessment
+    // 2. Validate existing assessment questions to ensure they are NOT corrupted placeholders
+    if (assessment) {
+      const questionsToCheck = assessment.versions[0]?.questions?.length
+        ? assessment.versions[0].questions
+        : assessment.questions;
+
+      const validCount = questionsToCheck.filter(AssessmentService.isQuestionValid).length;
+      if (validCount < 5) {
+        console.warn(`[AssessmentService] Assessment ${assessment.id} for program ${assessment.programId} contains placeholder questions (${validCount} valid). Purging to regenerate authentic AI questions.`);
+        await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: assessment.id } }).catch(() => null);
+        await prisma.assessmentVersion.deleteMany({ where: { assessmentId: assessment.id } }).catch(() => null);
+        await prisma.assessment.delete({ where: { id: assessment.id } }).catch(() => null);
+        assessment = null;
+      }
+    }
+
+    // 3. Fallback to school assessment
     if (!assessment && targetProgramId) {
       const targetProg = await prisma.program.findUnique({
         where: { id: targetProgramId },
@@ -175,7 +219,25 @@ export class AssessmentService {
       }
     }
 
-    // 3. Fallback to any general assessment with valid questions
+    // Validate school assessment as well
+    if (assessment) {
+      const questionsToCheck = assessment.versions[0]?.questions?.length
+        ? assessment.versions[0].questions
+        : assessment.questions;
+      if (questionsToCheck.filter(AssessmentService.isQuestionValid).length < 5) {
+        assessment = null;
+      }
+    }
+
+    // 4. If STILL no assessment exists or if the program doesn't have an authentic one, generate with AI!
+    if (!assessment || (targetProgramId && assessment.programId !== targetProgramId)) {
+      if (targetProgramId) {
+        const aiGenerated = await AssessmentService.generateAiAssessmentForProgram(targetProgramId);
+        if (aiGenerated) return aiGenerated;
+      }
+    }
+
+    // 5. Fallback to general STEM assessment if still none
     if (!assessment) {
       assessment = await prisma.assessment.findFirst({
         where: {
@@ -193,13 +255,13 @@ export class AssessmentService {
           },
         },
       });
-    }
-
-    // 4. If STILL no assessment exists or if the program doesn't have one, generate with AI!
-    if (!assessment || (targetProgramId && assessment.programId !== targetProgramId)) {
-      if (targetProgramId) {
-        const aiGenerated = await AssessmentService.generateAiAssessmentForProgram(targetProgramId);
-        if (aiGenerated) return aiGenerated;
+      if (assessment) {
+        const questionsToCheck = assessment.versions[0]?.questions?.length
+          ? assessment.versions[0].questions
+          : assessment.questions;
+        if (questionsToCheck.filter(AssessmentService.isQuestionValid).length < 5) {
+          assessment = null;
+        }
       }
     }
 
@@ -299,19 +361,20 @@ Difficulty: Baseline Placement Diagnostic.`;
         });
 
         if (aiResult?.structured?.questions && aiResult.structured.questions.length > 0) {
-          rawQuestions = aiResult.structured.questions.map((q: any) => ({
+          const mapped = aiResult.structured.questions.map((q: any) => ({
             prompt: q.questionText || q.prompt,
             category: q.category || 'TECHNICAL_KNOWLEDGE',
-            options: Array.isArray(q.options) && q.options.length >= 2 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: q.correctAnswer || (Array.isArray(q.options) ? q.options[0] : 'Option A'),
+            options: Array.isArray(q.options) ? q.options : [],
+            correctAnswer: q.correctAnswer || (Array.isArray(q.options) ? q.options[0] : ''),
             points: q.points || 5,
           }));
+          rawQuestions = mapped.filter(AssessmentService.isQuestionValid);
         }
       } catch (aiErr) {
         console.warn('[AssessmentService] AI generation provider error, using domain-tailored generation:', aiErr);
       }
 
-      // 2. If AI output was insufficient, use smart domain-tailored generator
+      // 2. If AI output was insufficient or invalid, use smart domain-tailored generator
       if (!rawQuestions || rawQuestions.length < 5) {
         rawQuestions = AssessmentService.createDomainDiagnosticQuestions(prog.name, schoolName);
       }
