@@ -110,6 +110,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             { key: 'assessment', label: 'Diagnostic Assessment', icon: Sparkles, route: '/portal/applicant' },
             { key: 'admission', label: 'Offer of Admission', icon: Award, route: '/portal/applicant' },
             { key: 'tuition', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/applicant' },
+            { key: 'notifications', label: 'Notifications', icon: Bell, route: '/portal/applicant' },
           ],
         },
       ];
@@ -132,6 +133,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           items: [
             { key: 'finance', label: 'Tuition & Clearance', icon: CreditCard, route: '/portal/student' },
             { key: 'certificates', label: 'Earned Certificates', icon: Award, route: '/portal/student' },
+            { key: 'notifications', label: 'Notifications', icon: Bell, route: '/portal/student' },
           ],
         },
       ];
@@ -163,6 +165,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             { key: 'progress', label: 'Academic Progress', icon: BookOpen, route: '/portal/parent' },
             { key: 'attendance', label: 'Attendance History', icon: CheckCircle2, route: '/portal/parent' },
             { key: 'finance', label: 'Tuition & Statements', icon: CreditCard, route: '/portal/parent' },
+            { key: 'notifications', label: 'Notifications', icon: Bell, route: '/portal/parent' },
           ],
         },
       ];

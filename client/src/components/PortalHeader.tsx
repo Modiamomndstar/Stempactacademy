@@ -10,6 +10,10 @@ import {
   ExternalLink,
   Building,
   User as UserIcon,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  Sparkles,
 } from 'lucide-react';
 
 export interface PortalHeaderProps {
@@ -128,13 +132,17 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onOpenMobileNav }) =
           <button
             type="button"
             onClick={() => setNotificationsOpen((prev) => !prev)}
-            className="relative p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
+              unreadCount > 0
+                ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 shadow-2xs'
+                : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
+            }`}
             title="In-app notifications"
             aria-label="View notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -166,8 +174,10 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onOpenMobileNav }) =
 
               <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                 {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-xs">
-                    No new notifications
+                  <div className="p-8 text-center text-slate-400 text-xs space-y-1">
+                    <Bell className="w-6 h-6 text-slate-300 mx-auto mb-1" />
+                    <p className="font-semibold text-slate-600">No new notifications</p>
+                    <p className="text-[10px]">Official updates and board directives will appear here.</p>
                   </div>
                 ) : (
                   notifications.map((item) => (
@@ -179,19 +189,52 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onOpenMobileNav }) =
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className={`text-xs ${!item.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                          {item.title}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            item.type === 'WARNING'
+                              ? 'bg-amber-500'
+                              : item.type === 'SUCCESS'
+                              ? 'bg-emerald-500'
+                              : item.type === 'ALERT'
+                              ? 'bg-rose-500'
+                              : 'bg-blue-500'
+                          }`} />
+                          <p className={`text-xs truncate ${!item.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                            {item.title}
+                          </p>
+                        </div>
                         <span className="text-[10px] text-slate-400 shrink-0">
                           {new Date(item.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed pl-3">
                         {item.message}
                       </p>
                     </div>
                   ))
                 )}
+              </div>
+
+              <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(false);
+                    if (user.role === 'APPLICANT') {
+                      navigate('/portal/applicant?tab=notifications');
+                    } else if (user.role === 'STUDENT') {
+                      navigate('/portal/student?tab=notifications');
+                    } else if (user.role === 'PARENT') {
+                      navigate('/portal/parent?tab=notifications');
+                    } else {
+                      navigate('/portal/admin');
+                    }
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold transition inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Open Full Notifications Center</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </button>
               </div>
             </div>
           )}
