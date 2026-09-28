@@ -95,10 +95,20 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(PORT, async () => {
-  console.log(`🚀 STEMPACT ACADEMY Server running on http://localhost:${PORT}`);
-  console.log(`📍 Academy Hub: Ile-Ife, Osun State, Nigeria`);
-  await BootstrapService.autoBootstrapIfEmpty();
-});
+const startServer = async () => {
+  try {
+    await BootstrapService.syncSchemaColumns();
+  } catch (err: any) {
+    console.warn('[BOOTSTRAP] Initial schema sync notice:', err.message);
+  }
+
+  app.listen(PORT, async () => {
+    console.log(`🚀 STEMPACT ACADEMY Server running on http://localhost:${PORT}`);
+    console.log(`📍 Academy Hub: Ile-Ife, Osun State, Nigeria`);
+    await BootstrapService.autoBootstrapIfEmpty();
+  });
+};
+
+startServer();
 
 export default app;

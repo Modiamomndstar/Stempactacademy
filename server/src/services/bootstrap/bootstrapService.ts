@@ -40,78 +40,144 @@ export class BootstrapService {
   /**
    * Ensure database schema columns/tables exist at runtime without downtime
    */
-  static async syncSchemaColumns(): Promise<void> {
-    try {
-      // 1. Ensure LearningCenter table exists
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "LearningCenter" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "code" TEXT NOT NULL,
-          "name" TEXT NOT NULL,
-          "centerType" TEXT NOT NULL DEFAULT 'MAIN_CAMPUS',
-          "country" TEXT NOT NULL DEFAULT 'Nigeria',
-          "stateOrRegion" TEXT NOT NULL DEFAULT 'Osun State',
-          "cityOrTown" TEXT NOT NULL DEFAULT 'Ile-Ife',
-          "neighborhood" TEXT,
-          "address" TEXT NOT NULL,
-          "landmark" TEXT,
-          "sponsorPartnerName" TEXT,
-          "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
-          "capacity" INTEGER NOT NULL DEFAULT 30,
-          "isActive" BOOLEAN NOT NULL DEFAULT true,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+  static async syncSchemaColumns(): Promise<{ success: boolean; results: string[] }> {
+    const results: string[] = [];
+    const runSql = async (name: string, sql: string) => {
+      try {
+        await prisma.$executeRawUnsafe(sql);
+        results.push(`✔ ${name}: OK`);
+        console.log(`✔ [SCHEMA SYNC] ${name} verified.`);
+      } catch (err: any) {
+        results.push(`⚠️ ${name}: ${err.message}`);
+        console.warn(`⚠️ [SCHEMA SYNC] ${name} notice:`, err.message);
+      }
+    };
 
-      // 2. Add preferredCenterId column to Application if missing
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE "Application" 
-        ADD COLUMN IF NOT EXISTS "preferredCenterId" TEXT;
-      `);
+    // 1. Enums
+    await runSql(
+      'CenterType enum',
+      `DO $$ BEGIN
+        CREATE TYPE "CenterType" AS ENUM ('MAIN_CAMPUS', 'SATELLITE_CENTER', 'GOVERNMENT_SPONSORED', 'CORPORATE_PARTNER', 'VIRTUAL_GLOBAL');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;`
+    );
 
-      // 3. Add learningCenterId and sponsorName columns to Cohort if missing
-      await prisma.$executeRawUnsafe(`
-        ALTER TABLE "Cohort" 
-        ADD COLUMN IF NOT EXISTS "learningCenterId" TEXT,
-        ADD COLUMN IF NOT EXISTS "sponsorName" TEXT;
-      `);
+    await runSql(
+      'AcademicLevel enum',
+      `DO $$ BEGIN
+        CREATE TYPE "AcademicLevel" AS ENUM ('LEVEL_0_ASSESSMENT', 'LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_SPECIALIST', 'LEVEL_5_INNOVATION', 'LEVEL_6_ENTREPRENEURSHIP');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;`
+    );
 
-      // 4. Ensure ProgressionEligibility table exists
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "studentId" TEXT NOT NULL,
-          "sourceCohortId" TEXT NOT NULL,
-          "completedLevel" TEXT NOT NULL,
-          "nextLevel" TEXT NOT NULL,
-          "programId" TEXT NOT NULL,
-          "eligibleSince" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "claimed" BOOLEAN NOT NULL DEFAULT false,
-          "claimedCohortId" TEXT,
-          "claimedAt" TIMESTAMP(3),
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+    // 2. LearningCenter table
+    await runSql(
+      'LearningCenter table',
+      `CREATE TABLE IF NOT EXISTS "LearningCenter" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "code" TEXT NOT NULL UNIQUE,
+        "name" TEXT NOT NULL,
+        "centerType" "CenterType" NOT NULL DEFAULT 'MAIN_CAMPUS',
+        "country" TEXT NOT NULL DEFAULT 'Nigeria',
+        "stateOrRegion" TEXT NOT NULL DEFAULT 'Osun State',
+        "cityOrTown" TEXT NOT NULL DEFAULT 'Ile-Ife',
+        "neighborhood" TEXT,
+        "address" TEXT NOT NULL,
+        "landmark" TEXT,
+        "sponsorPartnerName" TEXT,
+        "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
+        "capacity" INTEGER NOT NULL DEFAULT 30,
+        "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`
+    );
 
-      // 5. Ensure CohortInstructor table exists
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "CohortInstructor" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "cohortId" TEXT NOT NULL,
-          "instructorId" TEXT NOT NULL,
-          "role" TEXT NOT NULL DEFAULT 'LEAD',
-          "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+    // 3. Application columns
+    await runSql(
+      'Application.preferredCenterId column',
+      `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "preferredCenterId" TEXT;`
+    );
 
-      console.log('✔ [SCHEMA SYNC] Database schema columns and models verified & synchronized.');
-    } catch (schemaErr: any) {
-      console.warn('⚠️ [SCHEMA SYNC WARNING] Column sync check:', schemaErr.message);
-    }
+    // 4. Cohort columns
+    await runSql(
+      'Cohort.learningCenterId column',
+      `ALTER TABLE "Cohort" ADD COLUMN IF NOT EXISTS "learningCenterId" TEXT;`
+    );
+    await runSql(
+      'Cohort.sponsorName column',
+      `ALTER TABLE "Cohort" ADD COLUMN IF NOT EXISTS "sponsorName" TEXT;`
+    );
+    await runSql(
+      'Cohort.levelCode column',
+      `ALTER TABLE "Cohort" ADD COLUMN IF NOT EXISTS "levelCode" "AcademicLevel" DEFAULT 'LEVEL_1_FOUNDATION';`
+    );
+
+    // 5. ClassSession columns
+    await runSql(
+      'ClassSession.learningCenterId column',
+      `ALTER TABLE "ClassSession" ADD COLUMN IF NOT EXISTS "learningCenterId" TEXT;`
+    );
+
+    // 6. Assignment columns
+    await runSql(
+      'Assignment.rubricJson column',
+      `ALTER TABLE "Assignment" ADD COLUMN IF NOT EXISTS "rubricJson" JSONB;`
+    );
+    await runSql(
+      'Assignment.aiGradingEnabled column',
+      `ALTER TABLE "Assignment" ADD COLUMN IF NOT EXISTS "aiGradingEnabled" BOOLEAN DEFAULT true;`
+    );
+
+    // 7. Submission columns
+    await runSql(
+      'Submission.aiSuggestedGrade column',
+      `ALTER TABLE "Submission" ADD COLUMN IF NOT EXISTS "aiSuggestedGrade" DOUBLE PRECISION;`
+    );
+    await runSql(
+      'Submission.aiFeedbackDraft column',
+      `ALTER TABLE "Submission" ADD COLUMN IF NOT EXISTS "aiFeedbackDraft" TEXT;`
+    );
+    await runSql(
+      'Submission.rubricScoresJson column',
+      `ALTER TABLE "Submission" ADD COLUMN IF NOT EXISTS "rubricScoresJson" JSONB;`
+    );
+
+    // 8. CohortInstructor table
+    await runSql(
+      'CohortInstructor table',
+      `CREATE TABLE IF NOT EXISTS "CohortInstructor" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "cohortId" TEXT NOT NULL,
+        "instructorId" TEXT NOT NULL,
+        "role" TEXT NOT NULL DEFAULT 'LEAD',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`
+    );
+
+    // 9. ProgressionEligibility table
+    await runSql(
+      'ProgressionEligibility table',
+      `CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "studentId" TEXT NOT NULL,
+        "programId" TEXT NOT NULL,
+        "completedLevel" "AcademicLevel" NOT NULL DEFAULT 'LEVEL_1_FOUNDATION',
+        "eligibleLevel" "AcademicLevel" NOT NULL DEFAULT 'LEVEL_2_INTERMEDIATE',
+        "completedCohortId" TEXT NOT NULL,
+        "certificateId" TEXT,
+        "clearedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "status" TEXT NOT NULL DEFAULT 'AVAILABLE',
+        "claimedCohortId" TEXT,
+        "claimedAt" TIMESTAMP(3),
+        "notes" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`
+    );
+
+    return { success: true, results };
   }
 
   /**
