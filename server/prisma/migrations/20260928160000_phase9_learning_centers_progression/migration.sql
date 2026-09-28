@@ -85,7 +85,9 @@ CREATE INDEX IF NOT EXISTS "CohortInstructor_cohortId_idx" ON "CohortInstructor"
 CREATE INDEX IF NOT EXISTS "CohortInstructor_instructorId_idx" ON "CohortInstructor"("instructorId");
 
 -- 11. Create Table: ProgressionEligibility
-CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
+DROP TABLE IF EXISTS "ProgressionEligibility" CASCADE;
+
+CREATE TABLE "ProgressionEligibility" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
     "programId" TEXT NOT NULL,

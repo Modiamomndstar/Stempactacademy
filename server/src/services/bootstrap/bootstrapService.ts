@@ -192,7 +192,8 @@ export class BootstrapService {
     // 9. ProgressionEligibility table
     await runSql(
       'ProgressionEligibility table',
-      `CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
+      `DROP TABLE IF EXISTS "ProgressionEligibility" CASCADE;
+      CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "studentId" TEXT NOT NULL,
         "programId" TEXT NOT NULL,

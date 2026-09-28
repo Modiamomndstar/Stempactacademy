@@ -41,4 +41,4 @@ RUN mkdir -p uploads
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate resolve --rolled-back 20260928160000_phase9_learning_centers_progression || true; npx prisma migrate deploy && node dist/index.js"]
