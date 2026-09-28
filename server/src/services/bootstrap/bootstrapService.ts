@@ -109,7 +109,13 @@ export class BootstrapService {
       `ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "totalLevels" INTEGER NOT NULL DEFAULT 4;`
     );
 
-    // 4. Lesson Table missing columns
+    // 4. Course Table missing columns
+    await runSql(
+      'Course.level column',
+      `ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "level" "AcademicLevel" NOT NULL DEFAULT 'LEVEL_1_FOUNDATION';`
+    );
+
+    // 5. Lesson Table missing columns
     await runSql(
       'Lesson.videoUrl column',
       `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;`
@@ -189,11 +195,14 @@ export class BootstrapService {
       );`
     );
 
-    // 9. ProgressionEligibility table
+    // 9. ProgressionEligibility table — drop old malformed version first, then recreate
+    await runSql(
+      'Drop malformed ProgressionEligibility table',
+      `DROP TABLE IF EXISTS "ProgressionEligibility" CASCADE;`
+    );
     await runSql(
       'ProgressionEligibility table',
-      `DROP TABLE IF EXISTS "ProgressionEligibility" CASCADE;
-      CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
+      `CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "studentId" TEXT NOT NULL,
         "programId" TEXT NOT NULL,

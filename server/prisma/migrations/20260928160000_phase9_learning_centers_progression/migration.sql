@@ -38,7 +38,11 @@ ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "isKidsTrack" BOOLEAN NOT NULL DE
 ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "targetAgeGroup" TEXT;
 ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "totalLevels" INTEGER NOT NULL DEFAULT 4;
 
--- 4. Lesson Table: Add missing fields
+-- 4. Course Table: Add missing level column
+ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "level" "AcademicLevel" NOT NULL DEFAULT 'LEVEL_1_FOUNDATION';
+CREATE INDEX IF NOT EXISTS "Course_level_idx" ON "Course"("level");
+
+-- 5. Lesson Table: Add missing fields
 ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;
 ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoDurationMin" INTEGER;
 ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoSummary" TEXT;
