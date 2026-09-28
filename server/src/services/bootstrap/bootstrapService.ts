@@ -38,10 +38,90 @@ export class BootstrapService {
   }
 
   /**
+   * Ensure database schema columns/tables exist at runtime without downtime
+   */
+  static async syncSchemaColumns(): Promise<void> {
+    try {
+      // 1. Ensure LearningCenter table exists
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "LearningCenter" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "code" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "centerType" TEXT NOT NULL DEFAULT 'MAIN_CAMPUS',
+          "country" TEXT NOT NULL DEFAULT 'Nigeria',
+          "stateOrRegion" TEXT NOT NULL DEFAULT 'Osun State',
+          "cityOrTown" TEXT NOT NULL DEFAULT 'Ile-Ife',
+          "neighborhood" TEXT,
+          "address" TEXT NOT NULL,
+          "landmark" TEXT,
+          "sponsorPartnerName" TEXT,
+          "timezone" TEXT NOT NULL DEFAULT 'Africa/Lagos',
+          "capacity" INTEGER NOT NULL DEFAULT 30,
+          "isActive" BOOLEAN NOT NULL DEFAULT true,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 2. Add preferredCenterId column to Application if missing
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Application" 
+        ADD COLUMN IF NOT EXISTS "preferredCenterId" TEXT;
+      `);
+
+      // 3. Add learningCenterId and sponsorName columns to Cohort if missing
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Cohort" 
+        ADD COLUMN IF NOT EXISTS "learningCenterId" TEXT,
+        ADD COLUMN IF NOT EXISTS "sponsorName" TEXT;
+      `);
+
+      // 4. Ensure ProgressionEligibility table exists
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ProgressionEligibility" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "studentId" TEXT NOT NULL,
+          "sourceCohortId" TEXT NOT NULL,
+          "completedLevel" TEXT NOT NULL,
+          "nextLevel" TEXT NOT NULL,
+          "programId" TEXT NOT NULL,
+          "eligibleSince" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "claimed" BOOLEAN NOT NULL DEFAULT false,
+          "claimedCohortId" TEXT,
+          "claimedAt" TIMESTAMP(3),
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 5. Ensure CohortInstructor table exists
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "CohortInstructor" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "cohortId" TEXT NOT NULL,
+          "instructorId" TEXT NOT NULL,
+          "role" TEXT NOT NULL DEFAULT 'LEAD',
+          "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      console.log('✔ [SCHEMA SYNC] Database schema columns and models verified & synchronized.');
+    } catch (schemaErr: any) {
+      console.warn('⚠️ [SCHEMA SYNC WARNING] Column sync check:', schemaErr.message);
+    }
+  }
+
+  /**
    * Automatically bootstrap database on initial deployment if 0 schools exist
    */
   static async autoBootstrapIfEmpty(): Promise<{ bootstrapped: boolean; message: string }> {
     try {
+      // Synchronize any newly added schema columns first
+      await this.syncSchemaColumns();
+
       // First ensure Super Admin account exists and is synchronized
       await ensureSuperAdminFromEnv();
 
