@@ -81,7 +81,7 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
     }
 
     // Dynamic assessment questions for this program
-    const assessment = application.program.assessments[0] || null;
+    const assessment = application.program?.assessments?.[0] || null;
 
     res.status(200).json({
       hasApplication: true,
@@ -95,8 +95,8 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
         phone: application.phone,
         preferredSchedule: application.preferredSchedule,
         programId: application.programId,
-        programName: application.program.name,
-        schoolName: application.program.school.name,
+        programName: application.program?.name || 'Academic Specialization',
+        schoolName: application.program?.school?.name || 'STEMPACT Academy',
         cohortName: application.cohort?.name || 'Assigned upon admission',
         status: application.status,
         createdAt: application.createdAt,
@@ -110,6 +110,9 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
     });
   } catch (error: any) {
     console.error('getApplicantDashboard error:', error);
-    res.status(500).json({ message: 'Failed to fetch applicant dashboard' });
+    res.status(500).json({ 
+      message: 'Failed to fetch applicant dashboard',
+      error: process.env.NODE_ENV !== 'production' ? error.message : undefined 
+    });
   }
 };

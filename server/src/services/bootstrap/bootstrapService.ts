@@ -95,7 +95,39 @@ export class BootstrapService {
       );`
     );
 
-    // 3. Application columns
+    // 3. Program Table missing columns
+    await runSql(
+      'Program.isKidsTrack column',
+      `ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "isKidsTrack" BOOLEAN NOT NULL DEFAULT false;`
+    );
+    await runSql(
+      'Program.targetAgeGroup column',
+      `ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "targetAgeGroup" TEXT;`
+    );
+    await runSql(
+      'Program.totalLevels column',
+      `ALTER TABLE "Program" ADD COLUMN IF NOT EXISTS "totalLevels" INTEGER NOT NULL DEFAULT 4;`
+    );
+
+    // 4. Lesson Table missing columns
+    await runSql(
+      'Lesson.videoUrl column',
+      `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;`
+    );
+    await runSql(
+      'Lesson.videoDurationMin column',
+      `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoDurationMin" INTEGER;`
+    );
+    await runSql(
+      'Lesson.videoSummary column',
+      `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "videoSummary" TEXT;`
+    );
+    await runSql(
+      'Lesson.interactiveLabType column',
+      `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "interactiveLabType" TEXT;`
+    );
+
+    // 5. Application columns
     await runSql(
       'Application.preferredCenterId column',
       `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "preferredCenterId" TEXT;`
