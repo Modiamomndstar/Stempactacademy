@@ -148,3 +148,180 @@ export const updateProgramStatus = async (req: Request, res: Response): Promise<
     res.status(500).json({ message: 'Failed to update program status' });
   }
 };
+
+export const createProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      schoolId,
+      code,
+      name,
+      description,
+      targetLearner,
+      entryRequirements,
+      prerequisites,
+      duration,
+      durationWeeks,
+      contactHours,
+      commitmentHours,
+      learningLevels,
+      tools,
+      projects,
+      capstone,
+      assessmentCriteria,
+      competencies,
+      certification,
+      careerPathways,
+      progressionPathway,
+      status,
+      isFeatured,
+      isKidsTrack,
+      targetAgeGroup,
+      totalLevels,
+    } = req.body;
+
+    if (!schoolId || !code || !name) {
+      res.status(400).json({ message: 'schoolId, code, and name are required.' });
+      return;
+    }
+
+    const program = await prisma.program.create({
+      data: {
+        schoolId,
+        code: code.toUpperCase(),
+        name,
+        description: description || '',
+        targetLearner: targetLearner || 'Aspiring technologists and software developers',
+        entryRequirements: entryRequirements || 'Basic computer literacy and analytical mindset',
+        prerequisites: prerequisites || 'None',
+        duration: duration || `${durationWeeks || 12} Weeks`,
+        contactHours: Number(contactHours || (commitmentHours ? commitmentHours * 4 : 48)),
+        learningLevels: learningLevels || 'Level 1: Foundation, Level 2: Intermediate, Level 3: Advanced, Level 4: Mastery',
+        tools: tools || '',
+        projects: projects || 'Practical real-world industry capstone and lab projects',
+        capstone: capstone || 'Comprehensive production capstone defense',
+        assessmentCriteria: assessmentCriteria || 'Continuous lab assignments (40%), capstone project (40%), attendance & defense (20%)',
+        competencies: competencies || '',
+        certification: certification || 'STEMPACT Certified Professional Credential',
+        careerPathways: careerPathways || 'Junior Engineer, Systems Specialist, Technical Founder',
+        progressionPathway: progressionPathway || 'Progresses systematically from Level 1 Foundation to Level 4 Mastery across cohorts.',
+        status: (status as ProgramStatus) || 'OPEN_FOR_APPLICATION',
+        isFeatured: Boolean(isFeatured),
+        isKidsTrack: Boolean(isKidsTrack),
+        targetAgeGroup: targetAgeGroup || (isKidsTrack ? 'Ages 7-16' : 'Ages 16+'),
+        totalLevels: Number(totalLevels) || 4,
+      },
+      include: { school: true },
+    });
+
+    res.status(201).json({ message: 'Program created successfully', program });
+  } catch (error: any) {
+    console.error('createProgram error:', error);
+    res.status(500).json({ message: error.message || 'Failed to create program' });
+  }
+};
+
+export const updateProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const {
+      schoolId,
+      code,
+      name,
+      description,
+      targetLearner,
+      entryRequirements,
+      prerequisites,
+      duration,
+      durationWeeks,
+      contactHours,
+      commitmentHours,
+      learningLevels,
+      tools,
+      projects,
+      capstone,
+      assessmentCriteria,
+      competencies,
+      certification,
+      careerPathways,
+      progressionPathway,
+      status,
+      isFeatured,
+      isKidsTrack,
+      targetAgeGroup,
+      totalLevels,
+    } = req.body;
+
+    const program = await prisma.program.update({
+      where: { id },
+      data: {
+        ...(schoolId && { schoolId }),
+        ...(code && { code: code.toUpperCase() }),
+        ...(name && { name }),
+        ...(description !== undefined && { description }),
+        ...(targetLearner !== undefined && { targetLearner }),
+        ...(entryRequirements !== undefined && { entryRequirements }),
+        ...(prerequisites !== undefined && { prerequisites }),
+        ...(duration !== undefined && { duration }),
+        ...(durationWeeks !== undefined && { duration: `${durationWeeks} Weeks` }),
+        ...(contactHours !== undefined && { contactHours: Number(contactHours) }),
+        ...(commitmentHours !== undefined && { contactHours: Number(commitmentHours) * 4 }),
+        ...(learningLevels !== undefined && { learningLevels }),
+        ...(tools !== undefined && { tools }),
+        ...(projects !== undefined && { projects }),
+        ...(capstone !== undefined && { capstone }),
+        ...(assessmentCriteria !== undefined && { assessmentCriteria }),
+        ...(competencies !== undefined && { competencies }),
+        ...(certification !== undefined && { certification }),
+        ...(careerPathways !== undefined && { careerPathways }),
+        ...(progressionPathway !== undefined && { progressionPathway }),
+        ...(status && { status: status as ProgramStatus }),
+        ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
+        ...(isKidsTrack !== undefined && { isKidsTrack: Boolean(isKidsTrack) }),
+        ...(targetAgeGroup !== undefined && { targetAgeGroup }),
+        ...(totalLevels !== undefined && { totalLevels: Number(totalLevels) }),
+      },
+      include: { school: true },
+    });
+
+    res.status(200).json({ message: 'Program updated successfully', program });
+  } catch (error: any) {
+    console.error('updateProgram error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update program' });
+  }
+};
+
+export const deleteProgram = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const cohortsCount = await prisma.cohort.count({ where: { programId: id } });
+    if (cohortsCount > 0) {
+      res.status(400).json({
+        message: `Cannot delete program with ${cohortsCount} existing cohorts. Archive or deactivate instead.`,
+      });
+      return;
+    }
+
+    await prisma.program.delete({ where: { id } });
+    res.status(200).json({ message: 'Program deleted successfully' });
+  } catch (error: any) {
+    console.error('deleteProgram error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete program' });
+  }
+};
+
+export const curateVideos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { videoCuratorService } = await import('../services/videoCuratorService.js');
+    const result = await videoCuratorService.curateProgramVideos(id);
+    res.status(200).json({
+      message: `Successfully curated videos for ${result.totalCurated} lesson(s).`,
+      result,
+    });
+  } catch (error: any) {
+    console.error('curateVideos error:', error);
+    res.status(500).json({ message: error.message || 'Failed to curate videos for program' });
+  }
+};
+

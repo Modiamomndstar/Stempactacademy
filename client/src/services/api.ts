@@ -59,12 +59,30 @@ export const api = {
   // Schools & Programs
   getSchools: () => apiRequest('/schools'),
   getSchoolByCode: (code: string) => apiRequest(`/schools/${code}`),
+  createSchool: (data: any) => apiRequest('/admin/schools', { method: 'POST', body: JSON.stringify(data) }),
+  updateSchool: (id: string, data: any) => apiRequest(`/admin/schools/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSchool: (id: string) => apiRequest(`/admin/schools/${id}`, { method: 'DELETE' }),
+
   getPrograms: (params: Record<string, string> = {}) => {
     const query = new URLSearchParams(params).toString();
     return apiRequest(`/programs${query ? `?${query}` : ''}`);
   },
   getProgramByCode: (code: string) => apiRequest(`/programs/${code}`),
+  createProgram: (data: any) => apiRequest('/admin/programs', { method: 'POST', body: JSON.stringify(data) }),
+  updateProgram: (id: string, data: any) => apiRequest(`/admin/programs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProgram: (id: string) => apiRequest(`/admin/programs/${id}`, { method: 'DELETE' }),
   updateProgramStatus: (id: string, data: any) => apiRequest(`/programs/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  curateProgramVideos: (id: string) => apiRequest(`/admin/programs/${id}/curate-videos`, { method: 'POST' }),
+
+  // Multi-Center & Multi-Campus Physical / Virtual Centers
+  getCenters: (params: Record<string, string> = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiRequest(`/centers${query ? `?${query}` : ''}`);
+  },
+  getCenterById: (id: string) => apiRequest(`/centers/${id}`),
+  createCenter: (data: any) => apiRequest('/admin/centers', { method: 'POST', body: JSON.stringify(data) }),
+  updateCenter: (id: string, data: any) => apiRequest(`/admin/centers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  seedDefaultCenters: () => apiRequest('/admin/centers/seed', { method: 'POST' }),
 
   // Academic Sessions & Calendars
   getAcademicSessions: () => apiRequest('/academic-sessions'),
@@ -80,6 +98,8 @@ export const api = {
   },
   getCohortById: (id: string) => apiRequest(`/cohorts/${id}`),
   getCohortAnalysis: (id: string) => apiRequest(`/cohorts/${id}/analysis`),
+  estimateCohortTimeline: (data: { startDate: string; durationWeeks?: number; holidays?: string[]; offDays?: string[] }) =>
+    apiRequest('/cohorts/estimate-timeline', { method: 'POST', body: JSON.stringify(data) }),
   createCohort: (data: any) => apiRequest('/cohorts', { method: 'POST', body: JSON.stringify(data) }),
   updateCohort: (id: string, data: any) => apiRequest(`/cohorts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteCohort: (id: string, force: boolean = false) =>
@@ -140,12 +160,21 @@ export const api = {
   getCompletionReadiness: (studentId?: string) =>
     apiRequest(`/student/completion-readiness${studentId ? `?studentId=${studentId}` : ''}`),
   getParentDashboard: () => apiRequest('/parent/dashboard'),
+  registerWard: (data: any) => apiRequest('/parent/wards', { method: 'POST', body: JSON.stringify(data) }),
   getWardAcademicRecords: (studentId: string) =>
     apiRequest(`/parent/wards/${studentId}/academic-records`),
   getInstructorDashboard: () => apiRequest('/instructor/dashboard'),
   createClassSession: (data: any) => apiRequest('/instructor/sessions', { method: 'POST', body: JSON.stringify(data) }),
   evaluateCompetency: (data: { studentId: string; competencyId: string; status: 'ACQUIRED' | 'IN_PROGRESS' | 'NEEDS_PRACTICE' | string; score?: number; evidenceNotes?: string }) =>
     apiRequest('/instructor/competencies/evaluate', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Academic Progression & Multi-Cohort Entitlements
+  getAcademicJourney: (studentId?: string) =>
+    apiRequest(`/progression/journey${studentId ? `/${studentId}` : ''}`),
+  evaluateLevelCompletion: (data: { studentId: string; cohortId: string; overrideCriteria?: boolean; notes?: string }) =>
+    apiRequest('/progression/evaluate', { method: 'POST', body: JSON.stringify(data) }),
+  claimProgression: (data: { eligibilityId: string; targetCohortId: string }) =>
+    apiRequest('/progression/claim', { method: 'POST', body: JSON.stringify(data) }),
 
   // Attendance
   markAttendance: (data: { classSessionId: string; records: { studentId: string; status: string; remarks?: string }[] }) =>
@@ -158,6 +187,8 @@ export const api = {
     apiRequest('/assignments/submit', { method: 'POST', body: JSON.stringify(data) }),
   gradeSubmission: (submissionId: string, data: { grade: number; feedback?: string }) =>
     apiRequest(`/assignments/submissions/${submissionId}/grade`, { method: 'PATCH', body: JSON.stringify(data) }),
+  generateAiGradeDraft: (submissionId: string) =>
+    apiRequest(`/assignments/submissions/${submissionId}/ai-grade-draft`, { method: 'POST' }),
   getAssignmentSubmissions: (assignmentId: string) =>
     apiRequest(`/assignments/${assignmentId}/submissions`),
   getMySubmissions: () =>

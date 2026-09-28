@@ -28,11 +28,17 @@ import {
   Power,
   Plus,
   CalendarDays,
+  Lock,
+  Building2,
+  Globe,
 } from 'lucide-react';
 import { ProgramDetailModal } from './ProgramDetailModal';
 import { CohortDetailModal } from './CohortDetailModal';
 import { CreateCohortModal } from './CreateCohortModal';
 import { AcademicCalendarManager } from './AcademicCalendarManager';
+import { SchoolModal } from './SchoolModal';
+import { ProgramModal } from './ProgramModal';
+import { CenterModal } from './CenterModal';
 
 interface AcademicOperationsManagerProps {
   schools?: any[];
@@ -44,7 +50,7 @@ interface AcademicOperationsManagerProps {
   onOpenCohortAnalysis: (cohortId: string) => void;
   onOpenAIArchitect: () => void;
   isAcademicOrSuperAdmin: boolean;
-  initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts';
+  initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers';
 }
 
 export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps> = ({
@@ -59,7 +65,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   isAcademicOrSuperAdmin,
   initialSubTab = 'schools',
 }) => {
-  const [subTab, setSubTab] = useState<'calendar' | 'schools' | 'programs' | 'cohorts'>(initialSubTab);
+  const [subTab, setSubTab] = useState<'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers'>(initialSubTab);
 
   React.useEffect(() => {
     if (initialSubTab) {
@@ -107,6 +113,55 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   // Create Cohort Modal State
   const [showCreateCohortModal, setShowCreateCohortModal] = useState(false);
   const [createCohortProgramId, setCreateCohortProgramId] = useState<string | undefined>(undefined);
+
+  // School Modal State
+  const [showSchoolModal, setShowSchoolModal] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<any | null>(null);
+
+  // Program Modal State
+  const [showProgramModal, setShowProgramModal] = useState(false);
+  const [editingProgram, setEditingProgram] = useState<any | null>(null);
+  const [newProgramSchoolId, setNewProgramSchoolId] = useState<string | undefined>(undefined);
+  const [curatingProgramId, setCuratingProgramId] = useState<string | null>(null);
+
+  // Center Modal & Directory State
+  const [centers, setCenters] = useState<any[]>([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+  const [showCenterModal, setShowCenterModal] = useState(false);
+  const [editingCenter, setEditingCenter] = useState<any | null>(null);
+  const [selectedCityFilter, setSelectedCityFilter] = useState<string>('ALL');
+
+  const loadCenters = async () => {
+    setLoadingCenters(true);
+    try {
+      const res = await api.getCenters();
+      setCenters(res?.centers || []);
+    } catch (err) {
+      console.warn('Could not load centers:', err);
+    } finally {
+      setLoadingCenters(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadCenters();
+  }, []);
+
+  // Curate Program Videos Action
+  const handleCurateProgramVideos = async (progId: string) => {
+    setCuratingProgramId(progId);
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await api.curateProgramVideos(progId);
+      setActionSuccess(`AI Video Curator dispatched! Curated ${res?.lessonsCount || 0} module lessons with verified YouTube video tutorials.`);
+      await onDataRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to curate program videos.');
+    } finally {
+      setCuratingProgramId(null);
+    }
+  };
 
   // Quick 1-click cohort intake toggle (Open/Close intake at any time)
   const handleToggleCohortIntake = async (cohortId: string, currentStatus: string) => {
@@ -346,6 +401,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             <Calendar className="w-3.5 h-3.5" />
             <span>Academic Sessions & Cohorts ({cohorts.length})</span>
           </button>
+
+          <button
+            onClick={() => {
+              setSubTab('centers');
+              setSelectedSchool(null);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'centers'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Learning Centers ({centers.length})</span>
+          </button>
         </div>
 
         {isAcademicOrSuperAdmin && (
@@ -453,8 +523,8 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     </div>
                   </div>
 
-                  {/* School KPIs */}
-                  <div className="flex items-center gap-3">
+                  {/* School KPIs & Actions */}
+                  <div className="flex items-center gap-3 flex-wrap">
                     <div className="bg-slate-800/80 border border-slate-700/80 p-3 rounded-xl text-center min-w-[90px]">
                       <div className="text-xl font-extrabold text-blue-400">
                         {programs.filter((p) => p.schoolId === selectedSchool.id || p.school?.code === selectedSchool.code).length}
@@ -475,6 +545,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                       </div>
                       <div className="text-[10px] text-slate-400 uppercase font-semibold">Students</div>
                     </div>
+
+                    {isAcademicOrSuperAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingSchool(selectedSchool);
+                          setShowSchoolModal(true);
+                        }}
+                        className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-white/20"
+                        title="Edit faculty branding and description"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        <span>Edit Faculty</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -501,6 +586,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                   <span className="text-xs font-mono text-slate-500 font-semibold">
                     {filteredPrograms.length} Programs
                   </span>
+
+                  {isAcademicOrSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProgram(null);
+                        setNewProgramSchoolId(selectedSchool.id);
+                        setShowProgramModal(true);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Program</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -575,17 +675,44 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                             </button>
 
                             {isAcademicOrSuperAdmin && (
-                              <button
-                                onClick={() => {
-                                  setCreateCohortProgramId(p.id);
-                                  setShowCreateCohortModal(true);
-                                }}
-                                className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                                title="Create & launch new intake cohort for this program"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Launch Cohort</span>
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingProgram(p);
+                                    setShowProgramModal(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  title="Edit program parameters, curriculum levels, and syllabus"
+                                >
+                                  <Edit className="w-3.5 h-3.5 text-slate-600" />
+                                  <span>Edit</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={curatingProgramId === p.id}
+                                  onClick={() => handleCurateProgramVideos(p.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                                  title="Curate verified YouTube video tutorials for lessons"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                                  <span>{curatingProgramId === p.id ? 'Curating...' : 'AI Curate'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCreateCohortProgramId(p.id);
+                                    setShowCreateCohortModal(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  title="Create & launch new intake cohort for this program"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>Launch Cohort</span>
+                                </button>
+                              </>
                             )}
 
                             <button
@@ -693,9 +820,24 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-blue-600"
                   />
                 </div>
-                <span className="text-xs font-mono text-slate-500 font-semibold">
-                  Showing {filteredSchools.length} of {effectiveSchools.length} Academic Schools
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-slate-500 font-semibold">
+                    Showing {filteredSchools.length} of {effectiveSchools.length} Academic Schools
+                  </span>
+                  {isAcademicOrSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSchool(null);
+                        setShowSchoolModal(true);
+                      }}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create New School</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -816,9 +958,26 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
               </select>
             </div>
 
-            <span className="text-xs font-mono text-slate-500 font-semibold">
-              Showing {filteredPrograms.length} of {programs.length} programs
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-mono text-slate-500 font-semibold">
+                Showing {filteredPrograms.length} of {programs.length} programs
+              </span>
+
+              {isAcademicOrSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingProgram(null);
+                    setNewProgramSchoolId(undefined);
+                    setShowProgramModal(true);
+                  }}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create New Program</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -877,14 +1036,57 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                       )}
 
                       <button
+                        type="button"
                         onClick={() => setSelectedProgramIdOrCode(p.code || p.id)}
                         className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Program Console & Syllabus</span>
+                        <span>Console & Syllabus</span>
                       </button>
 
+                      {isAcademicOrSuperAdmin && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingProgram(p);
+                              setShowProgramModal(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Edit program parameters, curriculum levels, and syllabus"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={curatingProgramId === p.id}
+                            onClick={() => handleCurateProgramVideos(p.id)}
+                            className="px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                            title="Curate verified YouTube video tutorials for lessons"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                            <span>{curatingProgramId === p.id ? 'Curating...' : 'AI Curate'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCreateCohortProgramId(p.id);
+                              setShowCreateCohortModal(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Create & launch new intake cohort for this program"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Launch Cohort</span>
+                          </button>
+                        </>
+                      )}
+
                       <button
+                        type="button"
                         onClick={() => setExpandedProgramId(isExpanded ? null : p.id)}
                         className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition"
                       >
@@ -1288,6 +1490,183 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
         </div>
       )}
 
+      {/* SUBTAB 5: LEARNING CENTERS NETWORK */}
+      {subTab === 'centers' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Learning Centers & Hubs Network</h2>
+              <p className="text-xs text-slate-500">
+                Manage STEMPACT physical campuses, neighborhood satellite centers, government-sponsored hubs, and the virtual global campus.
+              </p>
+            </div>
+            {isAcademicOrSuperAdmin && (
+              <button
+                onClick={() => {
+                  setEditingCenter(null);
+                  setShowCenterModal(true);
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer shrink-0"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Add Learning Center</span>
+              </button>
+            )}
+          </div>
+
+          {/* City / Town Filter Chips */}
+          {(() => {
+            const cities = Array.from(new Set(centers.map((c: any) => c.cityOrTown).filter(Boolean))) as string[];
+            return cities.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] font-bold text-slate-400">Filter by City:</span>
+                <button
+                  onClick={() => setSelectedCityFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                    selectedCityFilter === 'ALL'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All Cities ({centers.length})
+                </button>
+                {cities.map((city) => (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedCityFilter(city)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      selectedCityFilter === city
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+            ) : null;
+          })()}
+
+          {loadingCenters ? (
+            <div className="py-12 text-center text-xs text-slate-400">Loading learning centers...</div>
+          ) : centers.length === 0 ? (
+            <div className="py-16 text-center space-y-4 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+              <Globe className="w-12 h-12 text-slate-300 mx-auto" />
+              <div>
+                <h3 className="font-bold text-slate-700">No Learning Centers Configured Yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  Add your primary STEMPACT campus, neighborhood satellite branches, or partner-sponsored training centers.
+                </p>
+              </div>
+              {isAcademicOrSuperAdmin && (
+                <button
+                  onClick={() => {
+                    setEditingCenter(null);
+                    setShowCenterModal(true);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 transition"
+                >
+                  Create First Center
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {centers
+                .filter((c: any) => selectedCityFilter === 'ALL' || c.cityOrTown === selectedCityFilter)
+                .map((center: any) => {
+                  const typeBadge = {
+                    MAIN_CAMPUS: { label: 'Main Campus', color: 'bg-blue-100 text-blue-800', emoji: '🏛️' },
+                    SATELLITE_CENTER: { label: 'Satellite Center', color: 'bg-purple-100 text-purple-800', emoji: '📡' },
+                    GOVERNMENT_SPONSORED: { label: 'Govt. Sponsored Hub', color: 'bg-emerald-100 text-emerald-800', emoji: '🏛️' },
+                    CORPORATE_PARTNER: { label: 'Corporate / CSR Hub', color: 'bg-amber-100 text-amber-800', emoji: '🤝' },
+                    VIRTUAL_GLOBAL: { label: 'Virtual Campus', color: 'bg-indigo-100 text-indigo-800', emoji: '🌐' },
+                  }[center.centerType as string] || { label: center.centerType, color: 'bg-slate-100 text-slate-700', emoji: '🏢' };
+
+                  return (
+                    <div
+                      key={center.id}
+                      className={`relative p-5 rounded-2xl border shadow-xs space-y-4 ${
+                        center.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="text-2xl shrink-0 mt-0.5">{typeBadge.emoji}</div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${typeBadge.color}`}>
+                                {typeBadge.label}
+                              </span>
+                              {!center.isActive && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                                  INACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-black text-slate-900 text-sm mt-1 leading-snug">{center.name}</h3>
+                            <p className="text-[10px] text-slate-400 font-mono">{center.code}</p>
+                          </div>
+                        </div>
+                        {isAcademicOrSuperAdmin && (
+                          <button
+                            onClick={() => {
+                              setEditingCenter(center);
+                              setShowCenterModal(true);
+                            }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold transition cursor-pointer shrink-0"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-600">
+                        {center.cityOrTown && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                            <span>
+                              {center.neighborhood ? `${center.neighborhood}, ` : ''}
+                              {center.cityOrTown}
+                              {center.stateOrRegion ? `, ${center.stateOrRegion}` : ''}
+                            </span>
+                          </div>
+                        )}
+                        {center.landmark && (
+                          <div className="flex items-center gap-2 text-slate-500 text-[11px]">
+                            <span className="shrink-0">📍</span>
+                            <span>{center.landmark}</span>
+                          </div>
+                        )}
+                        {center.address && (
+                          <p className="text-[11px] text-slate-400 line-clamp-1">{center.address}</p>
+                        )}
+                        {center.sponsorPartnerName && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
+                            <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>Sponsor: {center.sponsorPartnerName}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span>
+                            Capacity: <strong>{center.capacity}</strong> seats
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>{center.country}</span>
+                        <span>{center.timezone}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Program Detail Console Modal */}
       {selectedProgramIdOrCode && (
         <ProgramDetailModal
@@ -1330,6 +1709,62 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
           academicSessions={effectiveAcademicSessions}
           initialProgramId={createCohortProgramId}
           initialAcademicSessionId={selectedAcademicSessionId !== 'ALL' ? selectedAcademicSessionId : undefined}
+        />
+      )}
+
+      {/* School Create / Edit Modal */}
+      {showSchoolModal && (
+        <SchoolModal
+          isOpen={showSchoolModal}
+          onClose={() => {
+            setShowSchoolModal(false);
+            setEditingSchool(null);
+          }}
+          onSaved={async () => {
+            await onDataRefresh();
+            setActionSuccess(editingSchool ? `School updated successfully.` : `New academic school created successfully.`);
+          }}
+          schoolToEdit={editingSchool}
+        />
+      )}
+
+      {/* Program Create / Edit Modal */}
+      {showProgramModal && (
+        <ProgramModal
+          isOpen={showProgramModal}
+          onClose={() => {
+            setShowProgramModal(false);
+            setEditingProgram(null);
+            setNewProgramSchoolId(undefined);
+          }}
+          onSaved={async () => {
+            await onDataRefresh();
+            setActionSuccess(editingProgram ? `Program updated successfully.` : `New academic program cataloged successfully.`);
+          }}
+          schools={effectiveSchools}
+          programToEdit={editingProgram}
+          initialSchoolId={newProgramSchoolId}
+          activeCohortCount={
+            editingProgram
+              ? cohorts.filter((c) => c.programId === editingProgram.id).length
+              : 0
+          }
+        />
+      )}
+
+      {/* Center Create / Edit Modal */}
+      {showCenterModal && (
+        <CenterModal
+          isOpen={showCenterModal}
+          onClose={() => {
+            setShowCenterModal(false);
+            setEditingCenter(null);
+          }}
+          editingCenter={editingCenter}
+          onSaved={async () => {
+            await loadCenters();
+            setActionSuccess(editingCenter ? 'Learning center updated successfully.' : 'New learning center created successfully.');
+          }}
         />
       )}
     </div>

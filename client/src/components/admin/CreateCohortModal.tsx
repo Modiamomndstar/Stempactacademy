@@ -14,6 +14,7 @@ import {
   School,
   Layers,
   Search,
+  Globe,
 } from 'lucide-react';
 import { Badge, LoadingSpinner } from '../UIElements';
 
@@ -89,6 +90,14 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
   const [programSearch, setProgramSearch] = useState<string>('');
   const [activeConfigs, setActiveConfigs] = useState<Record<string, ProgramIntakeConfig>>({});
 
+  // Step 1b: Academic Level & Center & Instructors
+  const [levelCode, setLevelCode] = useState<string>('LEVEL_1_FOUNDATION');
+  const [learningCenterId, setLearningCenterId] = useState<string>('');
+  const [instructorIds, setInstructorIds] = useState<string[]>([]);
+  const [centers, setCenters] = useState<any[]>([]);
+  const [instructors, setInstructors] = useState<any[]>([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+
   // Auto-fill default dates
   useEffect(() => {
     if (!startDate) {
@@ -140,6 +149,27 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
       }
     }
   }, [initialProgramId, programs, schedule, mode, location]);
+
+  // Fetch learning centers and instructors for selectors
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchResources = async () => {
+      setLoadingCenters(true);
+      try {
+        const [centersRes, instructorsRes] = await Promise.all([
+          api.getCenters(),
+          api.getInstructors(),
+        ]);
+        setCenters(centersRes.centers || centersRes || []);
+        setInstructors(instructorsRes.instructors || instructorsRes || []);
+      } catch (err) {
+        console.warn('Could not load centers/instructors:', err);
+      } finally {
+        setLoadingCenters(false);
+      }
+    };
+    fetchResources();
+  }, [isOpen]);
 
   // Distinct schools
   const distinctSchools = useMemo(() => {
@@ -315,6 +345,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
           name: cohortFullName,
           programId: cfg.programId,
           academicSessionId: academicSessionId || undefined,
+          levelCode: levelCode || 'LEVEL_1_FOUNDATION',
           level: 'Level 1 (Foundation)',
           maxCapacity: Number(cfg.maxCapacity),
           trainingFee: Number(cfg.trainingFee),
@@ -329,6 +360,8 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
           endDate: new Date(endDate).toISOString(),
           applicationDeadline: new Date(applicationDeadline).toISOString(),
           status: cfg.status,
+          learningCenterId: learningCenterId || undefined,
+          instructorIds: instructorIds.length > 0 ? instructorIds : undefined,
         });
 
         createdCount++;
@@ -503,6 +536,85 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
                 />
               </div>
+            </div>
+
+            {/* Academic Level & Center Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  Academic Level *
+                </label>
+                <select
+                  required
+                  value={levelCode}
+                  onChange={(e) => setLevelCode(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
+                >
+                  <option value="LEVEL_1_FOUNDATION">Level 1 — Foundation</option>
+                  <option value="LEVEL_2_INTERMEDIATE">Level 2 — Intermediate</option>
+                  <option value="LEVEL_3_ADVANCED">Level 3 — Advanced</option>
+                  <option value="LEVEL_4_MASTERY">Level 4 — Mastery</option>
+                </select>
+                <p className="text-[10px] text-slate-400">Determines which academic stage this cohort targets.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                  Learning Center
+                </label>
+                <select
+                  value={learningCenterId}
+                  onChange={(e) => setLearningCenterId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                >
+                  <option value="">— Virtual / No Fixed Center —</option>
+                  {centers.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.city ? `· ${c.city}` : ''} {c.state ? `(${c.state})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {loadingCenters && <p className="text-[10px] text-slate-400">Loading centers...</p>}
+              </div>
+            </div>
+
+            {/* Instructor Multi-Select */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+                Assign Instructors <span className="font-normal text-slate-400">(optional — multiple allowed)</span>
+              </label>
+              {instructors.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 max-h-40 overflow-y-auto">
+                  {instructors.map((inst: any) => {
+                    const checked = instructorIds.includes(inst.id);
+                    return (
+                      <label key={inst.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 hover:border-blue-400 cursor-pointer text-[11px] font-semibold text-slate-700 transition">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setInstructorIds((prev) =>
+                              checked ? prev.filter((id) => id !== inst.id) : [...prev, inst.id]
+                            )
+                          }
+                          className="w-3.5 h-3.5 rounded accent-blue-600"
+                        />
+                        <span className="truncate">{inst.firstName} {inst.lastName}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400 p-2.5 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                  {loadingCenters ? 'Loading instructors...' : 'No instructors found. Create instructors in Staff Management first.'}
+                </p>
+              )}
+              {instructorIds.length > 0 && (
+                <p className="text-[10px] text-blue-600 font-semibold">{instructorIds.length} instructor(s) assigned to all cohorts in this batch.</p>
+              )}
             </div>
           </div>
 

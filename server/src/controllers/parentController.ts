@@ -296,3 +296,91 @@ export const getWardAcademicRecords = async (req: AuthRequest, res: Response): P
     res.status(500).json({ message: error.message || 'Failed to fetch ward academic records.' });
   }
 };
+
+export const registerWard = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      gender,
+      programId,
+      cohortId,
+      preferredCenterId,
+      educationLevel,
+      address,
+      state,
+      country,
+      relationship,
+    } = req.body;
+
+    if (!firstName || !lastName || !programId) {
+      res.status(400).json({ message: 'First name, last name, and programId are required.' });
+      return;
+    }
+
+    // Ensure parent profile exists
+    let parentProfile = await prisma.parentProfile.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    if (!parentProfile) {
+      parentProfile = await prisma.parentProfile.create({
+        data: {
+          userId: req.user.id,
+          relationship: relationship || 'PARENT',
+          emergencyContact: phone || '',
+        },
+      });
+    }
+
+    // Generate unique application number
+    const year = new Date().getFullYear();
+    const count = await prisma.application.count();
+    const applicationNumber = `APP-${year}-${String(count + 1).padStart(5, '0')}`;
+
+    const wardEmail = email?.trim() || `${firstName.toLowerCase().replace(/\s+/g, '')}.${lastName.toLowerCase().replace(/\s+/g, '')}.${Date.now().toString().slice(-4)}@ward.stempact.org`;
+
+    const application = await prisma.application.create({
+      data: {
+        applicationNumber,
+        programId,
+        cohortId: cohortId || null,
+        preferredCenterId: preferredCenterId || null,
+        preferredSchedule: 'Flexible / Center Scheduled',
+        fullName: `${firstName} ${lastName}`.trim(),
+        email: wardEmail,
+        phone: phone || '08000000000',
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date('2010-01-01'),
+        gender: gender || 'OTHER',
+        address: address || 'Ile-Ife, Osun State',
+        educationLevel: educationLevel || 'Secondary / High School',
+        careerGoals: 'Develop practical engineering and STEM competencies',
+        learningObjectives: 'Hands-on practical curriculum mastery',
+        statementOfPurpose: 'Registered by parent/guardian for structured STEM education.',
+        isMinor: true,
+        parentName: `${req.user.firstName} ${req.user.lastName}`,
+        parentEmail: req.user.email,
+        parentPhone: phone || '08000000000',
+        parentRelationship: relationship || parentProfile.relationship || 'Parent',
+        status: 'SUBMITTED',
+      },
+    });
+
+    res.status(201).json({
+      message: 'Ward registration submitted successfully.',
+      application,
+    });
+  } catch (error: any) {
+    console.error('registerWard error:', error);
+    res.status(500).json({ message: error.message || 'Failed to register ward.' });
+  }
+};
+

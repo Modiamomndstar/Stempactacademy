@@ -46,6 +46,31 @@ export const ParentPortalPage: React.FC = () => {
   // AI Assistant Modal
   const [showGuardianAi, setShowGuardianAi] = useState<boolean>(false);
 
+  // Register Ward Modal State
+  const [showRegisterWardModal, setShowRegisterWardModal] = useState(false);
+  const [wardPrograms, setWardPrograms] = useState<any[]>([]);
+  const [wardCenters, setWardCenters] = useState<any[]>([]);
+  const [loadingWardResources, setLoadingWardResources] = useState(false);
+  const [registeringWard, setRegisteringWard] = useState(false);
+  const [registerWardError, setRegisterWardError] = useState('');
+  const [registerWardSuccess, setRegisterWardSuccess] = useState('');
+  // Ward application fields
+  const [wardFullName, setWardFullName] = useState('');
+  const [wardEmail, setWardEmail] = useState('');
+  const [wardPhone, setWardPhone] = useState('');
+  const [wardDob, setWardDob] = useState('');
+  const [wardGender, setWardGender] = useState('');
+  const [wardAddress, setWardAddress] = useState('');
+  const [wardEducationLevel, setWardEducationLevel] = useState('');
+  const [wardCareerGoals, setWardCareerGoals] = useState('');
+  const [wardLearningObjectives, setWardLearningObjectives] = useState('');
+  const [wardStatement, setWardStatement] = useState('');
+  const [wardPreferredSchedule, setWardPreferredSchedule] = useState('');
+  const [wardProgramId, setWardProgramId] = useState('');
+  const [wardCohortId, setWardCohortId] = useState('');
+  const [wardCenterId, setWardCenterId] = useState('');
+  const [wardRelationship, setWardRelationship] = useState('Parent');
+
   // Synchronize Tab & Ward with URL
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -125,6 +150,65 @@ export const ParentPortalPage: React.FC = () => {
   const announcements = data?.announcements || [];
   const currentWard = wards.find((w: any) => w.studentId === selectedWardId) || wards[0] || null;
 
+  // Open Register Ward modal and lazy-fetch resources
+  const handleOpenRegisterWardModal = async () => {
+    setShowRegisterWardModal(true);
+    setRegisterWardError('');
+    setRegisterWardSuccess('');
+    if (wardPrograms.length === 0) {
+      setLoadingWardResources(true);
+      try {
+        const [progsRes, centersRes] = await Promise.all([
+          api.getPrograms(),
+          api.getCenters(),
+        ]);
+        setWardPrograms(progsRes.programs || progsRes || []);
+        setWardCenters(centersRes.centers || centersRes || []);
+      } catch (err) {
+        console.warn('Could not load ward resources:', err);
+      } finally {
+        setLoadingWardResources(false);
+      }
+    }
+  };
+
+  const handleRegisterWardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisteringWard(true);
+    setRegisterWardError('');
+    setRegisterWardSuccess('');
+    try {
+      await api.registerWard({
+        fullName: wardFullName,
+        email: wardEmail,
+        phone: wardPhone,
+        dateOfBirth: wardDob ? new Date(wardDob).toISOString() : undefined,
+        gender: wardGender || undefined,
+        address: wardAddress,
+        educationLevel: wardEducationLevel,
+        careerGoals: wardCareerGoals,
+        learningObjectives: wardLearningObjectives,
+        statementOfPurpose: wardStatement,
+        preferredSchedule: wardPreferredSchedule,
+        programId: wardProgramId || undefined,
+        cohortId: wardCohortId || undefined,
+        preferredCenterId: wardCenterId || undefined,
+        relationship: wardRelationship,
+      });
+      setRegisterWardSuccess(`Ward application for "${wardFullName}" submitted! Admissions will review and link them to your account.`);
+      setWardFullName(''); setWardEmail(''); setWardPhone('');
+      setWardDob(''); setWardGender(''); setWardAddress('');
+      setWardEducationLevel(''); setWardCareerGoals('');
+      setWardLearningObjectives(''); setWardStatement('');
+      setWardPreferredSchedule(''); setWardProgramId('');
+      setWardCohortId(''); setWardCenterId('');
+    } catch (err: any) {
+      setRegisterWardError(err.message || 'Failed to register ward application.');
+    } finally {
+      setRegisteringWard(false);
+    }
+  };
+
   return (
     <PortalLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <div className="py-6 px-4 sm:px-6 lg:px-8 space-y-6 max-w-7xl mx-auto">
@@ -147,7 +231,15 @@ export const ParentPortalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={handleOpenRegisterWardModal}
+              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-md flex items-center gap-2 transition cursor-pointer"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Register a Ward</span>
+            </button>
             <button
               type="button"
               onClick={() => setShowGuardianAi(true)}
@@ -559,6 +651,184 @@ export const ParentPortalPage: React.FC = () => {
         onClose={() => setShowGuardianAi(false)}
         wardName={currentWard?.fullName || 'Your Ward'}
       />
+
+      {/* REGISTER A WARD MODAL */}
+      {showRegisterWardModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+        >
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 my-8 flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-600 to-orange-700 text-white p-6 rounded-t-3xl flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Parent Portal</span>
+                <h2 className="text-xl font-black text-white mt-0.5">Register a Ward Application</h2>
+                <p className="text-xs text-amber-100 mt-1">Submit an application for your ward to join STEMPACT Academy. Admissions will review and link them to your account.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRegisterWardModal(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+              >
+                <span className="sr-only">Close</span>
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleRegisterWardSubmit} className="p-6 space-y-5 text-xs overflow-y-auto max-h-[72vh]">
+              {registerWardError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-semibold">{registerWardError}</div>
+              )}
+              {registerWardSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">{registerWardSuccess}</div>
+              )}
+
+              {/* Personal Info */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Personal Information</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Full Name *</label>
+                  <input required type="text" value={wardFullName} onChange={(e) => setWardFullName(e.target.value)}
+                    placeholder="Ward's full legal name" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Email Address *</label>
+                  <input required type="email" value={wardEmail} onChange={(e) => setWardEmail(e.target.value)}
+                    placeholder="ward@email.com" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Phone Number</label>
+                  <input type="tel" value={wardPhone} onChange={(e) => setWardPhone(e.target.value)}
+                    placeholder="+234..." className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Date of Birth *</label>
+                  <input required type="date" value={wardDob} onChange={(e) => setWardDob(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Gender</label>
+                  <select value={wardGender} onChange={(e) => setWardGender(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                    <option value="">-- Select --</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                    <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Your Relationship *</label>
+                  <select required value={wardRelationship} onChange={(e) => setWardRelationship(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                    <option value="Parent">Parent</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Sponsor">Sponsor / Corporate</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Home Address *</label>
+                <input required type="text" value={wardAddress} onChange={(e) => setWardAddress(e.target.value)}
+                  placeholder="Full home address" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Education Level *</label>
+                <select required value={wardEducationLevel} onChange={(e) => setWardEducationLevel(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                  <option value="">-- Select highest education level --</option>
+                  <option value="Primary School">Primary School</option>
+                  <option value="Junior Secondary School (JSS3)">Junior Secondary School (JSS3)</option>
+                  <option value="Senior Secondary School (WAEC/NECO)">Senior Secondary School (WAEC/NECO)</option>
+                  <option value="OND / NCE">OND / NCE</option>
+                  <option value="HND / Bachelor's Degree">HND / Bachelor's Degree</option>
+                  <option value="Master's Degree">Master's Degree</option>
+                  <option value="PhD">PhD</option>
+                </select>
+              </div>
+
+              {/* Program & Center */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Program Preference</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Program of Interest</label>
+                  <select value={wardProgramId} onChange={(e) => setWardProgramId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                    <option value="">-- Any program --</option>
+                    {wardPrograms.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Preferred Learning Center</label>
+                  <select value={wardCenterId} onChange={(e) => setWardCenterId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                    <option value="">-- No preference / Virtual --</option>
+                    {wardCenters.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name} {c.city ? `· ${c.city}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Preferred Schedule *</label>
+                <select required value={wardPreferredSchedule} onChange={(e) => setWardPreferredSchedule(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white">
+                  <option value="">-- Select schedule preference --</option>
+                  <option value="Weekday Evenings (Mon, Wed, Fri 4–7pm)">Weekday Evenings (Mon, Wed, Fri 4–7pm)</option>
+                  <option value="Weekend Intensive (Saturdays 10am–3pm)">Weekend Intensive (Saturdays 10am–3pm)</option>
+                  <option value="Morning (Mon–Thu 9am–1pm)">Morning (Mon–Thu 9am–1pm)</option>
+                  <option value="Flexible / Self-Paced Online">Flexible / Self-Paced Online</option>
+                </select>
+              </div>
+
+              {/* Motivation fields */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Application Details</span>
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Career Goals *</label>
+                <textarea required rows={2} value={wardCareerGoals} onChange={(e) => setWardCareerGoals(e.target.value)}
+                  placeholder="What does your ward want to achieve in their career?" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs resize-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Learning Objectives *</label>
+                <textarea required rows={2} value={wardLearningObjectives} onChange={(e) => setWardLearningObjectives(e.target.value)}
+                  placeholder="What specific skills or knowledge do they want to gain?" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs resize-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Statement of Purpose *</label>
+                <textarea required rows={3} value={wardStatement} onChange={(e) => setWardStatement(e.target.value)}
+                  placeholder="Why does your ward want to join STEMPACT Academy?" className="w-full p-2.5 rounded-xl border border-slate-200 text-xs resize-none" />
+              </div>
+
+              <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                <button type="button" onClick={() => setShowRegisterWardModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer">
+                  Cancel
+                </button>
+                <button type="submit" disabled={registeringWard || loadingWardResources}
+                  className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition disabled:opacity-50 cursor-pointer">
+                  {registeringWard ? 'Submitting Application...' : 'Submit Ward Application'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PortalLayout>
   );
 };

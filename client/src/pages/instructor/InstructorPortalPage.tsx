@@ -79,6 +79,10 @@ export const InstructorPortalPage: React.FC = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
   const [activeAiFeedbackSub, setActiveAiFeedbackSub] = useState<any | null>(null);
 
+  // AI Grade Assistant State
+  const [aiGradeDraftLoading, setAiGradeDraftLoading] = useState<string | null>(null); // stores submissionId being processed
+  const [aiGradeDrafts, setAiGradeDrafts] = useState<Record<string, any>>({}); // submissionId -> draft result
+
   // Sync Tab with URL
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -209,6 +213,27 @@ export const InstructorPortalPage: React.FC = () => {
       setErrorMsg(err.message || 'Failed to submit grade');
     } finally {
       setSavingGrade(false);
+    }
+  };
+
+  // AI Grade Draft Handler
+  const handleGenerateAiGradeDraft = async (subId: string) => {
+    setAiGradeDraftLoading(subId);
+    setErrorMsg('');
+    try {
+      const res = await api.generateAiGradeDraft(subId);
+      setAiGradeDrafts((prev) => ({ ...prev, [subId]: res }));
+      // Pre-fill grade and feedback with AI suggestion if not already set
+      if (res.suggestedGrade !== undefined) {
+        setGradeInput(Number(res.suggestedGrade));
+      }
+      if (res.feedbackDraft) {
+        setFeedbackInput(res.feedbackDraft);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'AI grade assistant failed. Please grade manually.');
+    } finally {
+      setAiGradeDraftLoading(null);
     }
   };
 
@@ -730,6 +755,35 @@ export const InstructorPortalPage: React.FC = () => {
 
                     {selectedSubmissionId === sub.id ? (
                       <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 space-y-3 text-xs">
+                        {/* AI Grade Draft Result */}
+                        {aiGradeDrafts[sub.id] && (
+                          <div className="p-3 rounded-lg bg-violet-50 border border-violet-200 space-y-1.5">
+                            <div className="flex items-center gap-1.5 font-bold text-violet-900">
+                              <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                              <span>AI Grade Suggestion</span>
+                              {aiGradeDrafts[sub.id].suggestedGrade !== undefined && (
+                                <span className="ml-auto text-violet-700 font-mono">
+                                  Score: {aiGradeDrafts[sub.id].suggestedGrade}/{sub.assignment?.maxPoints || 100}
+                                </span>
+                              )}
+                            </div>
+                            {aiGradeDrafts[sub.id].feedbackDraft && (
+                              <p className="text-[11px] text-violet-800 italic leading-relaxed">{aiGradeDrafts[sub.id].feedbackDraft}</p>
+                            )}
+                            {aiGradeDrafts[sub.id].rubricScores && (
+                              <div className="pt-1 space-y-1">
+                                <span className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">Rubric Breakdown:</span>
+                                {Object.entries(aiGradeDrafts[sub.id].rubricScores).map(([criterion, score]: [string, any]) => (
+                                  <div key={criterion} className="flex justify-between text-[11px] text-violet-700">
+                                    <span className="capitalize">{criterion.replace(/_/g, ' ')}</span>
+                                    <span className="font-bold">{String(score)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-violet-500 italic">AI suggestion only — verify and adjust before submitting.</p>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="font-bold text-slate-700 block mb-1">
@@ -785,17 +839,33 @@ export const InstructorPortalPage: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSubmissionId(sub.id);
-                          setGradeInput(sub.assignment?.maxPoints ? Math.round(sub.assignment.maxPoints * 0.9) : 90);
-                          setFeedbackInput('Well implemented. Demonstrates clear engineering understanding.');
-                        }}
-                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
-                      >
-                        Grade This Submission
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubmissionId(sub.id);
+                            setGradeInput(sub.assignment?.maxPoints ? Math.round(sub.assignment.maxPoints * 0.9) : 90);
+                            setFeedbackInput('Well implemented. Demonstrates clear engineering understanding.');
+                          }}
+                          className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+                        >
+                          Grade This Submission
+                        </button>
+                        <button
+                          type="button"
+                          disabled={aiGradeDraftLoading === sub.id}
+                          onClick={() => {
+                            setSelectedSubmissionId(sub.id);
+                            setGradeInput(sub.assignment?.maxPoints ? Math.round(sub.assignment.maxPoints * 0.9) : 90);
+                            setFeedbackInput('');
+                            handleGenerateAiGradeDraft(sub.id);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                          <span>{aiGradeDraftLoading === sub.id ? 'Analyzing...' : 'AI Grade Assistant'}</span>
+                        </button>
+                      </div>
                     )}
                   </Card>
                 ))}

@@ -30,6 +30,8 @@ import * as coordinatorController from '../controllers/coordinatorController.js'
 import * as applicantController from '../controllers/applicantController.js';
 import * as aiController from '../controllers/aiController.js';
 import * as academicSessionController from '../controllers/academicSessionController.js';
+import * as centerController from '../controllers/centerController.js';
+import * as progressionController from '../controllers/progressionController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -42,9 +44,24 @@ router.get('/auth/me', authenticate, authController.getMe);
 // 2. Schools & Programs
 router.get('/schools', schoolController.getSchools);
 router.get('/schools/:code', schoolController.getSchoolByCode);
+router.post('/admin/schools', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), schoolController.createSchool);
+router.put('/admin/schools/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), schoolController.updateSchool);
+router.delete('/admin/schools/:id', authenticate, authorize(Role.SUPER_ADMIN), schoolController.deleteSchool);
+
 router.get('/programs', programController.getPrograms);
 router.get('/programs/:code', programController.getProgramByCode);
+router.post('/admin/programs', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.createProgram);
+router.put('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.updateProgram);
+router.delete('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN), programController.deleteProgram);
 router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.updateProgramStatus);
+router.post('/admin/programs/:id/curate-videos', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.curateVideos);
+
+// 2.2 Learning Centers (Multi-Center & Multi-Campus)
+router.get('/centers', centerController.getCenters);
+router.get('/centers/:id', centerController.getCenterById);
+router.post('/admin/centers', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), centerController.createCenter);
+router.put('/admin/centers/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), centerController.updateCenter);
+router.post('/admin/centers/seed', authenticate, authorize(Role.SUPER_ADMIN), centerController.seedDefaultCenters);
 
 // 2.5 Academic Calendars & Sessions
 router.get('/academic-sessions', academicSessionController.getAcademicSessions);
@@ -56,6 +73,7 @@ router.get('/cohorts', cohortController.getCohorts);
 router.post('/cohorts/purge-legacy', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.purgeLegacyCohorts);
 router.get('/cohorts/:id', cohortController.getCohortById);
 router.get('/cohorts/:id/analysis', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN), cohortController.getCohortAnalysis);
+router.post('/cohorts/estimate-timeline', cohortController.estimateTimeline);
 router.post('/cohorts', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.createCohort);
 router.patch('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR), cohortController.updateCohort);
 router.delete('/cohorts/:id', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), cohortController.deleteCohort);
@@ -91,6 +109,7 @@ router.get('/student/curriculum', authenticate, studentController.getStudentCurr
 router.post('/student/lessons/:lessonId/progress', authenticate, studentController.recordLessonProgress);
 router.get('/student/completion-readiness', authenticate, studentController.getCompletionReadiness);
 router.get('/parent/dashboard', authenticate, parentController.getParentDashboard);
+router.post('/parent/wards', authenticate, authorize(Role.SUPER_ADMIN, Role.PARENT), parentController.registerWard);
 router.get('/parent/wards/:studentId/academic-records', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PARENT), parentController.getWardAcademicRecords);
 router.get('/instructor/dashboard', authenticate, instructorController.getInstructorDashboard);
 router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.createClassSession);
@@ -98,6 +117,12 @@ router.post('/instructor/competencies/evaluate', authenticate, authorize(Role.SU
 router.get('/applicant/dashboard', authenticate, applicantController.getApplicantDashboard);
 router.get('/coordinator/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), coordinatorController.getCoordinatorOverview);
 router.get('/partner/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PARTNER), partnerController.getPartnerOverview);
+
+// 8.5 Academic Progression & Multi-Cohort Entitlements (Level 1 -> Level 4)
+router.get('/progression/journey', authenticate, progressionController.getAcademicJourney);
+router.get('/progression/journey/:studentId', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR), progressionController.getAcademicJourney);
+router.post('/progression/evaluate', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.INSTRUCTOR), progressionController.evaluateLevelCompletion);
+router.post('/progression/claim', authenticate, progressionController.claimProgression);
 
 // 9. Attendance
 router.post('/attendance/mark', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), attendanceController.markAttendance);
@@ -107,6 +132,7 @@ router.get('/attendance/cohort/:cohortId', authenticate, attendanceController.ge
 router.post('/assignments', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.createAssignment);
 router.post('/assignments/submit', authenticate, assignmentController.submitAssignment);
 router.patch('/assignments/submissions/:submissionId/grade', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.gradeSubmission);
+router.post('/assignments/submissions/:submissionId/ai-grade-draft', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.generateAiGradeDraft);
 router.get('/assignments/:assignmentId/submissions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), assignmentController.getAssignmentSubmissions);
 router.get('/assignments/my-submissions', authenticate, assignmentController.getMySubmissions);
 

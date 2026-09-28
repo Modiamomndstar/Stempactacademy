@@ -67,6 +67,29 @@ export class EnrollmentService {
       };
     }
 
+    // Check Single Active Cohort constraint (prevent concurrent active cohorts)
+    if (admission.application?.userId) {
+      const studentProfile = await prisma.studentProfile.findUnique({
+        where: { userId: admission.application.userId },
+      });
+      if (studentProfile) {
+        const activeEnrollment = await prisma.studentCohortEnrollment.findFirst({
+          where: {
+            studentId: studentProfile.id,
+            status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.ACTIVE] },
+            cohortId: { not: admission.cohortId },
+          },
+          include: { cohort: true },
+        });
+        if (activeEnrollment) {
+          return {
+            eligible: false,
+            reason: `Academic Policy Restriction: Student is currently enrolled in an active cohort (${activeEnrollment.cohort.name}). Current cohort must be completed before enrolling in another.`,
+          };
+        }
+      }
+    }
+
     return {
       eligible: true,
       admission,
@@ -170,6 +193,25 @@ export class EnrollmentService {
       let studentProfile = await tx.studentProfile.findUnique({
         where: { userId },
       });
+
+      if (studentProfile) {
+        // Enforce Single Active Cohort constraint
+        const activeCohort = await tx.studentCohortEnrollment.findFirst({
+          where: {
+            studentId: studentProfile.id,
+            status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.ACTIVE] },
+            cohortId: { not: admission.cohortId },
+          },
+          include: { cohort: true },
+        });
+
+        if (activeCohort) {
+          throw new Error(
+            `Academic Policy Restriction: You are currently enrolled in an active cohort (${activeCohort.cohort.name}). ` +
+            `STEMPACT Academy policy requires completing your current cohort before enrolling in a new cohort or advancing to the next level.`
+          );
+        }
+      }
 
       if (!studentProfile) {
         const year = new Date().getFullYear();

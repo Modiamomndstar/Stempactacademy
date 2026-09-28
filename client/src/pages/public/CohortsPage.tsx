@@ -14,22 +14,26 @@ import {
   ShieldCheck,
   CheckCircle2,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 
 export const CohortsPage: React.FC = () => {
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [selectedSchool, setSelectedSchool] = useState<string>('ALL');
+  const [selectedCity, setSelectedCity] = useState<string>('ALL');
   const [schools, setSchools] = useState<School[]>([]);
+  const [centers, setCenters] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cohortsRes, schoolsRes, sessionsRes] = await Promise.all([
+        const [cohortsRes, schoolsRes, sessionsRes, centersRes] = await Promise.all([
           api.getCohorts({ currentSessionOnly: 'true', openOnly: 'true' }),
           api.getSchools(),
           api.getAcademicSessions().catch(() => ({ sessions: [] })),
+          api.getCenters().catch(() => ({ centers: [] })),
         ]);
 
         const sessionsList = sessionsRes?.sessions || [];
@@ -46,6 +50,7 @@ export const CohortsPage: React.FC = () => {
         }
 
         setSchools(schoolsRes.schools || []);
+        setCenters(centersRes?.centers || []);
       } catch (err) {
         console.error('Failed to load cohorts:', err);
       } finally {
@@ -57,7 +62,11 @@ export const CohortsPage: React.FC = () => {
 
   const filteredCohorts = cohorts.filter((c) => {
     if (selectedSchool !== 'ALL') {
-      return c.program?.school?.code === selectedSchool || c.program?.schoolId === selectedSchool;
+      if (c.program?.school?.code !== selectedSchool && c.program?.schoolId !== selectedSchool) return false;
+    }
+    if (selectedCity !== 'ALL') {
+      const centerCity = (c as any).learningCenter?.cityOrTown || '';
+      if (centerCity !== selectedCity) return false;
     }
     return true;
   });
@@ -113,6 +122,35 @@ export const CohortsPage: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {/* City / Center Filter Chips */}
+          {centers.length > 0 && (() => {
+            const cities = Array.from(new Set(centers.map((c: any) => c.cityOrTown).filter(Boolean))) as string[];
+            return cities.length > 1 ? (
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                <span className="text-[11px] text-slate-400 font-semibold">City:</span>
+                <button
+                  onClick={() => setSelectedCity('ALL')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer ${
+                    selectedCity === 'ALL' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  All Locations
+                </button>
+                {cities.map((city: string) => (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedCity(city)}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                      selectedCity === city ? 'bg-white text-slate-900 font-bold' : 'bg-slate-800 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {city}
+                  </button>
+                ))}
+              </div>
+            ) : null;
+          })()}
         </div>
       </section>
 
@@ -235,6 +273,21 @@ export const CohortsPage: React.FC = () => {
                           <strong className="text-slate-800">{cohort.instructorName}</strong>
                         </span>
                       </div>
+                      {(cohort as any).learningCenter && (
+                        <div className="flex items-start gap-2 pt-1 border-t border-slate-100">
+                          <Building2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                          <span>
+                            Learning Center:{' '}
+                            <strong className="text-slate-800">{(cohort as any).learningCenter.name}</strong>
+                            {(cohort as any).learningCenter.neighborhood && (
+                              <span className="text-[11px] text-slate-500 block">• {(cohort as any).learningCenter.neighborhood}, {(cohort as any).learningCenter.cityOrTown}</span>
+                            )}
+                            {(cohort as any).sponsorName && (
+                              <span className="text-[11px] text-emerald-600 font-semibold block">Sponsored by: {(cohort as any).sponsorName}</span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Seat Availability Bar */}

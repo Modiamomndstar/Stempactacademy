@@ -5,7 +5,7 @@ import { identifierService } from '../services/identifierService.js';
 
 export const getCohorts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status, programId, openOnly, academicYear, academicSessionId, currentSessionOnly } = req.query;
+    const { status, programId, openOnly, academicYear, academicSessionId, currentSessionOnly, centerId, levelCode } = req.query;
 
     const where: any = {};
 
@@ -27,6 +27,14 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
     if (programId) {
       where.programId = String(programId);
     }
+
+    if (centerId) {
+      where.learningCenterId = String(centerId);
+    }
+
+    if (levelCode) {
+      where.levelCode = levelCode as any;
+    }
     
     if (academicSessionId) {
       where.academicSessionId = String(academicSessionId);
@@ -40,9 +48,19 @@ export const getCohorts = async (req: Request, res: Response): Promise<void> => 
         program: {
           include: { school: true },
         },
+        learningCenter: true,
         academicSession: true,
         programVersion: true,
         curriculumVersion: true,
+        instructors: {
+          include: {
+            instructor: {
+              include: {
+                user: { select: { firstName: true, lastName: true, email: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { startDate: 'asc' },
     });
@@ -226,6 +244,10 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
       curriculumVersionId,
       academicSessionId,
       level,
+      levelCode,
+      learningCenterId,
+      sponsorName,
+      instructorIds,
       startDate,
       endDate,
       applicationDeadline,
@@ -265,6 +287,16 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
       }
     }
 
+    // 3. Resolve learning center if specified or fallback to center lookup
+    let resolvedCenterId = learningCenterId;
+    let centerLocation = location;
+    if (resolvedCenterId) {
+      const center = await prisma.learningCenter.findUnique({ where: { id: resolvedCenterId } });
+      if (center) {
+        centerLocation = `${center.name}, ${center.address}`;
+      }
+    }
+
     const cohort = await prisma.cohort.create({
       data: {
         cohortCode,
@@ -273,14 +305,17 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
         programVersionId: resolvedProgramVersionId || null,
         curriculumVersionId: resolvedCurriculumVersionId || null,
         academicSessionId: resolvedSessionId || null,
-        level: level || 'Level 1',
+        level: level || 'Level 1 (Foundation)',
+        levelCode: levelCode || 'LEVEL_1_FOUNDATION',
+        learningCenterId: resolvedCenterId || null,
+        sponsorName: sponsorName || null,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         applicationDeadline: new Date(applicationDeadline),
         schedule,
-        mode: mode || 'Hybrid (Onsite Ile-Ife & Virtual)',
-        location: location || 'STEMPACT Innovation Hub, Ile-Ife',
-        instructorName: instructorName || 'Academy Faculty',
+        mode: mode || 'Hybrid (Onsite & Virtual)',
+        location: centerLocation || location || 'STEMPACT Innovation Hub, Ile-Ife',
+        instructorName: instructorName || 'Academy Faculty Mentors',
         maxCapacity: Number(maxCapacity) || 25,
         trainingFee: Number(trainingFee) || 75000,
         registrationFee: Number(registrationFee) || 5000,
@@ -290,11 +325,29 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
       },
       include: {
         program: { include: { school: true } },
+        learningCenter: true,
         academicSession: true,
         programVersion: true,
         curriculumVersion: true,
       },
     });
+
+    // 4. Assign multiple instructors if specified
+    if (Array.isArray(instructorIds) && instructorIds.length > 0) {
+      for (const item of instructorIds) {
+        const insId = typeof item === 'string' ? item : item.instructorId;
+        const role = typeof item === 'object' && item.role ? item.role : 'LEAD';
+        if (insId) {
+          await prisma.cohortInstructor.create({
+            data: {
+              cohortId: cohort.id,
+              instructorId: insId,
+              role,
+            },
+          }).catch((err) => console.warn('Failed to attach instructor to cohort:', err.message));
+        }
+      }
+    }
 
     res.status(201).json({ message: 'Cohort created successfully', cohort });
   } catch (error: any) {
@@ -485,4 +538,46 @@ export const purgeLegacyCohorts = async (req: Request, res: Response): Promise<v
     res.status(500).json({ message: error.message || 'Failed to purge legacy cohorts' });
   }
 };
+
+/**
+ * AI Cohort Pacing & Timeline Predictor
+ * Computes recommended start/end dates and milestone checkpoints based on contact hours and schedule presets.
+ */
+export const estimateTimeline = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { contactHours = 48, sessionsPerWeek = 3, hoursPerSession = 2.5, startDate } = req.body;
+
+    const totalHours = Number(contactHours) || 48;
+    const sPerWeek = Number(sessionsPerWeek) || 3;
+    const hPerSession = Number(hoursPerSession) || 2.5;
+    const weeklyHours = sPerWeek * hPerSession;
+
+    const weeksNeeded = Math.ceil(totalHours / weeklyHours);
+    const start = startDate ? new Date(startDate) : new Date(Date.now() + 14 * 86400000);
+    const end = new Date(start.getTime() + weeksNeeded * 7 * 86400000);
+    const deadline = new Date(start.getTime() - 4 * 86400000);
+
+    const midAssessmentWeek = Math.max(1, Math.floor(weeksNeeded / 2));
+    const capstoneReviewWeek = weeksNeeded;
+
+    res.status(200).json({
+      estimatedWeeks: weeksNeeded,
+      totalContactHours: totalHours,
+      weeklyContactHours: weeklyHours,
+      recommendedStartDate: start.toISOString().split('T')[0],
+      recommendedEndDate: end.toISOString().split('T')[0],
+      recommendedApplicationDeadline: deadline.toISOString().split('T')[0],
+      milestones: [
+        { week: 1, title: 'Orientation, Tool Setup & Foundations Kickoff' },
+        { week: midAssessmentWeek, title: 'Midterm Practical Sprint & Progress Review' },
+        { week: capstoneReviewWeek - 1, title: 'Capstone Implementation & Code Freeze' },
+        { week: capstoneReviewWeek, title: 'Final Demonstration, Rubric Evaluation & Certification' },
+      ],
+    });
+  } catch (error: any) {
+    console.error('estimateTimeline error:', error);
+    res.status(500).json({ message: 'Failed to compute timeline estimation.' });
+  }
+};
+
 

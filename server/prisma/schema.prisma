@@ -43,6 +43,14 @@ enum AcademicLevel {
   LEVEL_6_ENTREPRENEURSHIP
 }
 
+enum CenterType {
+  MAIN_CAMPUS
+  SATELLITE_CENTER
+  GOVERNMENT_SPONSORED
+  CORPORATE_PARTNER
+  VIRTUAL_GLOBAL
+}
+
 enum WorkflowStatus {
   DRAFT
   PENDING_REVIEW
@@ -236,6 +244,9 @@ model Program {
   level                AcademicLevel @default(LEVEL_1_FOUNDATION)
   version              Int           @default(1)
   isFeatured           Boolean       @default(false)
+  isKidsTrack          Boolean       @default(false)
+  targetAgeGroup       String?       // "KIDS_7_11", "TEENS_12_17", "ADULTS_18_PLUS"
+  totalLevels          Int           @default(4)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -254,6 +265,7 @@ model Program {
   attemptRecommendations AssessmentAttempt[]
   admissions           Admission[]
   enrollments          StudentCohortEnrollment[]
+  progressionRules     ProgressionEligibility[]
 }
 
 model Course {
@@ -267,12 +279,14 @@ model Course {
   description         String
   credits             Int                @default(3)
   order               Int                @default(0)
+  level               AcademicLevel      @default(LEVEL_1_FOUNDATION)
   modules             Module[]
   assignments         Assignment[]
   classSessions       ClassSession[]
 
   @@index([programId])
   @@index([curriculumVersionId])
+  @@index([level])
 }
 
 model Module {
@@ -292,15 +306,19 @@ model Module {
 }
 
 model Lesson {
-  id              String                  @id @default(uuid())
-  moduleId        String
-  module          Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  title           String
-  content         String
-  resources       String?  // links or docs
-  order           Int                     @default(0)
-  classSessions   ClassSession[]
-  studentProgress StudentLessonProgress[]
+  id               String                  @id @default(uuid())
+  moduleId         String
+  module           Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title            String
+  content          String
+  resources        String?  // links or docs
+  videoUrl         String?  // Curated YouTube embed URL
+  videoDurationMin Int?     // Duration in minutes
+  videoSummary     String?  // Structured takeaways / timestamps
+  interactiveLabType String? // e.g. "CODE_RUNNER", "BLOCK_PUZZLE", "HARDWARE_SIMULATOR"
+  order            Int                     @default(0)
+  classSessions    ClassSession[]
+  studentProgress  StudentLessonProgress[]
 
   @@index([moduleId])
 }
@@ -321,6 +339,43 @@ model Competency {
   @@index([curriculumVersionId])
 }
 
+model LearningCenter {
+  id                 String         @id @default(uuid())
+  code               String         @unique // e.g. "IFE-MAIN", "IFE-MAYFAIR", "LOS-YABA", "ACC-EAST", "VIRTUAL-GLOBAL"
+  name               String         // e.g. "STEMPACT Innovation Hub - Fajuyi Center"
+  centerType         CenterType     @default(MAIN_CAMPUS)
+  country            String         @default("Nigeria")
+  stateOrRegion      String         @default("Osun State")
+  cityOrTown         String         @default("Ile-Ife")
+  neighborhood       String?        // e.g. "Fajuyi / Central", "Mayfair", "OAU Environs"
+  address            String
+  landmark           String?
+  sponsorPartnerName String?        // e.g. "Osun State Ministry of Innovation", "NITDA", "UNDP"
+  timezone           String         @default("Africa/Lagos")
+  capacity           Int            @default(30)
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  cohorts            Cohort[]
+  applications       Application[]
+  classSessions      ClassSession[]
+}
+
+model CohortInstructor {
+  id           String            @id @default(uuid())
+  cohortId     String
+  cohort       Cohort            @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  instructorId String
+  instructor   InstructorProfile @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  role         String            @default("LEAD") // "LEAD", "CO_INSTRUCTOR", "LAB_ASSISTANT"
+  createdAt    DateTime          @default(now())
+
+  @@unique([cohortId, instructorId])
+  @@index([cohortId])
+  @@index([instructorId])
+}
+
 model Cohort {
   id                  String              @id @default(uuid())
   cohortCode          String              @unique // e.g. "STP-2025-C1-WD"
@@ -332,6 +387,10 @@ model Cohort {
   curriculumVersionId String?
   curriculumVersion   CurriculumVersion?  @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
   level               String              @default("Level 1 (Foundation)")
+  levelCode           AcademicLevel       @default(LEVEL_1_FOUNDATION)
+  learningCenterId    String?
+  learningCenter      LearningCenter?     @relation(fields: [learningCenterId], references: [id], onDelete: SetNull)
+  sponsorName         String?             // Government or corporate partner sponsor if applicable
   startDate           DateTime
   endDate             DateTime
   applicationDeadline DateTime
@@ -351,6 +410,7 @@ model Cohort {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
+  instructors         CohortInstructor[]
   applications        Application[]
   admissions          Admission[]
   classSessions       ClassSession[]
@@ -364,11 +424,14 @@ model Cohort {
   attemptRecommendations AssessmentAttempt[]  @relation("AttemptRecommendedCohort")
   placementDecisions    PlacementDecision[]
   invoices              Invoice[]
+  completedProgressions ProgressionEligibility[] @relation("CompletedCohortProgressions")
 
   @@index([programId])
   @@index([programVersionId])
   @@index([curriculumVersionId])
   @@index([academicSessionId])
+  @@index([learningCenterId])
+  @@index([levelCode])
 }
 
 model Application {
@@ -380,6 +443,8 @@ model Application {
   program             Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
   cohortId            String?
   cohort              Cohort?           @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  preferredCenterId   String?
+  preferredCenter     LearningCenter?   @relation(fields: [preferredCenterId], references: [id], onDelete: SetNull)
   preferredSchedule   String
   fullName            String
   dateOfBirth         DateTime
@@ -418,6 +483,8 @@ model Application {
   invoices            Invoice[]
   financialClearances FinancialClearance[]
   enrollments         StudentCohortEnrollment[]
+
+  @@index([preferredCenterId])
 }
 
 model Assessment {
@@ -691,6 +758,7 @@ model StudentProfile {
   financialClearances FinancialClearance[]
   guardianRelations   StudentGuardianRelation[]
   lessonProgress      StudentLessonProgress[]
+  progressionEligibilities ProgressionEligibility[]
 }
 
 model ParentProfile {
@@ -714,6 +782,7 @@ model InstructorProfile {
   qualification  String
   assignedSchools String?       // JSON list of school codes
   classSessions  ClassSession[]
+  cohortAssignments CohortInstructor[]
 }
 
 model ClassSession {
@@ -722,6 +791,8 @@ model ClassSession {
   cohort       Cohort             @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   instructorId String?
   instructor   InstructorProfile? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  learningCenterId String?
+  learningCenter LearningCenter?  @relation(fields: [learningCenterId], references: [id], onDelete: SetNull)
   courseId     String?
   course       Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
   moduleId     String?
@@ -744,6 +815,7 @@ model ClassSession {
   @@index([cohortId])
   @@index([instructorId])
   @@index([courseId])
+  @@index([learningCenterId])
   @@index([status])
 }
 
@@ -782,6 +854,8 @@ model Assignment {
   description         String
   maxPoints           Int                @default(100)
   dueDate             DateTime
+  rubricJson          Json?              // Structured criteria: [{ criterion, maxPoints, description }]
+  aiGradingEnabled    Boolean            @default(true)
   status              String             @default("PUBLISHED") // DRAFT, PUBLISHED, CLOSED, ARCHIVED
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @default(now()) @updatedAt
@@ -795,31 +869,58 @@ model Assignment {
 }
 
 model Submission {
-  id             String         @id @default(uuid())
-  assignmentId   String
-  assignment     Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  studentId      String
-  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  userId         String?
-  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  content        String
-  attachmentUrl  String?
-  version        Int            @default(1)
-  isLatest       Boolean        @default(true)
-  status         String         @default("SUBMITTED") // SUBMITTED, GRADED, RESUBMISSION_REQUESTED
-  submittedAt    DateTime       @default(now())
-  grade          Float?
-  feedback       String?
-  gradedAt       DateTime?
-  gradedById     String?
-  gradedBy       User?          @relation("SubmissionGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @default(now()) @updatedAt
+  id                String         @id @default(uuid())
+  assignmentId      String
+  assignment        Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content           String
+  attachmentUrl     String?
+  version           Int            @default(1)
+  isLatest          Boolean        @default(true)
+  status            String         @default("SUBMITTED") // SUBMITTED, GRADED, RESUBMISSION_REQUESTED
+  submittedAt       DateTime       @default(now())
+  grade             Float?
+  feedback          String?
+  aiSuggestedGrade  Float?
+  aiFeedbackDraft   String?
+  rubricScoresJson  Json?          // Line-by-line rubric scoring details
+  gradedAt          DateTime?
+  gradedById        String?
+  gradedBy          User?          @relation("SubmissionGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @default(now()) @updatedAt
 
   @@index([assignmentId])
   @@index([studentId])
   @@index([isLatest])
   @@index([status])
+}
+
+model ProgressionEligibility {
+  id                 String         @id @default(uuid())
+  studentId          String
+  student            StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  programId          String
+  program            Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  completedLevel     AcademicLevel
+  eligibleLevel      AcademicLevel
+  completedCohortId  String
+  completedCohort    Cohort         @relation("CompletedCohortProgressions", fields: [completedCohortId], references: [id], onDelete: Restrict)
+  certificateId      String?
+  clearedAt          DateTime       @default(now())
+  status             String         @default("AVAILABLE") // "AVAILABLE", "CLAIMED", "EXPIRED"
+  claimedCohortId    String?
+  claimedAt          DateTime?
+  notes              String?
+  createdAt          DateTime       @default(now())
+
+  @@index([studentId])
+  @@index([programId])
+  @@index([status])
+  @@index([completedCohortId])
 }
 
 model Project {

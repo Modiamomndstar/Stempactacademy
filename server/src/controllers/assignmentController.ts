@@ -3,10 +3,11 @@ import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { emailService } from '../services/emailService.js';
 import { academicDeliveryService } from '../services/academicDeliveryService.js';
+import { gradingAssistantService } from '../services/gradingAssistantService.js';
 
 export const createAssignment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { cohortId, courseId, moduleId, curriculumVersionId, title, description, maxPoints, dueDate, status } = req.body;
+    const { cohortId, courseId, moduleId, curriculumVersionId, title, description, maxPoints, dueDate, status, rubricJson, aiGradingEnabled } = req.body;
 
     if (!cohortId || !title || !description || !dueDate) {
       res.status(400).json({ message: 'cohortId, title, description, and dueDate are required.' });
@@ -34,6 +35,8 @@ export const createAssignment = async (req: AuthRequest, res: Response): Promise
         maxPoints: Number(maxPoints) || 100,
         dueDate: new Date(dueDate),
         status: status || 'PUBLISHED',
+        rubricJson: rubricJson ? (typeof rubricJson === 'string' ? JSON.parse(rubricJson) : rubricJson) : null,
+        aiGradingEnabled: aiGradingEnabled !== undefined ? Boolean(aiGradingEnabled) : true,
       },
     });
 
@@ -218,5 +221,26 @@ export const getMySubmissions = async (req: AuthRequest, res: Response): Promise
   } catch (error: any) {
     console.error('getMySubmissions error:', error);
     res.status(500).json({ message: 'Failed to fetch submissions' });
+  }
+};
+
+export const generateAiGradeDraft = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { submissionId } = req.params;
+
+    if (!submissionId) {
+      res.status(400).json({ message: 'submissionId parameter is required.' });
+      return;
+    }
+
+    const draft = await gradingAssistantService.evaluateSubmissionDraft({ submissionId });
+
+    res.status(200).json({
+      message: 'AI Rubric evaluation generated successfully.',
+      draft,
+    });
+  } catch (error: any) {
+    console.error('generateAiGradeDraft error:', error);
+    res.status(500).json({ message: error.message || 'Failed to generate AI grade evaluation.' });
   }
 };

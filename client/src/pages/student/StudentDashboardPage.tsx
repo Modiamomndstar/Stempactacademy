@@ -85,6 +85,12 @@ export const StudentDashboardPage: React.FC = () => {
   // AI Copilot Modal
   const [showCopilot, setShowCopilot] = useState<boolean>(false);
 
+  // Progression Journey State
+  const [progressionData, setProgressionData] = useState<any>(null);
+  const [loadingProgression, setLoadingProgression] = useState(false);
+  const [claimingProgression, setClaimingProgression] = useState(false);
+  const [progressionCohortId, setProgressionCohortId] = useState('');
+
   // Synchronize Tab with URL
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -157,6 +163,24 @@ export const StudentDashboardPage: React.FC = () => {
     }
   }, [activeTab, completionReport]);
 
+  // Lazy Load Progression Journey when tab opens
+  useEffect(() => {
+    if (activeTab === 'progression' && !progressionData) {
+      const fetchProgression = async () => {
+        setLoadingProgression(true);
+        try {
+          const res = await api.getAcademicJourney();
+          setProgressionData(res);
+        } catch (err: any) {
+          console.error('Failed to load progression journey:', err);
+        } finally {
+          setLoadingProgression(false);
+        }
+      };
+      fetchProgression();
+    }
+  }, [activeTab, progressionData]);
+
   // Lesson Completion Action
   const handleRecordLessonProgress = async (lessonId: string) => {
     setCompletingLesson(true);
@@ -176,6 +200,27 @@ export const StudentDashboardPage: React.FC = () => {
       setActionError(err.message || 'Failed to record lesson progress.');
     } finally {
       setCompletingLesson(false);
+    }
+  };
+
+  // Claim Progression to Next Level
+  // progressionCohortId stores "eligibilityId:targetCohortId" for proper API call
+  const handleClaimProgression = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!progressionCohortId) return;
+    const [eligibilityId, targetCohortId] = progressionCohortId.split('|');
+    if (!targetCohortId) return;
+    setClaimingProgression(true);
+    setActionError('');
+    try {
+      await api.claimProgression({ eligibilityId: eligibilityId || '', targetCohortId });
+      setActionSuccess('Successfully claimed enrollment in the next level cohort! Check your dashboard for updated cohort details.');
+      setProgressionData(null); // Force refresh
+      setProgressionCohortId('');
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to claim progression enrollment.');
+    } finally {
+      setClaimingProgression(false);
     }
   };
 
@@ -394,6 +439,13 @@ export const StudentDashboardPage: React.FC = () => {
                 </h1>
                 <p className="text-xs text-slate-300">
                   {program?.name || 'Academic Specialization'} • Cohort: <strong>{cohort?.cohortCode || cohort?.name}</strong> • Level: <strong>{profile.currentLevel}</strong>
+                  {(cohort as any)?.learningCenter && (
+                    <span className="block text-[11px] text-blue-200 mt-0.5">
+                      📍 Campus: <strong>{(cohort as any).learningCenter.name}</strong>
+                      {(cohort as any).learningCenter.neighborhood ? ` · ${(cohort as any).learningCenter.neighborhood}` : ''}
+                      {(cohort as any).sponsorName ? ` (Sponsored by ${(cohort as any).sponsorName})` : ''}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -1033,6 +1085,130 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
         )}
 
+        {/* TAB: ACADEMIC PROGRESSION JOURNEY */}
+        {activeTab === 'progression' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Academic Progression Journey</h2>
+              <p className="text-xs text-slate-500">
+                Track your level completions, progression eligibility, and enroll in next-level cohorts when ready.
+              </p>
+            </div>
+
+            {loadingProgression ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                Loading your academic journey...
+              </div>
+            ) : progressionData ? (
+              <div className="space-y-4">
+                {/* Active Cohort Status */}
+                {progressionData.activeCohort ? (
+                  <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold text-blue-900">
+                      <Clock className="w-4 h-4" />
+                      <span>Currently Enrolled</span>
+                      <Badge variant="blue">{progressionData.activeCohort.levelCode?.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      <strong>{progressionData.activeCohort.name}</strong> — You must complete this cohort before progressing to the next level.
+                    </p>
+                    <p className="text-[11px] text-blue-600">
+                      Cohort runs: {progressionData.activeCohort.startDate ? new Date(progressionData.activeCohort.startDate).toLocaleDateString('en-GB') : '—'} → {progressionData.activeCohort.endDate ? new Date(progressionData.activeCohort.endDate).toLocaleDateString('en-GB') : '—'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                    <div className="flex items-center gap-2 font-bold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      No active cohort — you are eligible to enroll in the next level.
+                    </div>
+                  </div>
+                )}
+
+                {/* Completed Levels */}
+                {progressionData.completedLevels && progressionData.completedLevels.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Completed Academic Levels</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {progressionData.completedLevels.map((level: any, idx: number) => (
+                        <div key={idx} className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-900">{level.cohortName || level.name}</span>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          </div>
+                          <Badge variant="green">{level.levelCode?.replace(/_/g, ' ')}</Badge>
+                          {level.completionDate && (
+                            <p className="text-[10px] text-slate-400">Completed: {new Date(level.completionDate).toLocaleDateString('en-GB')}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Progression Entitlements */}
+                {progressionData.entitlements && progressionData.entitlements.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Progression Entitlements</h3>
+                    {progressionData.entitlements.map((ent: any, idx: number) => (
+                      <div key={idx} className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-indigo-600" />
+                          <span className="text-xs font-bold text-indigo-900">
+                            Eligible for: {ent.nextLevel?.replace(/_/g, ' ')}
+                          </span>
+                          {ent.program && <span className="text-[11px] text-indigo-600">— {ent.program.name}</span>}
+                        </div>
+                        <p className="text-[11px] text-indigo-700">
+                          You have earned progression eligibility. You may choose to enroll in any future cohort at this level — there is no obligation to join immediately.
+                        </p>
+                        {ent.availableCohorts && ent.availableCohorts.length > 0 ? (
+                          <form onSubmit={handleClaimProgression} className="space-y-2">
+                            <label className="text-[11px] font-bold text-indigo-800 block">Select Next Cohort to Enroll:</label>
+                            <select
+                              required
+                              value={progressionCohortId}
+                              onChange={(e) => setProgressionCohortId(e.target.value)}
+                              className="w-full p-2 rounded-lg border border-indigo-200 bg-white text-xs"
+                            >
+                              <option value="">— Choose an open cohort —</option>
+                              {ent.availableCohorts.map((c: any) => (
+                                <option key={c.id} value={`${ent.id || ''}|${c.id}`}>
+                                  {c.name} {c.startDate ? `· Starts ${new Date(c.startDate).toLocaleDateString('en-GB')}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              disabled={claimingProgression || !progressionCohortId}
+                              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                            >
+                              {claimingProgression ? 'Enrolling...' : 'Claim Next Level Enrollment'}
+                            </button>
+                          </form>
+                        ) : (
+                          <p className="text-[11px] text-indigo-600 italic">
+                            No open cohorts for this level yet. Check back when new cohorts are launched.
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!progressionData.activeCohort && (!progressionData.entitlements || progressionData.entitlements.length === 0) && (
+                  <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center text-slate-400 text-xs">
+                    Complete your first enrolled cohort to unlock progression eligibility.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs">Could not load progression data. Please refresh.</div>
+            )}
+          </div>
+        )}
+
         {/* TAB 6: ATTENDANCE */}
         {activeTab === 'attendance' && (
           <Card className="p-6 space-y-4">
@@ -1291,6 +1467,60 @@ export const StudentDashboardPage: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* YouTube Video Player */}
+            {selectedLesson.videoUrl && (() => {
+              // Extract YouTube video ID from various URL formats
+              const getYouTubeId = (url: string): string | null => {
+                const patterns = [
+                  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/,
+                ];
+                for (const pattern of patterns) {
+                  const match = url.match(pattern);
+                  if (match) return match[1];
+                }
+                return null;
+              };
+              const videoId = getYouTubeId(selectedLesson.videoUrl);
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <Play className="w-4 h-4 text-rose-600" />
+                    <span>Video Lecture</span>
+                    {selectedLesson.videoDurationMin && (
+                      <span className="ml-auto text-slate-400 font-normal">{selectedLesson.videoDurationMin} min</span>
+                    )}
+                  </div>
+                  {videoId ? (
+                    <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ paddingBottom: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                        title={selectedLesson.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                        style={{ border: 0 }}
+                      />
+                    </div>
+                  ) : (
+                    <a
+                      href={selectedLesson.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Watch Video Resource
+                    </a>
+                  )}
+                  {selectedLesson.videoSummary && (
+                    <p className="text-[11px] text-slate-500 leading-relaxed p-3 rounded-lg bg-slate-50 border border-slate-100">
+                      <strong className="text-slate-700">Video Summary:</strong> {selectedLesson.videoSummary}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">

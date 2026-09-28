@@ -34,6 +34,7 @@ export const ApplicationWizardPage: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [centers, setCenters] = useState<any[]>([]);
   const [selectedCohortData, setSelectedCohortData] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [manualSelectionMode, setManualSelectionMode] = useState<boolean>(false);
@@ -48,6 +49,7 @@ export const ApplicationWizardPage: React.FC = () => {
     schoolId: '',
     programId: searchParams.get('programId') || '',
     cohortId: searchParams.get('cohortId') || '',
+    preferredCenterId: '',
     preferredSchedule: 'Weekday Evenings (4:00 PM - 7:00 PM WAT)',
     fullName: '',
     dateOfBirth: '',
@@ -83,11 +85,12 @@ export const ApplicationWizardPage: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [schoolsRes, programsRes, cohortsRes, sessionsRes] = await Promise.all([
+        const [schoolsRes, programsRes, cohortsRes, sessionsRes, centersRes] = await Promise.all([
           api.getSchools(),
           api.getPrograms(),
           api.getCohorts({ openOnly: 'true' }),
           api.getAcademicSessions(),
+          api.getCenters().catch(() => ({ centers: [] })),
         ]);
         const scList = schoolsRes.schools || [];
         const prList = programsRes.programs || [];
@@ -97,6 +100,7 @@ export const ApplicationWizardPage: React.FC = () => {
         setSchools(scList);
         setPrograms(prList);
         setCohorts(coList);
+        setCenters(centersRes?.centers || []);
 
         const currentSess = sessList.find((s: any) => s.isCurrent) || sessList[0];
         setActiveSession(currentSess);
@@ -540,6 +544,29 @@ export const ApplicationWizardPage: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Preferred Learning Center */}
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Preferred Learning Center / Campus</span>
+                      <span className="text-slate-400 font-normal text-[11px]">(optional)</span>
+                    </label>
+                    <select
+                      name="preferredCenterId"
+                      value={formData.preferredCenterId}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                    >
+                      <option value="">-- Virtual / No Fixed Center Preference --</option>
+                      {centers.map((center: any) => (
+                        <option key={center.id} value={center.id}>
+                          {center.name}{center.cityOrTown ? ` · ${center.cityOrTown}` : ''}{center.stateOrRegion ? ` (${center.stateOrRegion})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-400">Choose your nearest physical neighborhood hub, or select Virtual for remote access.</p>
                   </div>
 
                   <div className="space-y-1.5">
