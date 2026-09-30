@@ -181,6 +181,7 @@ export class WorkflowEngine {
             },
           ];
 
+      const createdCourses = [];
       for (const courseData of coursesToCreate) {
         const course = await tx.course.create({
           data: {
@@ -190,8 +191,10 @@ export class WorkflowEngine {
             description: courseData.description || '',
             credits: courseData.credits || 3,
             order: courseData.order || 1,
+            level: (courseData.level as AcademicLevel) || level,
           },
         });
+        createdCourses.push(course);
 
         for (const moduleData of courseData.modules || []) {
           const mod = await tx.module.create({
@@ -258,17 +261,137 @@ export class WorkflowEngine {
         },
       });
 
-      // Record immutable ProgramVersion snapshot
-      await tx.programVersion.create({
-        data: {
-          programId: program.id,
-          versionNumber: 1,
-          changelog: 'Initial AI-generated & human-approved academic release.',
-          status: WorkflowStatus.PUBLISHED,
-          dataSnapshot: rawData,
-          createdById: generation?.requestedById || params.approverId,
-          approvedById: params.approverId,
+      // -------------------------------------------------------------
+      // SMART VERSIONING LOGIC:
+      // If current version has NO active cohorts, refine/update in place (Testing/Pre-launch mode).
+      // If cohorts have already started, lock old version and mint next version.
+      // -------------------------------------------------------------
+      const existingCurrentVersion = await tx.programVersion.findFirst({
+        where: { programId: program.id, isCurrent: true },
+        include: {
+          cohorts: true,
         },
+      });
+
+      const highestVersionRecord = await tx.programVersion.findFirst({
+        where: { programId: program.id },
+        orderBy: { versionNumber: 'desc' },
+        select: { versionNumber: true },
+      });
+
+      // Check if current version is locked by any cohorts
+      const isLockedByCohorts = Boolean(
+        existingCurrentVersion && existingCurrentVersion.cohorts && existingCurrentVersion.cohorts.length > 0
+      );
+
+      let targetVersionNumber = 1;
+      let programVersionId = '';
+
+      if (existingCurrentVersion && !isLockedByCohorts) {
+        // PRE-LAUNCH / TESTING MODE: Update current version in-place
+        targetVersionNumber = existingCurrentVersion.versionNumber;
+        const updatedVersion = await tx.programVersion.update({
+          where: { id: existingCurrentVersion.id },
+          data: {
+            dataSnapshot: rawData,
+            status: WorkflowStatus.PUBLISHED,
+            changelog: 'Refined & updated in place via AI Curriculum Architect.',
+            approvedById: params.approverId,
+            updatedAt: new Date(),
+          },
+        });
+        programVersionId = updatedVersion.id;
+      } else {
+        // PROTECTED MODE: Mint new incremental version
+        targetVersionNumber = (highestVersionRecord?.versionNumber || 0) + 1;
+
+        if (existingCurrentVersion) {
+          await tx.programVersion.updateMany({
+            where: { programId: program.id, isCurrent: true },
+            data: { isCurrent: false },
+          });
+        }
+
+        const newVersion = await tx.programVersion.create({
+          data: {
+            programId: program.id,
+            versionNumber: targetVersionNumber,
+            changelog: highestVersionRecord
+              ? `Curriculum revision v${targetVersionNumber} approved and published.`
+              : 'Initial AI-generated & human-approved academic release.',
+            status: WorkflowStatus.PUBLISHED,
+            isCurrent: true,
+            effectiveFrom: new Date(),
+            dataSnapshot: rawData,
+            createdById: generation?.requestedById || params.approverId,
+            approvedById: params.approverId,
+          },
+        });
+        programVersionId = newVersion.id;
+      }
+
+      // Sync program version counter
+      await tx.program.update({
+        where: { id: program.id },
+        data: { version: targetVersionNumber },
+      });
+
+      // Ensure canonical Curriculum & CurriculumVersion sync
+      let curriculum = await tx.curriculum.findFirst({
+        where: { programId: program.id },
+      });
+
+      if (!curriculum) {
+        curriculum = await tx.curriculum.create({
+          data: {
+            programId: program.id,
+            title: `${program.name} - Canonical Curriculum`,
+            level: program.level,
+            totalHours: program.contactHours,
+            theoryPracticalRatio: '40:60',
+            status: WorkflowStatus.APPROVED,
+            version: targetVersionNumber,
+          },
+        });
+      }
+
+      // Check or create CurriculumVersion matching targetVersionNumber
+      let curriculumVersion = await tx.curriculumVersion.findFirst({
+        where: { curriculumId: curriculum.id, versionNumber: targetVersionNumber },
+      });
+
+      if (!curriculumVersion) {
+        curriculumVersion = await tx.curriculumVersion.create({
+          data: {
+            curriculumId: curriculum.id,
+            versionNumber: targetVersionNumber,
+            dataSnapshot: rawData,
+            status: WorkflowStatus.APPROVED,
+            changelog: `Curriculum version ${targetVersionNumber} approved and published.`,
+            createdById: generation?.requestedById || params.approverId,
+            approvedById: params.approverId,
+          },
+        });
+      } else {
+        await tx.curriculumVersion.update({
+          where: { id: curriculumVersion.id },
+          data: {
+            dataSnapshot: rawData,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      // Associate newly created courses with this CurriculumVersion
+      await tx.course.updateMany({
+        where: { programId: program.id },
+        data: { curriculumVersionId: curriculumVersion.id },
+      });
+
+      // Link programVersion to curriculumVersion
+      await tx.programVersion.update({
+        where: { id: programVersionId },
+        data: { curriculumVersionId: curriculumVersion.id },
       });
 
       // Update AI generation status to PUBLISHED if record exists
