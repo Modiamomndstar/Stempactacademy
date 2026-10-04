@@ -181,7 +181,7 @@ export const AdmissionsPage: React.FC = () => {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4 text-center">
             <h3 className="font-bold text-slate-900 text-sm">Need Guidance on Choosing a Program?</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Our academic counselors in Ile-Ife can review your educational goals and recommend the optimal track.
+              Our admissions counselors can review your educational goals and recommend the optimal learning center or virtual track.
             </p>
             <a
               href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"

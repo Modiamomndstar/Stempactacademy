@@ -233,6 +233,14 @@ export class BootstrapService {
       // First ensure Super Admin account exists and is synchronized
       await ensureSuperAdminFromEnv();
 
+      // Ensure initial Learning Centers network exists if table is empty
+      const centerCount = await prisma.learningCenter.count();
+      if (centerCount === 0) {
+        console.log('🏛️ [BOOTSTRAP] Initializing Learning Centers network...');
+        const { ensureInitialCenters } = await import('../../controllers/centerController.js');
+        await ensureInitialCenters();
+      }
+
       const schoolCount = await prisma.school.count();
       if (schoolCount > 0) {
         console.log(`ℹ️ [BOOTSTRAP] Database already contains ${schoolCount} schools. Skipping auto-seed.`);

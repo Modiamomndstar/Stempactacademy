@@ -130,7 +130,7 @@ export const SideMenuLayout: React.FC<SideMenuLayoutProps> = ({ children }) => {
 
             <span className="hidden xl:flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Ile-Ife Campus</span>
+              <span>Multi-Center Network</span>
             </span>
 
             {user ? (

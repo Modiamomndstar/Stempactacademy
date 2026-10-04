@@ -25,9 +25,9 @@ export const AboutPage: React.FC = () => {
             Pioneering Practical STEM Excellence in Africa
           </h1>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
-            Headquartered in the historic cradle of Ile-Ife, Osun State, STEMPACT Academy is a world-class educational
-            ecosystem dedicated to empowering the next generation with technical mastery, engineering rigor, and
-            entrepreneurial resilience.
+            STEMPACT Academy is a world-class educational ecosystem dedicated to empowering the next generation
+            with technical mastery, engineering rigor, and entrepreneurial resilience across physical learning centers
+            and our global virtual campus.
           </p>
         </div>
       </section>
@@ -64,23 +64,23 @@ export const AboutPage: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-slate-50 rounded-3xl p-8 sm:p-12 border border-slate-200/80 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 space-y-4">
-            <Badge variant="amber">The Location</Badge>
+            <Badge variant="amber">The Location Network</Badge>
             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Rooted in Ile-Ife, Scaled for Global Reach
+              Physical Hubs & Scaled Global Reach
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Ile-Ife is renowned globally as an epicenter of culture, intellect, and academic excellence, anchored by the
-              esteemed Obafemi Awolowo University. STEMPACT Academy bridges this profound scholarly tradition with
-              cutting-edge 21st-century applied technology.
+              Founded in the historic scholarly cradle of Ile-Ife, STEMPACT Academy bridges profound academic traditions
+              with cutting-edge applied technology across an expanding multi-center network.
             </p>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Our modern campus hub features high-speed fiber internet, dedicated robotics benches, a digital fabrication
-              3D printing lab, solar inverter training yards, and collaborative sprint rooms. While Ile-Ife is our launchpad,
-              our hybrid virtual infrastructure connects learners across all 36 Nigerian states and international borders.
+              Our founding Fajuyi campus hub in Ile-Ife features high-speed fiber internet, dedicated robotics benches,
+              a digital fabrication 3D printing lab, solar inverter training yards, and collaborative sprint rooms.
+              As we establish new physical learning centers across states and cities, our hybrid virtual infrastructure
+              ensures learners anywhere can participate seamlessly.
             </p>
             <div className="pt-2 flex items-center gap-2 text-xs font-bold text-slate-800">
               <MapPin className="w-4 h-4 text-rose-600" />
-              <span>14 Fajuyi Road, Ile-Ife, Osun State, Nigeria</span>
+              <span>Flagship Campus: 14 Fajuyi Road, Central District, Ile-Ife, Osun State</span>
             </div>
           </div>
 

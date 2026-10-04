@@ -110,7 +110,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({ onOpenMobileNav }) =
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             </div>
             <p className="text-[10px] text-slate-500 font-medium">
-              Ile-Ife School Operations Hub
+              Academic Operations & Hub Network
             </p>
           </div>
         </div>

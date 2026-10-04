@@ -33,21 +33,24 @@ export const HomePage: React.FC = () => {
   const [featuredPrograms, setFeaturedPrograms] = useState<Program[]>([]);
   const [openCohorts, setOpenCohorts] = useState<Cohort[]>([]);
   const [cmsContent, setCmsContent] = useState<any>(null);
+  const [learningCenters, setLearningCenters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [schoolsRes, programsRes, cohortsRes, cmsRes] = await Promise.all([
+        const [schoolsRes, programsRes, cohortsRes, cmsRes, centersRes] = await Promise.all([
           api.getSchools(),
           api.getPrograms({ featured: 'true' }),
           api.getCohorts({ openOnly: 'true' }),
           api.getCMSContent(),
+          api.getCenters().catch(() => ({ centers: [] })),
         ]);
         setSchools(schoolsRes.schools || []);
         setFeaturedPrograms(programsRes.programs || []);
         setOpenCohorts(cohortsRes.cohorts || []);
         setCmsContent(cmsRes || {});
+        setLearningCenters(centersRes?.centers || []);
       } catch (err) {
         console.error('Error fetching homepage data:', err);
       } finally {
@@ -84,7 +87,7 @@ export const HomePage: React.FC = () => {
               {/* Live Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-slate-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>Admissions Live: 2025 Cohorts Now Open in Ile-Ife</span>
+                <span>Admissions Live: New Cohorts Now Open</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
@@ -95,10 +98,10 @@ export const HomePage: React.FC = () => {
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                Welcome to <strong className="text-white">STEMPACT ACADEMY</strong>, the premier technical,
-                vocational, and innovation academy in Ile-Ife, Osun State. We train youth, undergraduates, and
-                professionals to engineer cutting-edge software, AI models, autonomous robotics, solar microgrids, and
-                high-growth venture startups.
+                Welcome to <strong className="text-white">STEMPACT ACADEMY</strong>, a premier technical,
+                vocational, and innovation academy empowering learners across our physical learning centers and
+                global virtual campus. We train youth, undergraduates, and professionals to engineer cutting-edge
+                software, AI models, autonomous robotics, solar microgrids, and high-growth venture startups.
               </p>
 
               {/* 4 Brand Pillars / Quadrants Indicator */}
@@ -156,7 +159,7 @@ export const HomePage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-rose-400" />
-                  <span>Ile-Ife Onsite Campus Hub</span>
+                  <span>Physical Centers & Virtual Campus</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-amber-400" />
@@ -213,8 +216,9 @@ export const HomePage: React.FC = () => {
             Building Africa's Next Generation of Technologists & Inventors
           </h2>
           <p className="text-slate-600 leading-relaxed text-sm sm:text-base">
-            STEMPACT Academy was founded in Ile-Ife, Osun State, with a singular mission: to eliminate the gap between
-            theoretical classroom memorization and industry-ready, practical technical craftsmanship.
+            STEMPACT Academy was founded with a singular mission: to eliminate the gap between
+            theoretical classroom memorization and industry-ready, practical technical craftsmanship
+            across physical centers and virtual learning tracks.
           </p>
         </div>
 
@@ -495,8 +499,8 @@ export const HomePage: React.FC = () => {
               <div className="text-3xl font-black text-emerald-400">02</div>
               <h3 className="font-bold text-base text-white">Daily Guided Lab Practicum</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Build alongside industry-active instructors in our Ile-Ife lab stations with immediate code and schematic
-                reviews.
+                Build alongside industry-active instructors in our physical lab stations and interactive
+                cloud environments with immediate code and schematic reviews.
               </p>
             </div>
 
@@ -635,6 +639,121 @@ export const HomePage: React.FC = () => {
         </section>
       )}
 
+      {/* 9.5 PHYSICAL LEARNING CENTERS & CAMPUS HUBS */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="text-center max-w-3xl mx-auto space-y-3">
+          <Badge variant="green">Multi-Campus & Training Network</Badge>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Our Physical Learning Centers & Training Hubs
+          </h2>
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            Hands-on physical training takes place at our accredited academy learning centers, featuring state-of-the-art
+            hardware workbenches, solar yards, and high-speed workstations—backed by our global virtual campus.
+          </p>
+        </div>
+
+        {learningCenters.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {learningCenters.map((center: any) => {
+              const isVirtual = center.centerType === 'VIRTUAL_GLOBAL';
+              return (
+                <Card key={center.id} className="p-6 space-y-4 border hover:border-blue-400 transition-all flex flex-col justify-between" hoverable>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+                        {center.code || 'CAMPUS'}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                        {isVirtual ? '🌐 Virtual Global' : '🏛️ Physical Center'}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-slate-900 leading-snug">
+                      {center.name}
+                    </h3>
+
+                    <div className="space-y-2 text-xs text-slate-600">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-slate-800 block">{center.address || 'Address pending verification'}</strong>
+                          {center.neighborhood && <span className="text-slate-500">{center.neighborhood}, </span>}
+                          <span>{center.cityOrTown}{center.stateOrRegion ? `, ${center.stateOrRegion}` : ''}</span>
+                        </div>
+                      </div>
+
+                      {center.landmark && (
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <span className="text-slate-400">📍 Landmark:</span>
+                          <span>{center.landmark}</span>
+                        </div>
+                      )}
+
+                      {center.sponsorPartnerName && (
+                        <div className="flex items-center gap-1.5 text-emerald-700 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Partner: {center.sponsorPartnerName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>Capacity: <strong>{center.capacity || 30} seats</strong></span>
+                    <Link to="/admissions" className="text-blue-600 font-bold hover:underline flex items-center gap-1">
+                      <span>Enroll Here</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Card className="p-6 space-y-3 border-l-4 border-l-blue-600">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                  FOUNDING HUB
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Active Intake
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                STEMPACT Innovation Hub — Fajuyi Main Campus
+              </h3>
+              <p className="text-xs text-slate-600">
+                14 Fajuyi Road, Central District, Ile-Ife, Osun State, Nigeria
+              </p>
+              <div className="text-[11px] text-slate-500">
+                Robotics Labs, Clean Energy Yard, Software Workbenches
+              </div>
+            </Card>
+
+            <Card className="p-6 space-y-3 border-l-4 border-l-indigo-600">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                  EXPANDING HUBS
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                  State Network
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                Satellite Centers & Partner Innovation Hubs
+              </h3>
+              <p className="text-xs text-slate-600">
+                Physical centers across emerging states and cities, complemented by interactive virtual classrooms nationwide.
+              </p>
+              <div className="text-[11px] text-slate-500">
+                Additional physical training center locations listed as cohorts launch.
+              </div>
+            </Card>
+          </div>
+        )}
+      </section>
+
       {/* 10. FINAL CALL TO ACTION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-rose-700 text-white p-10 sm:p-16 text-center space-y-6 shadow-2xl relative overflow-hidden">
@@ -643,8 +762,8 @@ export const HomePage: React.FC = () => {
               Ready to Build Real-World STEM Skills?
             </h2>
             <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
-              Applications for the 2025 cohort cycle are open now. Take the online placement test today or visit our
-              campus in Ile-Ife to inspect our robotics, clean energy, and software engineering laboratories.
+              Applications for upcoming cohort cycles are open now. Take the online placement test today or visit any
+              of our accredited physical learning centers to inspect our robotics, clean energy, and software engineering laboratories.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <Link

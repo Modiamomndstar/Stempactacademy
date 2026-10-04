@@ -38,7 +38,7 @@ export const STEMLogo: React.FC<STEMLogoProps> = ({
             Stem Skills for Real World Impact
           </span>
           <span className="text-[9px] font-bold text-rose-800 uppercase tracking-wider">
-            Ile-Ife • Osun State • Nigeria
+            Physical Centers & Virtual Campus
           </span>
         </div>
       )}

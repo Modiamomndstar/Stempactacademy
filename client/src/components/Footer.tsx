@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../services/api';
 import { STEMLogo } from './STEMLogo';
 import {
   MapPin,
@@ -13,6 +14,14 @@ import {
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
+  const [centers, setCenters] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getCenters().then((res) => {
+      setCenters(res?.centers || []);
+    }).catch(() => {});
+  }, []);
+
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 text-sm">
       {/* 4 Quadrants Color Ribbon */}
@@ -39,8 +48,8 @@ export const Footer: React.FC = () => {
             </p>
             <p className="text-xs text-slate-400 leading-relaxed pr-6">
               Premier STEM, digital skills, technical, vocational, innovation and entrepreneurship academy.
-              Empowering youth, students, and professionals in Ile-Ife, Osun State, and across Africa to build
-              sustainable technologies and global careers.
+              Empowering youth, students, and professionals across our physical learning centers and global virtual
+              campus to build sustainable technologies and global careers.
             </p>
 
             <div className="pt-2 flex items-center gap-3">
@@ -56,7 +65,7 @@ export const Footer: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-900/50 border border-emerald-700/50 text-emerald-300 text-xs font-medium hover:bg-emerald-800/50 transition-colors"
               >
                 <Award className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Admissions 2025</span>
+                <span>New Admissions Open</span>
               </Link>
             </div>
           </div>
@@ -155,34 +164,62 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 4: Contact & Campus */}
+          {/* Col 4: Physical Centers & Contact */}
           <div className="space-y-3">
-            <h4 className="text-white text-xs font-bold uppercase tracking-wider">
-              Ile-Ife Campus Hub
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-rose-400" />
+              <span>Learning Centers & Training Hubs</span>
             </h4>
-            <div className="space-y-2.5 text-xs text-slate-400">
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span>
-                  STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State, Nigeria
-                </span>
+            
+            <div className="space-y-3 text-xs text-slate-400">
+              {centers.length > 0 ? (
+                <div className="space-y-2">
+                  {centers.slice(0, 3).map((c: any) => (
+                    <div key={c.id} className="border-l-2 border-rose-500/60 pl-2.5 py-0.5 space-y-0.5">
+                      <strong className="text-slate-200 block text-[11px] font-semibold">{c.name}</strong>
+                      <span className="text-[10px] text-slate-400 block">{c.address || `${c.cityOrTown}, ${c.stateOrRegion}`}</span>
+                    </div>
+                  ))}
+                  {centers.length > 3 && (
+                    <Link to="/contact" className="text-[10px] text-blue-400 hover:underline block font-semibold">
+                      + {centers.length - 3} more physical centers across states
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="border-l-2 border-rose-500/60 pl-2.5 py-0.5 space-y-0.5">
+                  <strong className="text-slate-200 block text-[11px] font-semibold">Fajuyi Main Campus Hub</strong>
+                  <span className="text-[10px] text-slate-400 block">14 Fajuyi Road, Central District, Ile-Ife, Osun State</span>
+                  <span className="text-[10px] text-slate-500 block">Expanding network of physical hubs across states</span>
+                </div>
+              )}
+
+              <div className="pt-1 space-y-1.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>+234 803 123 4567 / +234 816 567 8901</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span>admissions@stempact.org</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>+234 803 123 4567 / +234 816 567 8901</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>admissions@stempact.org</span>
-              </div>
-              <div className="pt-2">
+
+              <div className="pt-1 flex items-center gap-2 flex-wrap">
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 transition"
+                >
+                  <span>All Center Addresses</span>
+                  <ArrowUpRight className="w-3 h-3" />
+                </Link>
                 <a
                   href="https://chat.whatsapp.com/C1ntPtG3qkh1Aguvh5zxN9"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors"
                 >
-                  <span>WhatsApp Channel</span>
+                  <span>WhatsApp</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
               </div>

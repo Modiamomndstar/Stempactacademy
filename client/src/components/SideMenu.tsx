@@ -214,7 +214,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({ onCloseMobile }) => {
         <div className="px-2 py-1 text-[10px] text-slate-400 flex items-center justify-between">
           <span className="flex items-center gap-1 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Ile-Ife Campus, Osun State
+            Physical Centers & Virtual Hub
           </span>
           <span className="font-mono text-[9px] text-slate-400">v1.0</span>
         </div>

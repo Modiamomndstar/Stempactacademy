@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import { Badge, Card } from '../../components/UIElements';
 import {
   MapPin,
@@ -9,9 +10,13 @@ import {
   MessageSquare,
   CheckCircle2,
   ArrowUpRight,
+  Building2,
+  Globe,
+  Sparkles,
 } from 'lucide-react';
 
 export const ContactPage: React.FC = () => {
+  const [centers, setCenters] = useState<any[]>([]);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -20,6 +25,12 @@ export const ContactPage: React.FC = () => {
     subject: 'Program Inquiries',
     message: '',
   });
+
+  useEffect(() => {
+    api.getCenters().then((res) => {
+      setCenters(res?.centers || []);
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,11 +44,11 @@ export const ContactPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
           <Badge variant="blue">Connect with STEMPACT</Badge>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Contact Our Admissions & Innovation Hub
+            Contact Our Admissions & Learning Centers
           </h1>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
             Have questions regarding academic tracks, cohort timetables, fees, or corporate partnerships?
-            Our admissions counselors in Ile-Ife are here to assist you.
+            Our admissions counselors and campus coordinators across our centers are here to assist you.
           </p>
         </div>
       </section>
@@ -49,21 +60,71 @@ export const ContactPage: React.FC = () => {
           <div className="lg:col-span-5 space-y-6">
             <Card className="p-8 space-y-6">
               <div className="space-y-2">
-                <h3 className="text-xl font-extrabold text-slate-900">Ile-Ife Campus Headquarters</h3>
+                <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                  <span>Physical Learning Centers</span>
+                </h3>
                 <p className="text-xs text-slate-500">
-                  Visit our state-of-the-art computer labs, robotics workbenches, and clean energy yard.
+                  Visit our state-of-the-art computer labs, robotics workbenches, and clean energy training yards.
                 </p>
               </div>
 
-              <div className="space-y-4 text-xs text-slate-700">
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block text-slate-900 font-semibold mb-0.5">Physical Address:</strong>
-                    <span>STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State, Nigeria</span>
+              {/* Dynamic Centers List */}
+              <div className="space-y-4">
+                {centers.length > 0 ? (
+                  centers.map((center: any) => {
+                    const isVirtual = center.centerType === 'VIRTUAL_GLOBAL';
+                    return (
+                      <div key={center.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-slate-900 font-bold">{center.name}</strong>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-mono">
+                            {center.code}
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2 text-slate-600">
+                          <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                          <div>
+                            <span>{center.address}</span>
+                            {center.neighborhood && <span className="text-slate-400"> • {center.neighborhood}</span>}
+                            <span className="block text-slate-500 font-medium">
+                              {center.cityOrTown}{center.stateOrRegion ? `, ${center.stateOrRegion}` : ''} ({center.country || 'Nigeria'})
+                            </span>
+                          </div>
+                        </div>
+                        {center.landmark && (
+                          <div className="text-[11px] text-slate-500 pl-6">
+                            📍 Landmark: {center.landmark}
+                          </div>
+                        )}
+                        {center.sponsorPartnerName && (
+                          <div className="text-[11px] text-emerald-700 font-semibold pl-6 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-emerald-500" />
+                            <span>Partner: {center.sponsorPartnerName}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <strong className="text-slate-900 font-bold">Fajuyi Main Campus Hub</strong>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-mono">
+                        IFE-MAIN
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 text-slate-600">
+                      <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span>14 Fajuyi Road, Central District, Ile-Ife, Osun State</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+              </div>
 
+              <div className="pt-2 border-t border-slate-100 space-y-3 text-xs text-slate-700">
                 <div className="flex items-start gap-3">
                   <Phone className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>

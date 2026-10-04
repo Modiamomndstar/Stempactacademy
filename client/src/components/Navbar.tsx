@@ -60,22 +60,16 @@ export const Navbar: React.FC = () => {
   ];
 
   return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-200 ${
-        isScrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200/80 py-2'
-          : 'bg-white border-b border-slate-100 py-3'
-      }`}
-    >
+    <header className="relative w-full z-30 bg-white border-b border-slate-100 py-2.5 sm:py-3 transition-colors">
       {/* Top micro bar with location & hot announcement */}
       <div className="hidden lg:flex items-center justify-between text-[11px] font-medium text-slate-500 max-w-7xl mx-auto px-4 pb-2 border-b border-slate-100/60 mb-2">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1 text-slate-700">
+          <span className="flex items-center gap-1 text-slate-700 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Admissions Open: 2025 Cohorts (Ile-Ife Campus & Hybrid Virtual)
+            Admissions Open: New Cohorts Now Enrolling (In-Person Centers & Hybrid Virtual)
           </span>
           <span className="text-slate-300">|</span>
-          <span>Official STEM, Vocational & Tech Academy of Osun State</span>
+          <span>Premier STEM, Vocational & Emerging Tech Academy</span>
         </div>
         <div className="flex items-center gap-4">
           <Link to="/verify" className="flex items-center gap-1 hover:text-blue-600 transition-colors">
