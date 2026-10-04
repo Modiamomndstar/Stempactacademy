@@ -19,13 +19,18 @@ interface AIProgramGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProgramCreated?: (program: any) => void;
+  existingPrograms?: any[];
+  initialProgramId?: string;
 }
 
 export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = ({
   isOpen,
   onClose,
   onProgramCreated,
+  existingPrograms = [],
+  initialProgramId,
 }) => {
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(initialProgramId || '');
   const [domain, setDomain] = useState('Full Stack Web Engineering & Cloud Native Systems');
   const [academicLevel, setAcademicLevel] = useState<AcademicLevel>(AcademicLevel.LEVEL_2_INTERMEDIATE);
   const [targetAudience, setTargetAudience] = useState('Polytechnic and university students, young tech professionals, and career switchers');
@@ -37,6 +42,26 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
   const [error, setError] = useState('');
   const [generatedDraft, setGeneratedDraft] = useState<ProgramDraft | null>(null);
   const [generationId, setGenerationId] = useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (initialProgramId) {
+      setSelectedProgramId(initialProgramId);
+    }
+  }, [initialProgramId, isOpen]);
+
+  React.useEffect(() => {
+    if (selectedProgramId && existingPrograms.length > 0) {
+      const prog = existingPrograms.find((p) => p.id === selectedProgramId || p.code === selectedProgramId);
+      if (prog) {
+        setDomain(prog.name || '');
+        if (prog.level) setAcademicLevel(prog.level as AcademicLevel);
+        if (prog.durationWeeks) setDurationWeeks(Number(prog.durationWeeks));
+        if (prog.targetLearner) setTargetAudience(prog.targetLearner);
+        if (prog.tools || prog.competencies) setKeywords(prog.tools || prog.competencies || '');
+        if (prog.description) setSpecialInstructions(prog.description);
+      }
+    }
+  }, [selectedProgramId, existingPrograms]);
 
   if (!isOpen) return null;
 
@@ -50,6 +75,8 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
     try {
       setGenerating(true);
       setError('');
+      const targetProg = existingPrograms.find((p) => p.id === selectedProgramId || p.code === selectedProgramId);
+
       const res = await api.generateProgram({
         domain,
         academicLevel,
@@ -57,9 +84,18 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
         durationWeeks: Number(durationWeeks),
         keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean),
         specialInstructions,
+        schoolCode: targetProg?.school?.code,
+        programCode: targetProg?.code,
       });
 
-      setGeneratedDraft(res.draft);
+      const draft = {
+        ...res.draft,
+        code: targetProg?.code || res.draft.code,
+        schoolCode: targetProg?.school?.code || res.draft.schoolCode,
+        name: targetProg?.name || res.draft.name,
+      };
+
+      setGeneratedDraft(draft);
       setGenerationId(res.generationId);
     } catch (err: any) {
       setError(err.message || 'Failed to generate program draft. Please verify server connection.');
@@ -122,6 +158,31 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
             {/* Form */}
             <form onSubmit={handleGenerate} className="p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Target Existing Program Selector */}
+                <div className="md:col-span-2 bg-emerald-50/70 dark:bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-200 mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Target Academic Program:
+                    </span>
+                    <span className="text-[10px] font-normal text-emerald-700 dark:text-emerald-300">
+                      Select an existing catalog program or draft a new one
+                    </span>
+                  </label>
+                  <select
+                    value={selectedProgramId}
+                    onChange={(e) => setSelectedProgramId(e.target.value)}
+                    className="w-full border border-emerald-300 dark:border-emerald-700 rounded-xl px-3.5 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">— Draft Brand-New Academic Program —</option>
+                    {existingPrograms.map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} — {p.name} ({p.school?.code || 'STEM'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Domain */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">

@@ -50,6 +50,18 @@ export const getPrograms = async (req: Request, res: Response): Promise<void> =>
         cohorts: {
           where: { status: { in: ['OPEN', 'ALMOST_FULL'] } },
         },
+        courses: {
+          include: {
+            modules: {
+              include: {
+                lessons: true,
+                practicalActivities: true,
+              },
+              orderBy: { order: 'asc' },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
       },
       orderBy: { name: 'asc' },
     });

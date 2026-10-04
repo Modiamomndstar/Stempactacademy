@@ -241,6 +241,9 @@ export class BootstrapService {
         await ensureInitialCenters();
       }
 
+      // Ensure baseline lessons are populated across all modules
+      await this.ensureBaselineLessons();
+
       const schoolCount = await prisma.school.count();
       if (schoolCount > 0) {
         console.log(`ℹ️ [BOOTSTRAP] Database already contains ${schoolCount} schools. Skipping auto-seed.`);
@@ -648,5 +651,165 @@ export class BootstrapService {
       bootstrapped: true,
       message: `Successfully seeded ${schoolMap.size} Schools, ${programsCreated} Programs, Academic Session, and Accounts!`,
     };
+  }
+
+  /**
+   * Ensure all course modules have structured canonical lessons and curated video tutorials
+   */
+  static async ensureBaselineLessons(): Promise<number> {
+    try {
+      const modulesWithoutLessons = await prisma.module.findMany({
+        where: {
+          lessons: {
+            none: {},
+          },
+        },
+        include: {
+          course: {
+            include: {
+              program: {
+                include: {
+                  school: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { order: 'asc' },
+      });
+
+      if (modulesWithoutLessons.length === 0) {
+        console.log('✔ All course modules have canonical lessons populated.');
+        return 0;
+      }
+
+      console.log(`📚 [BOOTSTRAP] Populating canonical lessons for ${modulesWithoutLessons.length} empty modules...`);
+
+      let lessonsCreated = 0;
+
+      const selectVideoEmbed = (programCode: string, schoolCode?: string) => {
+        const pCode = (programCode || '').toUpperCase();
+        const sCode = (schoolCode || '').toUpperCase();
+
+        if (pCode.startsWith('DMAP') || pCode.includes('CONTENT') || pCode.includes('MEDIA') || pCode.includes('MARKETING')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/1bUtXq1w66E',
+            duration: 18,
+            summary: 'Comprehensive walkthrough covering AI-powered content workflows, prompt structures, and media generation pipelines.',
+          };
+        }
+        if (pCode.startsWith('AIDM') || pCode.includes('DATA') || pCode.includes('AI') || pCode.includes('ML')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/i_LwzRVP7bg',
+            duration: 22,
+            summary: 'Practical tutorial covering machine learning, data processing models, and intelligent system architectures.',
+          };
+        }
+        if (pCode.startsWith('RIOTH') || pCode.includes('ROBOT') || pCode.includes('IOT') || pCode.includes('HARDWARE')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/fJWR7dBuc14',
+            duration: 25,
+            summary: 'Step-by-step laboratory tutorial on microcontroller architecture, circuit assembly, and hardware interfacing.',
+          };
+        }
+        if (pCode.startsWith('RETE') || pCode.includes('SOLAR') || pCode.includes('ENERGY')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/gl5yI6K_3hA',
+            duration: 20,
+            summary: 'Hands-on training session covering solar PV design, electrical loads, and battery storage commissioning.',
+          };
+        }
+        if (pCode.startsWith('BIE') || pCode.includes('STARTUP') || pCode.includes('BUSINESS')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/bNpx7gpSqbY',
+            duration: 16,
+            summary: 'Strategic masterclass covering venture modeling, product discovery, and customer acquisition execution.',
+          };
+        }
+        if (pCode.startsWith('SKT') || pCode.includes('KIDS') || pCode.includes('CREATIVE')) {
+          return {
+            url: 'https://www.youtube-nocookie.com/embed/jXUZhvl1uY4',
+            duration: 15,
+            summary: 'Interactive junior engineering lesson introducing algorithmic thinking and creative digital building.',
+          };
+        }
+        // Default / Software Engineering
+        return {
+          url: 'https://www.youtube-nocookie.com/embed/kqtD5dpn9C8',
+          duration: 20,
+          summary: 'Practical software engineering lecture covering fundamental syntax, modular architecture, and debugging.',
+        };
+      };
+
+      for (const mod of modulesWithoutLessons) {
+        const prog = mod.course?.program;
+        const progName = prog?.name || 'Academic Program';
+        const progCode = prog?.code || 'PRG';
+        const schoolCode = prog?.school?.code || 'SCSE';
+        const video = selectVideoEmbed(progCode, schoolCode);
+        const modCleanTitle = mod.title.replace(/^Module \d+:\s*/i, '');
+
+        // Create 3 canonical lessons for each module
+        const lessonTemplates = [
+          {
+            title: `${modCleanTitle} — Principles & Toolchain Setup`,
+            content: `In-depth foundation and architectural breakdown of ${modCleanTitle}. Covers core concepts, standards, and tool setup.`,
+            order: 1,
+            videoDurationMin: video.duration,
+          },
+          {
+            title: `${modCleanTitle} — Hands-On Implementation Sprint`,
+            content: `Step-by-step practical guided build for ${modCleanTitle}. Students apply toolchains and execute real-world workflows.`,
+            order: 2,
+            videoDurationMin: video.duration + 5,
+          },
+          {
+            title: `${modCleanTitle} — Testing, Review & Real-World Lab`,
+            content: `Applied laboratory exercises, quality verification, and edge-case handling for ${modCleanTitle}. Includes project deliverables review.`,
+            order: 3,
+            videoDurationMin: video.duration - 3,
+          },
+        ];
+
+        for (const tpl of lessonTemplates) {
+          await prisma.lesson.create({
+            data: {
+              moduleId: mod.id,
+              title: tpl.title,
+              content: tpl.content,
+              videoUrl: video.url,
+              videoDurationMin: tpl.videoDurationMin,
+              videoSummary: video.summary,
+              order: tpl.order,
+            },
+          });
+          lessonsCreated++;
+        }
+
+        // Ensure module has practical activity
+        const hasPractical = await prisma.practicalActivity.findFirst({
+          where: { moduleId: mod.id },
+        });
+
+        if (!hasPractical) {
+          await prisma.practicalActivity.create({
+            data: {
+              moduleId: mod.id,
+              title: `${modCleanTitle} Laboratory Sprint`,
+              description: `Hands-on project sprint requiring students to build and verify practical deliverables for ${progName}.`,
+              objectives: `Demonstrate mastery in ${modCleanTitle} through verifiable technical artifacts and portfolio documentation.`,
+              requiredTools: prog?.tools || 'Standard Development Workstation & Lab Equipment',
+              estimatedDurationMin: 90,
+            },
+          });
+        }
+      }
+
+      console.log(`✔ Populated ${lessonsCreated} canonical lessons with video embeds across all modules.`);
+      return lessonsCreated;
+    } catch (err: any) {
+      console.warn('⚠️ [BOOTSTRAP WARNING] Lesson baseline generation notice:', err.message);
+      return 0;
+    }
   }
 }

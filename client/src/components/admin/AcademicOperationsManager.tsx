@@ -48,7 +48,7 @@ interface AcademicOperationsManagerProps {
   onDataRefresh: () => Promise<void>;
   onOpenEditCohort: (cohort: any) => void;
   onOpenCohortAnalysis: (cohortId: string) => void;
-  onOpenAIArchitect: () => void;
+  onOpenAIArchitect: (progId?: string) => void;
   isAcademicOrSuperAdmin: boolean;
   initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers';
 }
@@ -431,7 +431,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
               <span>Create New Cohort</span>
             </button>
             <button
-              onClick={onOpenAIArchitect}
+              onClick={() => onOpenAIArchitect()}
               className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
@@ -712,6 +712,16 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                                   <Plus className="w-3.5 h-3.5" />
                                   <span>Launch Cohort</span>
                                 </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenAIArchitect(p.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  title="Draft or refine curriculum using AI Curriculum Architect"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                                  <span>AI Architect</span>
+                                </button>
                               </>
                             )}
 
@@ -757,8 +767,18 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                             </div>
 
                             {courses.length === 0 ? (
-                              <div className="p-6 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">
-                                No canonical courses currently linked in relational schema. Use AI Curriculum Architect to draft program structures.
+                              <div className="p-6 text-center text-slate-500 text-xs bg-white rounded-xl border border-slate-200 space-y-2">
+                                <p>No canonical courses currently linked in relational schema.</p>
+                                {isAcademicOrSuperAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenAIArchitect(p.id)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Draft Curriculum with AI Architect</span>
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               courses.map((course: any, cIdx: number) => (
@@ -1082,6 +1102,16 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                             <Plus className="w-3.5 h-3.5" />
                             <span>Launch Cohort</span>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onOpenAIArchitect(p.id)}
+                            className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Draft or refine curriculum using AI Curriculum Architect"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                            <span>AI Architect</span>
+                          </button>
                         </>
                       )}
 
@@ -1110,8 +1140,18 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                       </div>
 
                       {courses.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs bg-white rounded-xl border border-slate-200">
-                          No canonical courses currently linked in relational schema. Use AI Curriculum Architect to draft program structures.
+                        <div className="p-6 text-center text-slate-500 text-xs bg-white rounded-xl border border-slate-200 space-y-2">
+                          <p>No canonical courses currently linked in relational schema.</p>
+                          {isAcademicOrSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenAIArchitect(p.id)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Draft Curriculum with AI Architect</span>
+                            </button>
+                          )}
                         </div>
                       ) : (
                         courses.map((course: any, cIdx: number) => (

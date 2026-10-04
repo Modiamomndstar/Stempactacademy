@@ -74,6 +74,7 @@ export const AdminDashboardPage: React.FC = () => {
   // Modals & Sub-actions
   const [selectedCohortAnalysis, setSelectedCohortAnalysis] = useState<string | null>(null);
   const [showAIProgramModal, setShowAIProgramModal] = useState(false);
+  const [aiProgramInitialId, setAiProgramInitialId] = useState<string | undefined>(undefined);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateInstructorModal, setShowCreateInstructorModal] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -542,15 +543,6 @@ export const AdminDashboardPage: React.FC = () => {
                 <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                 <span>Refresh</span>
               </button>
-              {(isSuperAdmin || isAcademicAdmin || isCoordinator) && (
-                <button
-                  onClick={() => setShowAIProgramModal(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-500 hover:to-brand-500 text-white text-xs font-bold shadow-md transition"
-                >
-                  <Sparkles className="w-4 h-4 text-purple-200" />
-                  <span>Curriculum Architect</span>
-                </button>
-              )}
             </div>
           ),
         };
@@ -885,7 +877,10 @@ export const AdminDashboardPage: React.FC = () => {
             onDataRefresh={loadAllData}
             onOpenCohortAnalysis={(cohortId) => setSelectedCohortAnalysis(cohortId)}
             onOpenEditCohort={(c) => handleOpenEditCohort(c)}
-            onOpenAIArchitect={() => setShowAIProgramModal(true)}
+            onOpenAIArchitect={(progId?: string) => {
+              setAiProgramInitialId(progId);
+              setShowAIProgramModal(true);
+            }}
             isAcademicOrSuperAdmin={isSuperAdmin || isAcademicAdmin}
             initialSubTab={rawUrlTab === 'cohorts' ? 'cohorts' : rawUrlTab === 'centers' ? 'centers' : (rawUrlTab === 'calendar' || rawUrlTab === 'sessions') ? 'calendar' : 'schools'}
           />
@@ -2009,8 +2004,13 @@ export const AdminDashboardPage: React.FC = () => {
       {/* AI PROGRAM ARCHITECT MODAL */}
       <AIProgramGeneratorModal
         isOpen={showAIProgramModal}
-        onClose={() => setShowAIProgramModal(false)}
+        onClose={() => {
+          setShowAIProgramModal(false);
+          setAiProgramInitialId(undefined);
+        }}
         onProgramCreated={loadAllData}
+        existingPrograms={programs}
+        initialProgramId={aiProgramInitialId}
       />
 
       {/* COHORT DEEP ANALYSIS MODAL */}
