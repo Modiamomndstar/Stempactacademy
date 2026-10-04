@@ -99,7 +99,7 @@ export const getProgramByCode = async (req: Request, res: Response): Promise<voi
         courses: {
           include: {
             modules: {
-              include: { lessons: true },
+              include: { lessons: true, practicalActivities: true },
               orderBy: { order: 'asc' },
             },
           },
@@ -318,10 +318,72 @@ export const curateVideos = async (req: Request, res: Response): Promise<void> =
     res.status(200).json({
       message: `Successfully curated videos for ${result.totalCurated} lesson(s).`,
       result,
+      lessonsCount: result.totalCurated,
     });
   } catch (error: any) {
     console.error('curateVideos error:', error);
     res.status(500).json({ message: error.message || 'Failed to curate videos for program' });
+  }
+};
+
+export const updateLessonVideo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { lessonId } = req.params;
+    const { videoUrl, videoDurationMin, videoSummary } = req.body;
+
+    const lesson = await prisma.lesson.update({
+      where: { id: lessonId },
+      data: {
+        ...(videoUrl !== undefined && { videoUrl: videoUrl ? String(videoUrl).trim() : null }),
+        ...(videoDurationMin !== undefined && { videoDurationMin: videoDurationMin ? Number(videoDurationMin) : null }),
+        ...(videoSummary !== undefined && { videoSummary: videoSummary ? String(videoSummary).trim() : null }),
+      },
+    });
+
+    res.status(200).json({ message: 'Lesson video updated successfully', lesson });
+  } catch (error: any) {
+    console.error('updateLessonVideo error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update lesson video' });
+  }
+};
+
+export const curateSingleLessonVideo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { lessonId } = req.params;
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        module: {
+          include: {
+            course: {
+              include: { program: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      res.status(404).json({ message: 'Lesson not found' });
+      return;
+    }
+
+    const { videoCuratorService } = await import('../services/videoCuratorService.js');
+    const result = await videoCuratorService.curateLessonVideo({
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      moduleTitle: lesson.module?.title || 'Core Module',
+      courseTitle: lesson.module?.course?.title || 'Program Course',
+      programName: lesson.module?.course?.program?.name || 'Academic Program',
+    });
+
+    res.status(200).json({
+      message: `Successfully curated video for "${lesson.title}".`,
+      result,
+    });
+  } catch (error: any) {
+    console.error('curateSingleLessonVideo error:', error);
+    res.status(500).json({ message: error.message || 'Failed to curate video for lesson' });
   }
 };
 

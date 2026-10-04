@@ -73,6 +73,10 @@ export const api = {
   deleteProgram: (id: string) => apiRequest(`/admin/programs/${id}`, { method: 'DELETE' }),
   updateProgramStatus: (id: string, data: any) => apiRequest(`/programs/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
   curateProgramVideos: (id: string) => apiRequest(`/admin/programs/${id}/curate-videos`, { method: 'POST' }),
+  updateLessonVideo: (lessonId: string, data: { videoUrl?: string | null; videoDurationMin?: number | null; videoSummary?: string | null }) =>
+    apiRequest(`/admin/lessons/${lessonId}/video`, { method: 'PATCH', body: JSON.stringify(data) }),
+  curateSingleLessonVideo: (lessonId: string) =>
+    apiRequest(`/admin/lessons/${lessonId}/curate-video`, { method: 'POST' }),
 
   // Multi-Center & Multi-Campus Physical / Virtual Centers
   getCenters: (params: Record<string, string> = {}) => {

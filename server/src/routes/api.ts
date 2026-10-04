@@ -55,6 +55,8 @@ router.put('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN, Role
 router.delete('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN), programController.deleteProgram);
 router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.updateProgramStatus);
 router.post('/admin/programs/:id/curate-videos', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.curateVideos);
+router.patch('/admin/lessons/:lessonId/video', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.updateLessonVideo);
+router.post('/admin/lessons/:lessonId/curate-video', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.curateSingleLessonVideo);
 
 // 2.2 Learning Centers (Multi-Center & Multi-Campus)
 router.get('/centers', centerController.getCenters);
