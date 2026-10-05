@@ -70,7 +70,7 @@ export const AdmissionsPage: React.FC = () => {
       step: '04',
       title: 'Official Admission Letter & Student ID',
       description:
-        'Upon approval, your official admission record is issued with your unique Student ID (e.g. STP-2025-0142), downloadable PDF Admission Letter, assigned laboratory bench, instructor, and schedule.',
+        'Upon approval, your official admission record is issued with your unique Student ID (e.g. STP-STD-0142), downloadable PDF Admission Letter, assigned laboratory bench, instructor, and schedule.',
       icon: Award,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',

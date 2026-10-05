@@ -139,7 +139,7 @@ export const HomePage: React.FC = () => {
                   className="px-6 py-3.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-white font-semibold text-sm border border-slate-700 transition-colors flex items-center gap-2"
                 >
                   <BookOpen className="w-4 h-4 text-blue-400" />
-                  <span>Explore 50 Programs</span>
+                  <span>Explore All Programs</span>
                 </Link>
 
                 <Link
@@ -334,7 +334,7 @@ export const HomePage: React.FC = () => {
                 <span>Now Accepting Applications</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Currently Open Cohorts (2025 Cycle)
+                Currently Open Cohorts
               </h2>
               <p className="text-slate-300 text-xs sm:text-sm max-w-2xl">
                 Seats are strictly capped per cohort to maintain 1-on-1 instructor attention and dedicated laboratory
@@ -411,7 +411,7 @@ export const HomePage: React.FC = () => {
             </p>
           </div>
           <Link to="/programs" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-            <span>Browse All 50 Academic Programs</span>
+            <span>Browse All Academic Programs</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

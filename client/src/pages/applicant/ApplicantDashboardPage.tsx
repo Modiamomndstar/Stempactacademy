@@ -26,6 +26,10 @@ import {
   Download,
   RotateCcw,
   Bell,
+  Printer,
+  MapPin,
+  Building2,
+  GraduationCap,
 } from 'lucide-react';
 
 export const ApplicantDashboardPage: React.FC = () => {
@@ -781,7 +785,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                       {admission.status === 'ENROLLED' ? 'Official Admission & Matriculation' : 'Offer of Provisional Admission'}
                     </h3>
                     <div className="text-xs text-slate-500 font-mono">
-                      Admission No: <strong>{admission.admissionNumber}</strong> • Student ID: <strong>{admission.studentIdNumber}</strong>
+                      Admission No: <strong>{admission.admissionNumber}</strong> • Student ID: <strong>{admission.studentIdNumber || 'Assigned Upon Clearance'}</strong>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -804,7 +808,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                     Dear <strong>{app?.fullName}</strong>,
                   </p>
                   <p>
-                    The Academic Admissions Committee of STEMPACT Academy is pleased to offer you provisional admission into the <strong>{admission.programName}</strong> ({admission.level}) program for the upcoming academic session at the Ile-Ife Campus Hub.
+                    The Academic Admissions Committee of STEMPACT Academy is pleased to offer you provisional admission into the <strong>{admission.programName}</strong> ({admission.level}) program for the upcoming academic session at {admission.location || admission.cohort?.learningCenter?.name || 'STEMPACT Training Hub & Campus Network'}.
                   </p>
 
                   <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
@@ -1373,98 +1377,281 @@ export const ApplicantDashboardPage: React.FC = () => {
       )}
 
       {/* Official Admission Document Viewer Modal */}
+      {/* Official Institutional Admission Document Modal */}
       {showDocModal && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-150 overflow-y-auto"
         >
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-6 max-h-[92vh] overflow-y-auto print:max-h-none print:shadow-none print:p-0 print:border-none print:m-0">
+            {/* Top Bar for Screen (Hidden in Print) */}
+            <div className="flex items-center justify-between border-b pb-4 print:hidden">
               <div className="flex items-center gap-2.5">
-                <FileCheck className="w-6 h-6 text-blue-600" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
                     {admission?.status === 'ENROLLED'
                       ? 'Official Institutional Admission Letter'
-                      : 'Provisional Admission Document'}
+                      : 'Provisional Offer of Admission Document'}
                   </h3>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    Document Ref: {documentData?.documentNumber || admission?.admissionNumber}
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    Official Reference: <strong>{documentData?.admission?.admissionNumber || admission?.admissionNumber}</strong>
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowDocModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDocModal(false)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {loadingDoc ? (
-              <div className="py-12 text-center text-xs text-slate-500">
+              <div className="py-16 text-center text-xs text-slate-500">
                 <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                Rendering document preview...
+                Rendering official academic document preview...
               </div>
-            ) : documentData ? (
-              <div className="space-y-6">
-                {admission?.status !== 'ENROLLED' && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>
-                      <strong>Notice:</strong> This is a Provisional Admission Document. The Official Admission Letter is officially delivered following financial clearance and finalized cohort enrollment.
-                    </span>
-                  </div>
-                )}
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 text-xs text-slate-700">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-slate-500">Document Type:</span>
-                    <strong className="text-slate-900">
-                      {admission?.status === 'ENROLLED' ? 'Official Admission Letter' : 'Provisional Offer of Admission'}
-                    </strong>
-                  </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-slate-500">Recipient:</span>
-                    <strong className="text-slate-900">{documentData.recipientName} ({documentData.recipientEmail})</strong>
-                  </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-slate-500">Program Track:</span>
-                    <strong className="text-slate-900">{documentData.programName}</strong>
-                  </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-slate-500">Cohort Code:</span>
-                    <strong className="text-slate-900 font-mono">{documentData.cohortCode}</strong>
-                  </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-slate-500">Watermark / Classification:</span>
-                    <span className="font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      {documentData.watermarkedText || 'PROVISIONAL OFFER'}
-                    </span>
-                  </div>
-                </div>
+            ) : documentData ? (() => {
+              const studentName = documentData.student?.name || documentData.recipientName || app?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Admitted Candidate';
+              const studentEmail = documentData.student?.email || documentData.recipientEmail || app?.email || user?.email || '—';
+              const studentPhone = documentData.student?.phone || app?.phone || '—';
+              const studentIdNumber = documentData.student?.studentId || admission?.studentIdNumber || 'Assigned Upon Matriculation';
+              const programName = documentData.academic?.programName || documentData.programName || admission?.programName || app?.programName || 'STEM Program Track';
+              const programCode = documentData.academic?.programCode || '—';
+              const schoolName = documentData.academic?.schoolName || app?.schoolName || 'STEMPACT Academy';
+              const cohortName = documentData.academic?.cohortName || admission?.cohortName || app?.cohortName || 'Intake Cohort';
+              const cohortCode = documentData.academic?.cohortCode || documentData.cohortCode || admission?.cohortCode || '—';
+              const sessionName = documentData.academic?.academicSessionName || admission?.academicSessionName || '2026 Academic Session';
+              const deliveryMode = documentData.academic?.deliveryMode || admission?.mode || 'Hybrid (Onsite Campus & Virtual)';
+              const locationVenue = admission?.location || admission?.cohort?.learningCenter?.name || 'STEMPACT Innovation Hub, Ile-Ife & Training Centers';
+              const classSchedule = admission?.schedule || app?.preferredSchedule || 'Assigned Cohort Schedule';
+              const leadInstructor = admission?.instructorName || 'Lead Faculty Mentor & Academy Engineers';
+              const tuitionFee = documentData.financial?.tuitionFee ?? admission?.trainingFee ?? 0;
+              const clearanceStatus = documentData.financial?.clearanceStatus || admission?.clearanceStatus || 'PENDING';
+              const verificationHash = documentData.verificationHash || `STP-VERIF-${admission?.admissionNumber || 'ADM-2026'}`;
+              const docNumber = documentData.admission?.admissionNumber || admission?.admissionNumber || 'ADM-2026-001';
+              const isOfficial = admission?.status === 'ENROLLED' || admission?.status === 'FINANCIALLY_CLEARED';
 
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowDocModal(false)}
-                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Print / Save Copy</span>
-                  </button>
+              return (
+                <div className="space-y-6">
+                  {/* Print Notice (Hidden in Print) */}
+                  {!isOfficial && (
+                    <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-2xl text-amber-950 text-xs flex items-center gap-2.5 print:hidden">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span className="leading-relaxed">
+                        <strong>Notice:</strong> This is an Official Provisional Admission Document. Following tuition verification and financial clearance, your matriculation record and student cockpit credentials will be fully activated.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* FORMAL INSTITUTIONAL LETTERHEAD CONTAINER */}
+                  <div className="p-6 sm:p-10 rounded-2xl bg-white border border-slate-300 shadow-xs space-y-6 text-slate-800 font-sans print:border-none print:p-0">
+                    {/* Header Strip */}
+                    <div className="border-b-2 border-slate-900 pb-5">
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 text-center sm:text-left">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-700 via-indigo-800 to-slate-900 flex items-center justify-center text-white shadow-md">
+                            <GraduationCap className="w-8 h-8" />
+                          </div>
+                          <div>
+                            <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight leading-tight">
+                              STEMPACT ACADEMY
+                            </h1>
+                            <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                              Premier STEM, Vocational & Emerging Technology Academy
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Campus & Hubs: Ile-Ife Main Innovation Hub • Training Center Network • Virtual Global Campus
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 block">
+                            Office of Academic Admissions
+                          </span>
+                          <span className="text-xs font-mono font-bold text-slate-900 block mt-0.5">
+                            Ref: {docNumber}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Date: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Security Verification Bar */}
+                      <div className="mt-4 pt-3 border-t border-dashed border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-slate-500">
+                        <span>SECURITY AUTHENTICATION HASH: <strong className="text-slate-800">{verificationHash}</strong></span>
+                        <span className={`px-2 py-0.5 rounded font-sans font-bold uppercase ${
+                          isOfficial ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                        }`}>
+                          {isOfficial ? 'OFFICIAL MATRICULATION DOCUMENT' : 'PROVISIONAL ADMISSION OFFER'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Candidate & Placement Dossier */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50/80 border border-slate-200 text-xs">
+                      <div className="space-y-1.5">
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Candidate Full Name:</span>
+                          <strong className="text-slate-900 text-sm font-black">{studentName}</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Registered Email & Contact:</span>
+                          <span className="text-slate-700">{studentEmail} • {studentPhone}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Institutional Student ID:</span>
+                          <span className="font-mono font-bold text-blue-700">{studentIdNumber}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Academic Faculty / School:</span>
+                          <strong className="text-slate-900 font-bold">{schoolName}</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Admitted Program Track & Stage:</span>
+                          <span className="text-slate-900 font-bold">{programName} ({admission.level || 'Level 1 Foundation'})</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Assigned Cohort & Session:</span>
+                          <span className="text-slate-700 font-medium">{cohortName} ({cohortCode}) • {sessionName}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Letter Body Text */}
+                    <div className="space-y-3.5 text-xs text-slate-700 leading-relaxed text-justify">
+                      <p>
+                        Dear <strong>{studentName}</strong>,
+                      </p>
+                      <p>
+                        On behalf of the Governing Academic Board and the Admissions Directorate of <strong>STEMPACT Academy</strong>, we are pleased to officially convey your offer of admission for the <strong>{sessionName}</strong> into the accredited program: <strong>{programName}</strong>.
+                      </p>
+                      <p>
+                        Your selection into this cohort follows a rigorous evaluation of your academic foundation, problem-solving aptitude, and diagnostic placement results. STEMPACT Academy is committed to delivering world-class, hands-on, project-driven technical mastery with personalized mentorship and industry-grade laboratory environments.
+                      </p>
+
+                      {/* Timetable & Lab Allocation Box */}
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 text-xs">
+                        <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Official Timetable & Laboratory Station Allocation</span>
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-600">
+                          <div>• Class Timetable: <strong className="text-slate-800">{classSchedule}</strong></div>
+                          <div>• Delivery Mode: <strong className="text-slate-800">{deliveryMode}</strong></div>
+                          <div>• Campus / Center: <strong className="text-slate-800">{locationVenue}</strong></div>
+                          <div>• Assigned Lab Bench: <strong className="text-slate-800">{admission.assignedClass || 'Main Computer Lab Station'}</strong></div>
+                          <div>• Lead Faculty: <strong className="text-slate-800">{leadInstructor}</strong></div>
+                          <div>• Orientation Date: <strong className="text-slate-800">{admission.orientationDate ? new Date(admission.orientationDate).toLocaleDateString('en-GB') : 'To Be Announced'}</strong></div>
+                        </div>
+                      </div>
+
+                      {/* Financial Terms & Clearance Statement */}
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="font-bold text-slate-900 text-xs">Program Tuition & Financial Clearance:</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                            isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            Status: {clearanceStatus}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-normal">
+                          Program tuition is <strong>₦{Number(tuitionFee).toLocaleString()}</strong>. {isOfficial 
+                            ? 'Your financial clearance has been certified by the Bursary. Your workstation and full student cockpit have been unlocked.' 
+                            : 'This offer remains provisional pending payment verification. Complete tuition clearance via your portal to secure your physical lab seat and receive verified credentials.'}
+                        </p>
+                      </div>
+
+                      <p>
+                        We warmly welcome you to the STEMPACT learning community and look forward to partnering with you on your journey of technological excellence and real-world innovation.
+                      </p>
+                    </div>
+
+                    {/* Official Signatures & Institutional Seal */}
+                    <div className="pt-6 border-t border-slate-200 mt-6">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+                        {/* Dean Signature */}
+                        <div className="space-y-1">
+                          <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
+                            Dr. Kehinde Adeleke
+                          </div>
+                          <div className="w-40 h-0.5 bg-slate-300"></div>
+                          <div className="text-[10px] font-bold uppercase text-slate-700">Dean of Academic Affairs & Faculty</div>
+                          <div className="text-[9px] text-slate-400">STEMPACT Academy Directorate</div>
+                        </div>
+
+                        {/* Official Embossed Seal Badge */}
+                        <div className="w-20 h-20 rounded-full border-2 border-dashed border-amber-600/70 bg-amber-50/60 p-1 flex items-center justify-center text-center shadow-xs">
+                          <div className="w-full h-full rounded-full border border-amber-600/80 flex flex-col items-center justify-center p-1">
+                            <Award className="w-5 h-5 text-amber-700" />
+                            <span className="text-[7px] font-black uppercase tracking-tighter text-amber-900 leading-tight">STEMPACT</span>
+                            <span className="text-[6px] font-bold text-amber-800 leading-tight">OFFICIAL SEAL</span>
+                          </div>
+                        </div>
+
+                        {/* Registrar Signature */}
+                        <div className="space-y-1 text-center sm:text-right">
+                          <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
+                            Office of the Registrar
+                          </div>
+                          <div className="w-40 h-0.5 bg-slate-300 ml-auto"></div>
+                          <div className="text-[10px] font-bold uppercase text-slate-700">Registrar & Student Records</div>
+                          <div className="text-[9px] text-slate-400">Accredited Academic Registry</div>
+                        </div>
+                      </div>
+
+                      {/* Footer Legal Verification */}
+                      <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+                        <span>STEMPACT OS • Verified Document Registry</span>
+                        <span>https://stempactacademy.vercel.app/verify</span>
+                        <span>Doc Ref: {docNumber}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar (Hidden in Print) */}
+                  <div className="flex items-center justify-end gap-3 pt-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowDocModal(false)}
+                      className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Print / Save PDF Copy</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-xs text-slate-500">
+              );
+            })() : (
+              <div className="py-12 text-center text-xs text-slate-500">
                 Document could not be previewed.
               </div>
             )}
