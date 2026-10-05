@@ -54,7 +54,12 @@ export const SchoolsPage: React.FC = () => {
   if (loading) return <LoadingSpinner message="Loading STEMPACT Academic Schools..." />;
 
   const activeSchool = schools.find((s) => s.code === activeSchoolCode) || schools[0];
-  const activePrograms = programs.filter((p) => p.school?.code === activeSchool?.code || p.schoolId === activeSchool?.id);
+  const activePrograms = programs.filter(
+    (p) =>
+      (p.school?.code === activeSchool?.code || p.schoolId === activeSchool?.id) &&
+      p.status !== 'ARCHIVED' &&
+      p.status !== 'DRAFT'
+  );
 
   return (
     <div className="space-y-16 pb-20">

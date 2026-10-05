@@ -180,7 +180,7 @@ export const AdminDashboardPage: React.FC = () => {
         api.getApplications().catch(() => ({ applications: [] })),
         api.getPendingPlacements().catch(() => ({ placements: [] })),
         api.getCohorts().catch(() => ({ cohorts: [] })),
-        api.getPrograms().catch(() => ({ programs: [] })),
+        api.getPrograms({ includeArchived: 'true' }).catch(() => ({ programs: [] })),
         api.getSchools().catch(() => ({ schools: [] })),
         api.getInvoices().catch(() => ({ invoices: [] })),
         api.getAdmins().catch(() => ({ admins: [] })),

@@ -70,6 +70,11 @@ export const ProgramsPage: React.FC = () => {
   }, [openCohorts]);
 
   const filteredPrograms = programs.filter((p) => {
+    // Hide archived or draft programs from public directory
+    if (p.status === 'ARCHIVED' || p.status === 'DRAFT') {
+      return false;
+    }
+
     // Search query filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();

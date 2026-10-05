@@ -178,9 +178,13 @@ export const ApplicationWizardPage: React.FC = () => {
     }));
   };
 
+  const activePrograms = programs.filter(
+    (p) => p.status !== 'ARCHIVED' && p.status !== 'DRAFT'
+  );
+
   const filteredPrograms = formData.schoolId
-    ? programs.filter((p) => p.schoolId === formData.schoolId)
-    : programs;
+    ? activePrograms.filter((p) => p.schoolId === formData.schoolId)
+    : activePrograms;
 
   const filteredCohorts = formData.programId
     ? cohorts.filter((c) => c.programId === formData.programId)

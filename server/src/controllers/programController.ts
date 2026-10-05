@@ -4,7 +4,7 @@ import prisma from '../config/prisma.js';
 
 export const getPrograms = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { schoolCode, schoolId, status, search, featured, minPrice, maxPrice } = req.query;
+    const { schoolCode, schoolId, status, search, featured, minPrice, maxPrice, includeArchived } = req.query;
 
     const where: any = {};
 
@@ -16,6 +16,8 @@ export const getPrograms = async (req: Request, res: Response): Promise<void> =>
 
     if (status) {
       where.status = status as ProgramStatus;
+    } else if (includeArchived !== 'true') {
+      where.status = { notIn: [ProgramStatus.ARCHIVED, ProgramStatus.DRAFT] };
     }
 
     if (featured === 'true') {
