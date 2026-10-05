@@ -24,6 +24,12 @@ import {
   Clock,
   MapPin,
   RefreshCw,
+  GraduationCap,
+  Award,
+  Compass,
+  MessageCircle,
+  Laptop,
+  CheckCircle,
 } from 'lucide-react';
 
 export const ApplicationWizardPage: React.FC = () => {
@@ -181,6 +187,9 @@ export const ApplicationWizardPage: React.FC = () => {
     : cohorts;
 
   const currentProgram = programs.find((p) => p.id === formData.programId);
+  const currentSchool = schools.find((s) => s.id === formData.schoolId) || currentProgram?.school;
+  const currentCenter = centers.find((c) => c.id === formData.preferredCenterId);
+  const currentCohort = cohorts.find((c) => c.id === formData.cohortId) || selectedCohortData;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,63 +295,124 @@ export const ApplicationWizardPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-10">
-      {/* Stepper Header */}
-      <div className="text-center space-y-3">
-        <Badge variant="blue">Official Online Application</Badge>
-        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-          Join STEMPACT ACADEMY {activeSession?.name ? `${activeSession.name}` : ''}
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-          Complete the sections below to register your academic profile and initiate your placement review.
-        </p>
+    <div className="min-h-screen bg-slate-50/60 pb-20">
+      {/* 1. Full-Width Premium Hero Banner */}
+      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white pt-12 pb-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        {/* Subtle decorative glow circles */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Stepper Indicator */}
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-4">
-          {[
-            { num: 1, label: 'Program' },
-            { num: 2, label: 'Personal' },
-            { num: 3, label: 'Education' },
-            { num: 4, label: 'Goals' },
-            { num: 5, label: 'Funding' },
-            { num: 6, label: 'Consent' },
-          ].map((s) => (
-            <div key={s.num} className="flex items-center gap-1.5 sm:gap-2">
-              <div
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step === s.num
-                    ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-100'
-                    : step > s.num
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                {step > s.num ? '✓' : s.num}
-              </div>
-              {s.num < 6 && (
-                <div
-                  className={`w-4 sm:w-8 h-1 rounded ${
-                    step > s.num ? 'bg-emerald-500' : 'bg-slate-200'
-                  }`}
-                />
-              )}
+        <div className="max-w-7xl mx-auto relative z-10 space-y-5 text-center sm:text-left flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+              <span>Official Admissions Portal • {activeSession?.name || '2026 Academic Session'}</span>
             </div>
-          ))}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+              Begin Your Journey at STEMPACT Academy
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+              Register your candidate profile, select your engineering track and preferred training center, and complete your diagnostic placement assessment in 6 guided steps.
+            </p>
+          </div>
+
+          {/* Quick Value Highlights */}
+          <div className="hidden lg:flex items-center gap-4 text-xs text-slate-300 bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Certified Credentials</span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Building className="w-4 h-4 text-blue-400" />
+              <span>Campus & Virtual Hubs</span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Diagnostic Placement</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {errorMsg && (
-        <div
-          role="alert"
-          className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
-        >
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
+      {/* 2. Main Body Container with 2-Column Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-14 relative z-20 space-y-6">
+        {/* Interactive Progress Stepper Card */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-md p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3 text-xs">
+            <span className="font-bold text-slate-900 flex items-center gap-1.5">
+              <span>Application Progress:</span>
+              <span className="text-blue-600 font-black">Step {step} of 6</span>
+            </span>
+            <span className="font-mono text-slate-500 font-semibold">
+              {Math.round((step / 6) * 100)}% Completed
+            </span>
+          </div>
 
-      {/* Form Card */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-lg space-y-8">
+          {/* Progress Bar Line */}
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
+            <div
+              className="bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-600 h-full transition-all duration-300 rounded-full"
+              style={{ width: `${(step / 6) * 100}%` }}
+            />
+          </div>
+
+          {/* Stepper Steps Row */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {[
+              { num: 1, label: 'Program Track', short: 'Track' },
+              { num: 2, label: 'Personal Info', short: 'Profile' },
+              { num: 3, label: 'Education', short: 'Education' },
+              { num: 4, label: 'Career Goals', short: 'Goals' },
+              { num: 5, label: 'Tuition Plan', short: 'Tuition' },
+              { num: 6, label: 'Consent & Finish', short: 'Finish' },
+            ].map((s) => (
+              <div
+                key={s.num}
+                className={`p-2 rounded-xl text-center transition-all ${
+                  step === s.num
+                    ? 'bg-blue-50 border border-blue-200 text-blue-900 shadow-2xs font-bold'
+                    : step > s.num
+                    ? 'bg-emerald-50/70 border border-emerald-200 text-emerald-800 font-medium'
+                    : 'bg-slate-50 border border-slate-100 text-slate-400 font-normal'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5 text-xs mb-0.5">
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      step === s.num
+                        ? 'bg-blue-600 text-white'
+                        : step > s.num
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {step > s.num ? '✓' : s.num}
+                  </span>
+                </div>
+                <div className="text-[11px] truncate hidden sm:block">{s.label}</div>
+                <div className="text-[10px] truncate sm:hidden">{s.short}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {errorMsg && (
+          <div
+            role="alert"
+            className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* 2-Column Responsive Layout: Form on Left, Snapshot Sidebar on Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Main Form Column (8 cols on lg) */}
+          <div className="lg:col-span-8">
+            <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-10 shadow-lg space-y-8">
         {/* STEP 1: SCHOOL, PROGRAM & COHORT */}
         {step === 1 && (
           <div className="space-y-6">
@@ -1185,7 +1255,168 @@ export const ApplicationWizardPage: React.FC = () => {
             </div>
           </div>
         )}
-      </form>
+            </form>
+          </div>
+
+          {/* Sticky Sidebar (4 cols on lg screens) */}
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+            {/* Card 1: Your Application Snapshot */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-md space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                    Application Snapshot
+                  </h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                  Step {step} of 6
+                </span>
+              </div>
+
+              {currentProgram ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                        {currentProgram.code}
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500 truncate">
+                        {currentSchool?.name || currentProgram.school?.name || 'Academic School'}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-black text-slate-900 leading-snug">
+                      {currentProgram.name}
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Duration</span>
+                      <strong className="text-slate-800">{currentProgram.duration || '6 Weeks'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Academic Stage</span>
+                      <strong className="text-slate-800">{currentProgram.level?.replace(/_/g, ' ') || 'Level 1 Foundation'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Learning Center */}
+                  <div className="space-y-1 text-xs">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-rose-500" />
+                      <span>Preferred Campus Hub:</span>
+                    </span>
+                    <p className="font-bold text-slate-800 text-xs pl-4">
+                      {currentCenter
+                        ? `${currentCenter.name} (${currentCenter.cityOrTown || 'Onsite'})`
+                        : 'Virtual Global Campus (100% Online)'}
+                    </p>
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="space-y-1 text-xs">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-blue-500" />
+                      <span>Class Timetable:</span>
+                    </span>
+                    <p className="font-medium text-slate-700 text-xs pl-4">
+                      {formData.preferredSchedule}
+                    </p>
+                  </div>
+
+                  {/* Tuition Note */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">Standard Tuition:</span>
+                    <strong className="text-slate-900 font-black">
+                      {selectedCohortData?.trainingFee
+                        ? `₦${Number(selectedCohortData.trainingFee).toLocaleString()}`
+                        : '₦65,000'}
+                    </strong>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-2">
+                  <BookOpen className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">No Program Selected Yet</p>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Choose your academic school and engineering track in Step 1 to preview your curriculum and schedule snapshot.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Admissions Roadmap */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-md space-y-4">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <span>Admissions Process</span>
+              </h3>
+
+              <div className="space-y-3 text-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                    1
+                  </div>
+                  <div>
+                    <strong className="text-slate-900 block text-xs">Register Application</strong>
+                    <span className="text-slate-500 text-[11px]">Submit candidate profile & program choice.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                    2
+                  </div>
+                  <div>
+                    <strong className="text-slate-900 block text-xs">15-Min Placement Test</strong>
+                    <span className="text-slate-500 text-[11px]">Immediate diagnostic placement test.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                    3
+                  </div>
+                  <div>
+                    <strong className="text-slate-900 block text-xs">Provisional Offer & Student ID</strong>
+                    <span className="text-slate-500 text-[11px]">Academic Board ratifies placement & issues offer.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                    4
+                  </div>
+                  <div>
+                    <strong className="text-slate-900 block text-xs">Clearance & Station Allocation</strong>
+                    <span className="text-slate-500 text-[11px]">Tuition clearance activates your workstation and student portal.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Support & Help Desk */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-900 via-indigo-950 to-slate-900 text-white space-y-3 shadow-md">
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-200">
+                <HelpCircle className="w-4 h-4 text-blue-400" />
+                <span>Admissions Counseling Desk</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Need guidance choosing between onsite physical hubs (Ile-Ife & centers) or 100% virtual programs?
+              </p>
+              <div className="pt-1 flex items-center justify-between text-[11px]">
+                <Link to="/faq" className="text-blue-300 hover:text-white underline font-semibold">
+                  Admissions FAQ →
+                </Link>
+                <Link to="/contact" className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition">
+                  Contact Counselor
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
