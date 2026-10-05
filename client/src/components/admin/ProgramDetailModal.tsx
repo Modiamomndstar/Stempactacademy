@@ -1015,6 +1015,19 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                   </p>
                 </div>
               )}
+
+              {/* Instructional Lesson Reading & Study Guide */}
+              {previewLesson.content && (
+                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                    <span>Instructional Lesson Reading & Practical Study Guide</span>
+                  </div>
+                  <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans space-y-2">
+                    {previewLesson.content}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}

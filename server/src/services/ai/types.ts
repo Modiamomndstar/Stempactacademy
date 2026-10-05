@@ -35,19 +35,32 @@ export interface IAIProvider {
 // ---------------------------------------------------------------------------
 // HELPER FOR LEVEL NORMALIZATION
 // ---------------------------------------------------------------------------
-function normalizeAcademicLevel(val: unknown): string {
-  if (typeof val !== 'string') return 'LEVEL_2_INTERMEDIATE';
-  const clean = val.trim().toUpperCase();
+export function normalizeAcademicLevel(val: unknown): string {
+  if (val === undefined || val === null) return 'LEVEL_1_FOUNDATION';
+  if (typeof val === 'number') {
+    switch (val) {
+      case 0: return 'LEVEL_0_ASSESSMENT';
+      case 1: return 'LEVEL_1_FOUNDATION';
+      case 2: return 'LEVEL_2_INTERMEDIATE';
+      case 3: return 'LEVEL_3_ADVANCED';
+      case 4: return 'LEVEL_4_SPECIALIST';
+      case 5: return 'LEVEL_5_INNOVATION';
+      case 6: return 'LEVEL_6_ENTREPRENEURSHIP';
+      default: return 'LEVEL_1_FOUNDATION';
+    }
+  }
+  const clean = String(val).trim().toUpperCase();
   if (['LEVEL_0_ASSESSMENT', 'LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_SPECIALIST', 'LEVEL_5_INNOVATION', 'LEVEL_6_ENTREPRENEURSHIP'].includes(clean)) {
     return clean;
   }
   if (clean.includes('0') || clean.includes('ASSESS')) return 'LEVEL_0_ASSESSMENT';
   if (clean.includes('1') || clean.includes('FOUND') || clean.includes('BEGIN')) return 'LEVEL_1_FOUNDATION';
   if (clean.includes('3') || clean.includes('ADVANC')) return 'LEVEL_3_ADVANCED';
-  if (clean.includes('4') || clean.includes('SPEC')) return 'LEVEL_4_SPECIALIST';
+  if (clean.includes('4') || clean.includes('SPEC') || clean.includes('MASTERY')) return 'LEVEL_4_SPECIALIST';
   if (clean.includes('5') || clean.includes('INNOV')) return 'LEVEL_5_INNOVATION';
   if (clean.includes('6') || clean.includes('ENTREP')) return 'LEVEL_6_ENTREPRENEURSHIP';
-  return 'LEVEL_2_INTERMEDIATE';
+  if (clean.includes('2') || clean.includes('INTER')) return 'LEVEL_2_INTERMEDIATE';
+  return 'LEVEL_1_FOUNDATION';
 }
 
 function extractNumber(val: unknown, fallback: number): number {
@@ -139,11 +152,13 @@ export const ProgramGenerationSchema = z.object({
         modules: z.preprocess(
           (m) => (Array.isArray(m) && m.length > 0 ? m : [
             {
-              title: 'Module 1: Foundations',
-              description: 'Foundational principles.',
+              title: 'Module 1: Orientation & Foundations',
+              description: 'Foundational principles and core workflow mastery.',
               durationHours: 12,
               order: 1,
-              lessons: [{ title: 'Lesson 1', contentSummary: 'Core concepts', practicalActivities: ['Lab sprint'] }]
+              assessmentQuiz: 'Quiz 1: Core Mechanics',
+              assignmentTitle: 'Assignment 1: Foundational Workflow Implementation',
+              lessons: [{ title: 'Lesson 1: Foundations', contentSummary: 'Core concepts', content: 'Comprehensive instructional guide to foundations.', practicalActivities: ['Lab sprint 1'] }]
             }
           ]),
           z.array(
@@ -152,12 +167,18 @@ export const ProgramGenerationSchema = z.object({
               description: z.preprocess((md) => String(md || 'Module syllabus and topics.'), z.string()),
               durationHours: z.preprocess((dh) => extractNumber(dh, 12), z.number().default(12)),
               order: z.preprocess((mo) => extractNumber(mo, 1), z.number().default(1)),
+              assessmentQuiz: z.preprocess((q) => (q ? String(q) : undefined), z.string().optional()),
+              assignmentTitle: z.preprocess((a) => (a ? String(a) : undefined), z.string().optional()),
               lessons: z.preprocess(
-                (l) => (Array.isArray(l) && l.length > 0 ? l : [{ title: 'Core Lesson', contentSummary: 'Lesson overview', practicalActivities: ['Lab exercise'] }]),
+                (l) => (Array.isArray(l) && l.length > 0 ? l : [{ title: 'Core Lesson', contentSummary: 'Lesson overview', content: '', practicalActivities: ['Lab exercise'] }]),
                 z.array(
                   z.object({
                     title: z.preprocess((lt) => String(lt || 'Lesson Title'), z.string()),
                     contentSummary: z.preprocess((cs) => String(cs || 'Content summary and theoretical foundation.'), z.string()),
+                    content: z.preprocess((c) => String(c || ''), z.string().default('')),
+                    videoUrl: z.preprocess((vu) => (vu ? String(vu) : undefined), z.string().optional()),
+                    videoDurationMin: z.preprocess((vdm) => (vdm ? extractNumber(vdm, 20) : undefined), z.number().optional()),
+                    videoSummary: z.preprocess((vs) => (vs ? String(vs) : undefined), z.string().optional()),
                     practicalActivities: z.preprocess(
                       (pa) => (Array.isArray(pa) ? pa.map(String) : [String(pa || 'Hands-on practical sprint')]),
                       z.array(z.string())

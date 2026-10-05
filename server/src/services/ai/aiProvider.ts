@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import Groq from 'groq-sdk';
 import { z } from 'zod';
-import { IAIProvider, AIOptions, AIGenerationResult } from './types.js';
+import { IAIProvider, AIOptions, AIGenerationResult, normalizeAcademicLevel } from './types.js';
 
 // ---------------------------------------------------------------------------
 // 1. UNWRAPPING & FIELD REPAIR UTILITIES
@@ -16,6 +16,275 @@ export function unwrapRoot(parsed: any): any {
     }
   }
   return parsed;
+}
+
+// ---------------------------------------------------------------------------
+// 1B. DOMAIN-AWARE COURSE & MODULE GENERATOR
+// ---------------------------------------------------------------------------
+
+export function buildDomainProgramCourses(
+  title: string,
+  schoolCode: string = 'SAIML',
+  durationWeeks: number = 3,
+  levelStr: string = 'LEVEL_1_FOUNDATION',
+  keywords: string = ''
+) {
+  const t = (title + ' ' + schoolCode + ' ' + keywords).toLowerCase();
+
+  const getDomainVideo = (domainKey: string, weekIdx: number): { url: string; duration: number; summary: string } => {
+    if (domainKey === 'content') {
+      const vids = [
+        { url: 'https://www.youtube-nocookie.com/embed/bMknfKXIFA8', duration: 24, summary: 'Prompt Engineering & Generative Copywriting complete tutorial.' },
+        { url: 'https://www.youtube-nocookie.com/embed/aircAruvnKk', duration: 22, summary: 'Generative AI Image Synthesis, Diffusion models & visual branding.' },
+        { url: 'https://www.youtube-nocookie.com/embed/nu_pCVPKzTk', duration: 25, summary: 'Generative Video Synthesis, Voice Cloning & Monetization workshop.' },
+      ];
+      return vids[weekIdx % vids.length];
+    }
+    if (domainKey === 'software') {
+      return { url: 'https://www.youtube-nocookie.com/embed/zJSY8tbf_ys', duration: 28, summary: 'Full-stack software development principles, component design and APIs.' };
+    }
+    if (domainKey === 'aiml') {
+      return { url: 'https://www.youtube-nocookie.com/embed/i_LwzRVP7bg', duration: 26, summary: 'Applied machine learning pipelines, deep learning and data processing.' };
+    }
+    if (domainKey === 'robotics') {
+      return { url: 'https://www.youtube-nocookie.com/embed/fJWR7dBuc14', duration: 25, summary: 'Microcontroller architecture, electronic circuits, and sensor interfacing.' };
+    }
+    if (domainKey === 'solar') {
+      return { url: 'https://www.youtube-nocookie.com/embed/gl5yI6K_3hA', duration: 20, summary: 'Solar PV system sizing, inverter integration, and battery storage installation.' };
+    }
+    if (domainKey === 'business') {
+      return { url: 'https://www.youtube-nocookie.com/embed/bNpx7gpSqbY', duration: 18, summary: 'Venture discovery, financial modeling, and go-to-market commercial execution.' };
+    }
+    if (domainKey === 'junior') {
+      return { url: 'https://www.youtube-nocookie.com/embed/jXUZhvl1uY4', duration: 15, summary: 'Algorithmic logic, creative interactive building, and junior coding.' };
+    }
+    return { url: 'https://www.youtube-nocookie.com/embed/bMknfKXIFA8', duration: 20, summary: 'Professional hands-on technology masterclass.' };
+  };
+
+  let domainKey = 'software';
+  if (t.includes('content') || t.includes('media') || t.includes('creative') || t.includes('video') || t.includes('prompt') || t.includes('copywriting') || t.includes('dmap') || t.includes('aidm')) {
+    domainKey = 'content';
+  } else if (t.includes('machine learning') || t.includes('aiml') || t.includes('data science') || t.includes('neural') || t.includes('saiml')) {
+    domainKey = 'aiml';
+  } else if (t.includes('robot') || t.includes('iot') || t.includes('hardware') || t.includes('embedded') || t.includes('srih') || t.includes('rioth')) {
+    domainKey = 'robotics';
+  } else if (t.includes('solar') || t.includes('energy') || t.includes('renewable') || t.includes('sret') || t.includes('rete')) {
+    domainKey = 'solar';
+  } else if (t.includes('business') || t.includes('startup') || t.includes('venture') || t.includes('sbie') || t.includes('bie') || t.includes('entrepreneur')) {
+    domainKey = 'business';
+  } else if (t.includes('kid') || t.includes('junior') || t.includes('scratch') || t.includes('skt')) {
+    domainKey = 'junior';
+  }
+
+  const numWeeks = Math.max(1, durationWeeks);
+  const modules = [];
+
+  for (let w = 1; w <= numWeeks; w++) {
+    const video = getDomainVideo(domainKey, w - 1);
+    let modTitle = `Week ${w}: Applied Practical Sprints`;
+    let modDesc = `Structured learning modules and hands-on laboratory exercises for Week ${w}.`;
+    let quizTitle = `Quiz ${w}: Week ${w} Knowledge Check & Technical Review`;
+    let assignmentTitle = `Assignment ${w}: Practical Lab Implementation & Submission`;
+
+    let lessons = [];
+
+    if (domainKey === 'content') {
+      if (w === 1) {
+        modTitle = 'Week 1: AI Prompt Engineering & Copywriting Mastery';
+        modDesc = 'Master prompt architecture, few-shot prompting, systemic tone engineering, and automated long-form copywriting pipelines.';
+        quizTitle = 'Quiz 1: Prompt Paradigms, Temperature Calibration & Copywriting Architecture';
+        assignmentTitle = 'Assignment 1: Omnichannel Brand Copywriting Matrix & Persona Sprint';
+        lessons = [
+          {
+            title: 'Precision Prompting & Few-Shot Architecture',
+            contentSummary: 'In-depth breakdown of prompt schemas, persona definitions, and boundary constraints.',
+            content: `### 1. Conceptual Framework & Prompt Mechanics\nIn modern generative AI systems, a prompt functions as a programmatic instruction set that steers the probabilistic token distribution of large language models. Rather than treating AI as a conversational toy, professional content architects implement structured prompt templates incorporating System Directives, Persona Definition, Few-Shot In-Context Examples, Output Schema Constraints, and Negative Boundaries. This architectural discipline eliminates hallucinations, guarantees predictable tone, and enforces brand consistency across thousands of marketing deliverables.\n\n### 2. Hands-On Workflow & Toolchain Execution\nTo execute deterministic prompt engineering:\n1. Initialize your workspace using modern LLM playgrounds (Groq, OpenAI, Anthropic).\n2. Construct a System Persona: Establish role context (e.g. "Senior Copywriter specializing in West African consumer fintech").\n3. Provide 3 exemplary input-output pairs (few-shot prompting) demonstrating the exact sentence structure, emotional hook, and call to action.\n4. Specify delimiter tokens (### or XML tags) to isolate dynamic context from instructions.\n5. Calibrate temperature (0.2 for analytical copy, 0.7 for creative storytelling) and verify reproducible output across sample variations.\n\n### 3. Industry Standards & Local Nigerian/African Context\nWhen creating localized copy for Nigerian and African markets, global prompts often yield generic Western idioms. Prompt architects must inject local cultural nuances, vernacular resonance, currency formatting (₦ NGN), and target consumer demographics. Never publish raw model outputs without passing through a secondary fact-checking and brand adherence validation pipeline.`,
+            videoUrl: video.url,
+            videoDurationMin: 24,
+            videoSummary: 'Core principles of few-shot prompting, temperature tuning, and deterministic output structuring.',
+            practicalActivities: ['Lab 1: Design a 5-stage prompt chain translating raw product features into persuasive consumer benefits.'],
+          },
+          {
+            title: 'Long-Form Copy, Thought Leadership & SEO Mapping',
+            contentSummary: 'Modular article synthesis, rhetorical structure, and semantic keyword integration.',
+            content: `### 1. Architectural Narrative Frameworks\nLong-form content generation requires breaking complex themes into coherent hierarchical outlines before generating paragraphs. AI models suffer from attention degradation when generating thousands of continuous tokens. Professional creators overcome this by implementing modular generation: first synthesizing a comprehensive narrative arc (Hook, Problem Escalation, Solution Paradigm, Practical Demonstration, and Strategic Takeaways), and subsequently prompting the model section-by-section to ensure depth, academic citations, and rhetorical momentum.\n\n### 2. SEO Integration & Keyword Mapping\nTo align AI long-form articles with algorithmic search indexing, creators must embed primary and semantic Latent Semantic Indexing (LSI) search phrases naturally throughout headers (H2, H3), introductory paragraphs, and structured bullet lists. We utilize AI to analyze competitor SERP rankings, identify content gaps, and synthesize original analytical insights rather than repeating generic web summaries.\n\n### 3. Editorial Quality Control\nHigh-performing editorial operations enforce strict readability metrics (Flesch-Kincaid Grade Level 8-10), plagiarism checks (zero tolerance), and factual citation verification. Every generated statistic or case study must be hyperlinked to primary verifiable sources before publication.`,
+            videoUrl: video.url,
+            videoDurationMin: 22,
+            videoSummary: 'Techniques for generating in-depth thought leadership articles without repetitive phrasing.',
+            practicalActivities: ['Lab 2: Synthesize a 1,500-word authoritative industry whitepaper using modular section-by-section prompting.'],
+          },
+          {
+            title: 'Automated Social Media Repurposing & Editorial Calendars',
+            contentSummary: 'Transforming core source assets into multi-platform distribution suites.',
+            content: `### 1. Omnichannel Repurposing Engines\nA single core asset (such as a podcast transcript, webinar recording, or technical blog) contains the foundation for 30+ micro-content assets. Content architects build automated transformation pipelines that systematically extract Twitter/X threads, LinkedIn carousel scripts, Instagram caption hooks, and email newsletter summaries from one primary transcript.\n\n### 2. Tone Modulation & Platform Nuances\nDifferent digital platforms demand distinct linguistic registers. LinkedIn requires executive clarity, career insights, and analytical data. Twitter/X demands rapid scroll-stopping hooks, punchy declarative sentences, and concise takeaways. Content architects teach models to modulate tone matrices dynamically while preserving the core brand proposition.\n\n### 3. Workflow Automation & Scaling\nConnecting generative LLMs to automation workflows (via webhooks, Zapier, Make, or Python scripts) enables marketing teams to batch-generate and schedule weekly editorial calendars in minutes, freeing creative directors to focus on high-level narrative strategy and visual polish.`,
+            videoUrl: video.url,
+            videoDurationMin: 20,
+            videoSummary: 'Batch generation strategies for multi-platform distribution and editorial planning.',
+            practicalActivities: ['Lab 3: Transform a single 3-minute executive speech transcript into a complete 7-day multi-platform social calendar.'],
+          },
+        ];
+      } else if (w === 2) {
+        modTitle = 'Week 2: AI Visual Generation & Graphic Asset Design';
+        modDesc = 'Master latent diffusion mechanics, Midjourney/Stable Diffusion prompt taxonomies, consistent characters, and high-resolution commercial asset exports.';
+        quizTitle = 'Quiz 2: Diffusion Architecture, ControlNet & Commercial Asset Production';
+        assignmentTitle = 'Assignment 2: Corporate Brand Identity Deck & High-Resolution Ad Pack';
+        lessons = [
+          {
+            title: 'Diffusion Model Mechanics, Camera Directives & Style Control',
+            contentSummary: 'Latent space principles, camera optics descriptors, and negative prompting frameworks.',
+            content: `### 1. Diffusion Mathematics & Latent Space Principles\nLatent Diffusion Models generate imagery through iterative denoising within a compressed mathematical latent space. Rather than pasting together existing internet pictures, the model starts with Gaussian noise and iteratively removes random artifacts based on the cross-attention guidance of text embeddings (CLIP/T5). Understanding prompt weighting (::1.5), aspect ratios (--ar 16:9), Classifier-Free Guidance (CFG scale), and seed reproducibility is essential for creative directors needing precise visual control.\n\n### 2. Visual Prompt Engineering & Camera Optics\nMastering commercial image synthesis requires detailed descriptor taxonomies: specifying camera lenses (85mm f/1.4 prime lens), lighting conditions (cinematic volumetric rim lighting, golden hour, diffuse softbox), camera angles (Dutch tilt, eye-level macro), and artistic textures. Crucially, negative prompts strip away common synthetic artifacts such as deformed limbs, oversaturated chromatic aberration, text watermarks, and unnatural skin textures.\n\n### 3. Commercial Art Direction & African Context\nGlobal diffusion models often perpetuate stereotypical visual biases when generating African subjects and settings. Professional creators master targeted prompting that showcases authentic modern African architecture with respectful, high-fidelity lighting and natural skin tones.`,
+            videoUrl: video.url,
+            videoDurationMin: 25,
+            videoSummary: 'Camera descriptors, prompt weighting, and CFG parameters for high-impact visual generation.',
+            practicalActivities: ['Lab 1: Generate a photorealistic 6-image campaign series showcasing modern Nigerian tech entrepreneurs in professional studio lighting.'],
+          },
+          {
+            title: 'Consistent Character Generation & Product Mockup Pipelines',
+            contentSummary: 'Locking facial embeddings and products across dynamic settings using ControlNet and Reference tags.',
+            content: `### 1. Overcoming the Consistency Challenge\nThe primary hurdle in commercial AI design is character consistency: ensuring the exact same brand ambassador, mascot, or product appears across multiple scenes, emotional expressions, and camera angles. Creators utilize ControlNet (OpenPose, Canny edge detection, Depth maps) and Character Reference tags (--cref in Midjourney) to lock facial features and apparel while dynamically modifying environments.\n\n### 2. Multi-Angle Product Rendering\nFor e-commerce and product packaging, generative tools allow designers to generate photorealistic product renders without expensive 3D studio equipment. By supplying reference wireframes and applying consistent seed and lighting prompts, brands can visualize physical packaging in urban supermarkets, modern kitchens, or billboard mockups.\n\n### 3. Production Workflows in Canva & Figma\nGenerative images must be composited into production layout software. Designers export high-resolution assets, remove backgrounds cleanly using neural segmentation, and integrate typography, brand logos, and vector UI components in Figma to produce publication-ready marketing collaterals.`,
+            videoUrl: video.url,
+            videoDurationMin: 22,
+            videoSummary: 'ControlNet poses, character locking, and product rendering workflows.',
+            practicalActivities: ['Lab 2: Create a single consistent fictional corporate mascot and render them across 4 distinct workplace scenarios.'],
+          },
+          {
+            title: 'Neural Upscaling, Vectorization & High-Resolution Print Output',
+            contentSummary: 'Real-ESRGAN super-resolution, raster-to-vector conversion, and CMYK pre-press requirements.',
+            content: `### 1. Neural Super-Resolution & Artifact Correction\nStandard diffusion models typically output images at 1024x1024 pixels, which is insufficient for large-format physical billboards, trade show banners, or ultra-HD digital displays. Neural upscalers utilize deep learning to hallucinate realistic high-frequency micro-textures (pores, fabric weaves, foliage) while scaling images up to 8K resolution without blurriness.\n\n### 2. Raster-to-Vector Conversion for Brand Identity\nLogos, icons, and graphic illustrations generated through AI must frequently be converted from raster pixels (PNG/JPG) to scalable vector graphics (SVG). Designers utilize automated vector trace algorithms followed by manual bezier curve refinement in Adobe Illustrator or Inkscape to produce production-grade master logos.\n\n### 3. Pre-Press Quality Control & Color Space Conversion\nBefore sending assets to commercial printers, digital assets rendered in RGB color space must be converted to CMYK with appropriate DPI settings (300 DPI minimum) and bleed margins. Understanding print production ensures AI-generated visuals look as crisp on physical flyers in Ile-Ife as they do on high-resolution smartphone screens.`,
+            videoUrl: video.url,
+            videoDurationMin: 20,
+            videoSummary: 'Upscaling algorithms, DPI standards, and vector conversion techniques.',
+            practicalActivities: ['Lab 3: Upscale and prep an AI-generated event poster for commercial 300 DPI CMYK large-format physical printing.'],
+          },
+        ];
+      } else if (w === 3) {
+        modTitle = 'Week 3: AI Video Synthesis, Voice Cloning & Monetization';
+        modDesc = 'Cinematic text-to-video with Runway/Pika, neural voice cloning with ElevenLabs, and freelance/agency monetization strategies for Nigerian & global clients.';
+        quizTitle = 'Quiz 3: AI Video Generation, Voice Cloning & Agency Retainer Packaging';
+        assignmentTitle = 'Assignment 3: 60-Second Commercial AI Video Showcase & Commercial Proposal Deck';
+        lessons = [
+          {
+            title: 'AI Video Motion Synthesis with Runway, Pika & Sora Models',
+            contentSummary: 'Text-to-video, image-to-video, camera paths, and cinematic b-roll direction.',
+            content: `### 1. The Video Diffusion Revolution\nGenerative AI video transforms static visual concepts into cinematic moving footage through spatio-temporal diffusion architectures. Models like Runway Gen-3, Pika Labs, and Luma Dream Machine synthesize coherent frame sequences by interpolating motion vectors across temporal latents. Creators master text-to-video, image-to-video, and camera motion prompts (pan, tilt, pedestal, zoom, orbit) to produce Hollywood-grade b-roll without physical cameras or location scouting.\n\n### 2. Motion Brush, Camera Paths & Temporal Coherence\nAchieving photorealistic video requires isolating motion to specific elements while keeping structural background geometry rock-solid. Creators utilize motion brush controls and trajectory keyframes to dictate directional velocity, preventing the surreal morphing artifacts typical of unconstrained video generations.\n\n### 3. Assembling the Director's Storyboard\nProfessional video creators don't generate 60-second clips in one pass. They decompose scripts into 3-second to 5-second cinematic shots, meticulously prompting shot types, lighting continuity, and pacing to build a cohesive narrative storyboard ready for the edit suite.`,
+            videoUrl: video.url,
+            videoDurationMin: 25,
+            videoSummary: 'Camera motion controls, motion brush targeting, and multi-shot storyboard assembly.',
+            practicalActivities: ['Lab 1: Generate a 5-shot cinematic video montage showcasing a future smart city in Nigeria with coherent camera motion.'],
+          },
+          {
+            title: 'Voice Cloning, Multilingual Audio Dubbing & Sound Design',
+            contentSummary: 'ElevenLabs voice synthesis, multilingual African accent dubbing, and AI soundtrack scoring.',
+            content: `### 1. Neural Voice Synthesis & Expressive Voice Cloning\nGenerative voice models analyze short audio samples to construct high-fidelity acoustic embeddings capturing pitch cadence, timbre, emotional inflections, and breath patterns. Using tools like ElevenLabs, audio engineers can clone custom brand voices or synthesize professional voiceovers in dozens of languages and accents with photorealistic realism.\n\n### 2. Multilingual Dubbing & Accents for Local Market Reach\nIn diverse markets like Nigeria, communicating across English, Pidgin, Yoruba, Igbo, and Hausa drastically expands campaign reach and listener trust. Neural dubbing pipelines preserve the original speaker's vocal identity while seamlessly translating script copy and synchronizing lip timing for video broadcasts.\n\n### 3. Sound Effects & Generative Background Scores\nComplete video production requires immersive audio soundscapes. Designers utilize text-to-audio synthesis to generate contextual foley effects and generative music platforms to compose royalty-free background themes that elevate video production value.`,
+            videoUrl: video.url,
+            videoDurationMin: 22,
+            videoSummary: 'Voice cloning workflows, multilingual lip-sync translation, and soundtrack synthesis.',
+            practicalActivities: ['Lab 2: Clone an executive voiceover sample and produce a dual-language (English and Yoruba/Pidgin) marketing audio narration.'],
+          },
+          {
+            title: 'Packaging, Commercial Retainers & Freelance Monetization',
+            contentSummary: 'Pricing frameworks (₦250k-₦750k/mo), Upwork/Fiverr client acquisition, and commercial copyright law.',
+            content: `### 1. Commercial Value Proposition & Client Packaging\nThe true power of mastering AI content creation lies in commercial monetization. Businesses in Nigeria and across the globe spend millions of Naira monthly on advertising agencies, copywriters, and video editors. By leveraging AI workflows, a solo content specialist or boutique studio can produce agency-grade deliverables at 10x speed, packaging offerings into high-ticket monthly retainers (e.g., ₦250,000 - ₦750,000/month for corporate social dominance suites).\n\n### 2. Navigating Global Platforms: Upwork, Fiverr & Direct B2B Outreach\nContent architects build international freelance revenue streams by targeting high-demand service categories: AI Prompt Consultant, Generative Ad Creative Specialist, YouTube Faceless Channel Producer, and Corporate AI Content Strategist. We implement client onboarding agreements, scope of work templates, and milestone billing structures.\n\n### 3. Ethics, Copyright Law & Commercial Licensing\nProfessional content architects understand intellectual property law regarding synthetic media. We examine current Nigerian and international copyright doctrines, commercial usage terms of generative platforms, deepfake ethics, and disclosure guidelines. Delivering commercial assurance to corporate clients differentiates elite professionals from casual hobbyists.`,
+            videoUrl: video.url,
+            videoDurationMin: 26,
+            videoSummary: 'Monetization pricing models, client retainers, contract scopes, and copyright compliance.',
+            practicalActivities: ['Lab 3: Develop a client pitch proposal, contract scope of work document, and pricing calculator for an AI content agency retainer.'],
+          },
+        ];
+      } else {
+        modTitle = `Week ${w}: Advanced AI Multi-Modal Production & Capstone Execution`;
+        modDesc = `Scaling autonomous multi-modal content pipelines, cross-platform video automation, and client capstone defense.`;
+        quizTitle = `Quiz ${w}: Multi-Modal Pipeline Architecture & Production Benchmarks`;
+        assignmentTitle = `Assignment ${w}: End-to-End Enterprise Multi-Modal Campaign Delivery`;
+        lessons = [
+          {
+            title: `Advanced Automation Pipelines & Webhook Integrations (Week ${w})`,
+            contentSummary: 'Automated script-to-video-to-publish workflows using Python and workflow webhooks.',
+            content: `### 1. Automation Frameworks\nScaling generative media beyond manual prompting requires programmatic pipeline automation. By leveraging REST APIs inside Python or Make.com workflows, teams trigger automated asset production upon CMS publication schedules.\n\n### 2. Quality Evaluation & Human-in-the-Loop Review\nAutonomous workflows must integrate human-in-the-loop review checkpoints to catch anomalous generations before public dissemination.\n\n### 3. Operational Efficiency\nOperating autonomous media engines reduces production costs by up to 85% while enabling 24/7 localized content generation.`,
+            videoUrl: video.url,
+            videoDurationMin: 20,
+            videoSummary: 'Pipeline orchestration, API webhooks, and validation checkpoints.',
+            practicalActivities: [`Lab 1: Build an automated Python/Make webhook pipeline that turns blog posts into short-form video scripts.`],
+          },
+          {
+            title: `Brand Safety, Bias Mitigation & Disclosure Compliance (Week ${w})`,
+            contentSummary: 'Enterprise risk management, model bias audits, and regulatory disclosure standards.',
+            content: `### 1. Brand Safety Guardrails\nEnterprise clients require ironclad brand protection against copyright claims, unintended hallucinations, or culturally insensitive imagery.\n\n### 2. Synthetic Media Disclosure Standards\nIn alignment with global AI regulatory standards (such as NITDA and EU AI Act), enterprise campaigns must provide clear watermark metadata or synthetic media tags on photorealistic AI-generated human avatars.\n\n### 3. Audit Logging & Client Protection\nMaintaining comprehensive audit logs of all model prompts protects creators in commercial disputes.`,
+            videoUrl: video.url,
+            videoDurationMin: 18,
+            videoSummary: 'Regulatory compliance, brand safety filters, and synthetic media disclosure protocols.',
+            practicalActivities: [`Lab 2: Conduct a brand safety audit on a generative advertising campaign and implement compliance watermarking.`],
+          },
+          {
+            title: `Capstone Campaign Presentation & Commercial Defense (Week ${w})`,
+            contentSummary: 'Defending a full commercial AI media campaign in front of academic and industry faculty.',
+            content: `### 1. Capstone Structure & Deliverables\nThe capstone project synthesizes all competencies learned throughout the program into a comprehensive commercial artifact.\n\n### 2. Live Faculty Presentation & Rubrics\nStudents present their campaigns before STEMPACT faculty and industry evaluators, demonstrating technical workflow execution and commercial economic viability.\n\n### 3. Portfolio Publishing & Career Launch\nUpon passing defense, all artifacts are packaged into public portfolios, positioning graduates for immediate freelance contracts or agency employment.`,
+            videoUrl: video.url,
+            videoDurationMin: 25,
+            videoSummary: 'Capstone defense standards, portfolio presentation, and commercial kickoff.',
+            practicalActivities: [`Lab 3: Finalize, package, and publish your capstone portfolio showcase ready for faculty review.`],
+          },
+        ];
+      }
+    } else {
+      modTitle = `Week ${w}: ${domainKey.toUpperCase()} Core Principles & Practical Implementation`;
+      modDesc = `In-depth technical architecture, hands-on lab sprints, and measurable skill acquisition for Week ${w}.`;
+      quizTitle = `Quiz ${w}: Week ${w} Technical Architecture & Mechanics`;
+      assignmentTitle = `Assignment ${w}: Hands-On Laboratory Implementation Sprint`;
+      lessons = [
+        {
+          title: `Technical Foundations & Systems Architecture (Week ${w})`,
+          contentSummary: `Core principles, design patterns, and engineering paradigms for Week ${w}.`,
+          content: `### 1. Theoretical Foundations & Architecture\nComprehensive technical breakdown of core concepts, standard industry patterns, and architectural principles required for production deployment.\n\n### 2. Hands-On Implementation Guide\nStep-by-step practical implementation walkthrough configuring tools, writing modular code, and verifying test suites.\n\n### 3. Industry Standards & Real-World Practices\nProduction standards, performance optimizations, safety procedures, and local Nigerian/African market application.`,
+          videoUrl: video.url,
+          videoDurationMin: video.duration,
+          videoSummary: video.summary,
+          practicalActivities: [`Lab 1: Configure environment and implement foundational technical prototype for Week ${w}.`],
+        },
+        {
+          title: `Hands-On Lab Sprint & Guided Build (Week ${w})`,
+          contentSummary: `Practical guided laboratory build applying toolchains to real-world engineering challenges.`,
+          content: `### 1. Laboratory Objectives & System Specifications\nDetailed specifications for the weekly hands-on project, defining input requirements and expected output deliverables.\n\n### 2. Step-by-Step Build Walkthrough\nComplete guided implementation sprint emphasizing error handling, modular structuring, and code cleanliness.\n\n### 3. Quality Assurance & Benchmarks\nVerifying correctness through unit tests, physical measurements, or functional demonstrations.`,
+          videoUrl: video.url,
+          videoDurationMin: video.duration + 5,
+          videoSummary: 'Practical walkthrough and implementation details.',
+          practicalActivities: [`Lab 2: Execute practical build and verify deliverables against technical benchmarks.`],
+        },
+        {
+          title: `Review, Edge Cases & Industry Application (Week ${w})`,
+          contentSummary: `Quality verification, troubleshooting edge cases, and preparing portfolio deliverables.`,
+          content: `### 1. Advanced Considerations & Edge Cases\nIdentifying edge cases, fault conditions, and mitigation strategies for real-world production environments.\n\n### 2. Performance Tuning & Scalability\nTechniques for optimizing resource utilization, latency, energy efficiency, or financial returns.\n\n### 3. Portfolio Documentation & Delivery\nPackaging deliverables with comprehensive documentation for client or faculty review.`,
+          videoUrl: video.url,
+          videoDurationMin: video.duration - 2,
+          videoSummary: 'Review of common pitfalls and portfolio best practices.',
+          practicalActivities: [`Lab 3: Document deliverables and commit artifacts to portfolio repository.`],
+        },
+      ];
+    }
+
+    modules.push({
+      title: modTitle,
+      description: modDesc,
+      durationHours: 12,
+      order: w,
+      assessmentQuiz: quizTitle,
+      assignmentTitle: assignmentTitle,
+      lessons,
+    });
+  }
+
+  const courseCode = `${schoolCode.slice(0, 4).toUpperCase()}-${levelStr.includes('1') ? '101' : '201'}`;
+  return [
+    {
+      code: courseCode,
+      title: `${title} — Core Professional Curriculum`,
+      description: `Comprehensive hands-on curriculum structured into ${numWeeks} weekly modules with in-depth instructional reading guides, verified video lectures, and laboratory deliverables.`,
+      credits: Math.min(6, Math.max(3, numWeeks)),
+      order: 1,
+      level: levelStr,
+      modules,
+    },
+  ];
 }
 
 export function repairStructuredFields(obj: any, prompt: string): any {
@@ -36,65 +305,90 @@ export function repairStructuredFields(obj: any, prompt: string): any {
     } else {
       obj.prerequisites = obj.prerequisites || 'Foundational computer literacy';
     }
-    obj.duration = obj.duration || '12 Weeks';
+
+    // Parse durationWeeks and level accurately
+    const weeksMatch = promptLower.match(/(\d+)\s*week/) || (obj.duration && String(obj.duration).match(/(\d+)\s*week/));
+    const durationWeeks = weeksMatch ? parseInt(weeksMatch[1], 10) : (typeof obj.durationWeeks === 'number' ? obj.durationWeeks : 3);
+    obj.duration = `${durationWeeks} Weeks`;
+    obj.durationWeeks = durationWeeks;
+    obj.level = normalizeAcademicLevel(obj.level || obj.academicLevel || (promptLower.includes('foundation') || promptLower.includes('level 1') ? 'LEVEL_1_FOUNDATION' : 'LEVEL_2_INTERMEDIATE'));
+    obj.academicLevel = obj.level;
+
     if (typeof obj.contactHours !== 'number') {
-      obj.contactHours = parseInt(String(obj.contactHours || '144').replace(/\D/g, '')) || 144;
+      obj.contactHours = durationWeeks * 12;
     }
     obj.theoryPracticalRatio = obj.theoryPracticalRatio || '30:70';
     if (!Array.isArray(obj.tools)) {
       obj.tools = typeof obj.tools === 'string' ? obj.tools.split(',').map((s: string) => s.trim()).filter(Boolean) : ['Industry Standard Tools'];
     }
     if (!Array.isArray(obj.learningOutcomes) || obj.learningOutcomes.length === 0) {
-      obj.learningOutcomes = ['Master core technical architectures', 'Develop production-ready capstone systems'];
+      obj.learningOutcomes = ['Master core technical workflows and toolchains', 'Deliver production-grade portfolio projects'];
     }
     if (!Array.isArray(obj.careerPathways) || obj.careerPathways.length === 0) {
-      obj.careerPathways = ['Software Engineer', 'Systems Specialist', 'Solutions Architect'];
+      obj.careerPathways = ['Specialist Practitioner', 'Agency Consultant', 'Solutions Architect'];
     }
+
+    // Ensure courses are domain-aware and match durationWeeks
     if (!Array.isArray(obj.courses) || obj.courses.length === 0) {
-      obj.courses = [
-        {
-          code: 'CRS-101',
-          title: 'Core Foundations & Systems Engineering',
-          description: 'Comprehensive introduction to primary systems and workflows.',
-          credits: 3,
-          order: 1,
-          modules: [
-            {
-              title: 'Systems Overview & Lab Architecture',
-              description: 'Core concepts and environment configuration.',
-              durationHours: 12,
-              order: 1,
-              lessons: [
-                {
-                  title: 'Architecture Setup & Core Mechanics',
-                  contentSummary: 'Step-by-step walkthrough of fundamental workflows.',
-                  practicalActivities: ['Lab 1: Environment Initialization & Verification']
+      obj.courses = buildDomainProgramCourses(obj.name, obj.schoolCode, durationWeeks, obj.level, promptLower);
+    } else {
+      // Ensure existing courses have rich content and verified videoUrls
+      const fallbackCourses = buildDomainProgramCourses(obj.name, obj.schoolCode, durationWeeks, obj.level, promptLower);
+      const fallbackMod = fallbackCourses[0]?.modules[0];
+      const fallbackLesson = fallbackMod?.lessons[0];
+
+      for (const c of obj.courses) {
+        c.level = c.level || obj.level;
+        if (!Array.isArray(c.modules) || c.modules.length === 0) {
+          c.modules = fallbackCourses[0]?.modules || [];
+        } else {
+          for (let mIdx = 0; mIdx < c.modules.length; mIdx++) {
+            const m = c.modules[mIdx];
+            const refMod = fallbackCourses[0]?.modules[mIdx % fallbackCourses[0].modules.length] || fallbackMod;
+            m.durationHours = m.durationHours || 12;
+            m.assessmentQuiz = m.assessmentQuiz || refMod?.assessmentQuiz;
+            m.assignmentTitle = m.assignmentTitle || refMod?.assignmentTitle;
+
+            if (!Array.isArray(m.lessons) || m.lessons.length === 0) {
+              m.lessons = refMod?.lessons || [];
+            } else {
+              for (let lIdx = 0; lIdx < m.lessons.length; lIdx++) {
+                const l = m.lessons[lIdx];
+                const refLesson = refMod?.lessons[lIdx % (refMod?.lessons.length || 1)] || fallbackLesson;
+                if (!l.content || l.content.length < 50) {
+                  l.content = refLesson?.content || l.contentSummary || 'Detailed instructional lesson guide.';
                 }
-              ]
+                if (!l.videoUrl) {
+                  l.videoUrl = refLesson?.videoUrl;
+                  l.videoDurationMin = refLesson?.videoDurationMin || 20;
+                  l.videoSummary = refLesson?.videoSummary;
+                }
+              }
             }
-          ]
+          }
         }
-      ];
+      }
     }
+
     if (!Array.isArray(obj.competencies) || obj.competencies.length === 0) {
       obj.competencies = [
         {
           code: 'COMP-01',
-          title: 'Core Systems Mastery',
-          description: 'Demonstrated proficiency in building and deploying production solutions.',
+          title: `${obj.name} Core Mastery`,
+          description: 'Demonstrated proficiency in building and deploying production-ready solutions.',
           category: 'Technical'
         }
       ];
     }
     if (!obj.capstoneProject || typeof obj.capstoneProject !== 'object') {
       obj.capstoneProject = {
-        title: 'Industry Capstone Solution',
-        problemStatement: 'Develop an end-to-end production solution solving real-world challenges.',
-        expectedOutputs: 'Working codebase, architecture document, and demonstration video.',
-        durationWeeks: 4,
+        title: `${obj.name} Capstone Showcase`,
+        problemStatement: 'Develop an end-to-end production solution solving real-world challenges in the Nigerian or African market.',
+        expectedOutputs: 'Working portfolio, documentation, and live demonstration presentation.',
+        durationWeeks: Math.max(1, Math.round(durationWeeks / 3)),
       };
     }
-    obj.certificationRequirements = obj.certificationRequirements || '80% attendance, completion of all weekly lab sprints, and passing grade on capstone project.';
+    obj.certificationRequirements = obj.certificationRequirements || '80% attendance, completion of all weekly lab sprints, and passing grade on capstone defense.';
   }
 
   // 2. Quality Check Normalization
@@ -552,94 +846,60 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
     };
   }
 
-  // Default: Full Academic Program
+  // Default: Full Academic Program tailored dynamically to prompt parameters
+  const extractField = (key: string, fallback: string): string => {
+    const rx = new RegExp(`-\\s*${key}:\\s*(.+)`, 'i');
+    const m = prompt.match(rx);
+    return m ? m[1].trim() : fallback;
+  };
+
+  const domain = extractField('Title/Concept', '') || extractField('Title', '') || (p.includes('content') ? 'AI Content Creation' : 'Applied Technology Specialist');
+  const schoolCode = extractField('School Code', p.includes('content') ? 'SAIML' : 'SCSE');
+  const targetLearner = extractField('Target Learners', 'Tech students, creatives, entrepreneurs and aspiring specialists');
+  const durationStr = extractField('Duration', '3 Weeks');
+  const weeksMatch = durationStr.match(/(\d+)\s*week/i) || prompt.match(/(\d+)\s*week/i);
+  const durationWeeks = weeksMatch ? parseInt(weeksMatch[1], 10) : 3;
+  const levelStr = extractField('Level', 'LEVEL_1_FOUNDATION');
+  const level = normalizeAcademicLevel(levelStr);
+  const keywords = extractField('Key Topics / Technologies', '');
+
+  const courses = buildDomainProgramCourses(domain, schoolCode, durationWeeks, level, keywords || prompt);
+
   return {
-    name: 'AI & Machine Learning Engineering Specialist',
-    code: 'STP-AIML-SPEC',
-    schoolCode: 'SAIML',
-    description: 'Comprehensive 6-month hands-on engineering program mastering modern ML, Deep Learning, LLMs and practical production deployment.',
-    targetLearner: 'Aspiring AI engineers, computer science undergraduates, and software developers transitioning into machine learning.',
-    entryRequirements: 'Basic programming knowledge in Python, fundamental linear algebra, and personal laptop.',
-    prerequisites: 'Foundational Python or completion of STEMPACT Foundation Level 1.',
-    level: 'LEVEL_3_ADVANCED',
-    duration: '6 Months (24 Weeks)',
-    contactHours: 144,
+    name: domain,
+    code: `STP-${domain.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X')}-SPEC`,
+    schoolCode,
+    description: `Comprehensive ${durationWeeks}-week professional curriculum in ${domain}, structured into weekly hands-on laboratory modules with instructional reading guides, verified video lectures, and real-world deliverables.`,
+    targetLearner,
+    entryRequirements: 'Basic digital literacy, laptop with internet connection, and problem-solving readiness.',
+    prerequisites: level === 'LEVEL_1_FOUNDATION' ? 'Foundational computer literacy.' : 'Completion of Level 1 Foundation or equivalent technical experience.',
+    level,
+    duration: `${durationWeeks} Weeks`,
+    contactHours: durationWeeks * 12,
     theoryPracticalRatio: '30:70',
-    tools: ['Python 3.12', 'PyTorch', 'Hugging Face', 'Scikit-Learn', 'FastAPI', 'Docker', 'PostgreSQL'],
+    tools: ['Industry Standard Tools', 'Cloud Environments', 'Production Toolchains'],
     learningOutcomes: [
-      'Design and train deep neural networks with PyTorch',
-      'Fine-tune and deploy open-source LLMs using LoRA and Hugging Face',
-      'Build end-to-end RAG pipelines with vector databases',
-      'Deploy production-grade machine learning microservices with containerization',
+      `Master core technical architectures and practical workflows in ${domain}`,
+      `Execute weekly hands-on laboratory projects and real-world deliverables`,
+      `Deliver and defend a comprehensive production capstone showcase`,
     ],
-    careerPathways: ['Machine Learning Engineer', 'AI Solutions Architect', 'Data Scientist', 'AI Product Developer'],
-    courses: [
-      {
-        code: 'AIML-301',
-        title: 'Mathematical Foundations & Statistical Learning',
-        description: 'Core linear algebra, probability, vector calculus and classical statistical learning algorithms.',
-        credits: 3,
-        order: 1,
-        modules: [
-          {
-            title: 'Vector Calculus & Gradient Optimization',
-            description: 'Matrix decompositions, loss surfaces, stochastic gradient descent, and backpropagation mechanics.',
-            durationHours: 12,
-            order: 1,
-            lessons: [
-              {
-                title: 'Derivatives, Jacobians, and Neural Network Backprop',
-                contentSummary: 'Step-by-step mathematical derivation and code implementation of the chain rule in computation graphs.',
-                practicalActivities: ['Implement backprop from scratch in pure NumPy', 'Visualize gradient descent convergence on non-convex surfaces'],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        code: 'AIML-302',
-        title: 'Deep Learning Architectures & Transformer Models',
-        description: 'CNNs, RNNs, Self-Attention mechanisms, and the modern Transformer architecture.',
-        credits: 4,
-        order: 2,
-        modules: [
-          {
-            title: 'Attention Mechanisms and Transformer Blocks',
-            description: 'Multi-head self-attention, positional encodings, layer norm, and feed-forward sub-layers.',
-            durationHours: 18,
-            order: 1,
-            lessons: [
-              {
-                title: 'Coding the Attention Mechanism From Scratch',
-                contentSummary: 'Mathematical formulation of Q, K, V matrices, softmax scaling, and causal masking.',
-                practicalActivities: ['Build a miniature nanoGPT model in PyTorch', 'Train on sample text to observe text generation'],
-              },
-            ],
-          },
-        ],
-      },
-    ],
+    careerPathways: ['Specialist Practitioner', 'Agency Consultant', 'Solutions Architect'],
+    courses,
     competencies: [
       {
-        code: 'COMP-AIML-01',
-        title: 'PyTorch Model Architecture Design',
-        description: 'Ability to construct modular PyTorch nn.Module networks with customized forward passes and loss functions.',
+        code: 'COMP-01',
+        title: `${domain} Core Competency`,
+        description: `Demonstrated mastery in deploying production deliverables in ${domain}.`,
         category: 'Technical',
-      },
-      {
-        code: 'COMP-AIML-02',
-        title: 'RAG Pipeline Construction',
-        description: 'Ability to construct vector chunking, embedding, and semantic retrieval pipelines for LLMs.',
-        category: 'Applied AI',
       },
     ],
     capstoneProject: {
-      title: 'Autonomous Multi-Agent AI System for Healthcare / Agriculture in Nigeria',
-      problemStatement: 'Develop a practical multi-agent AI pipeline addressing rural clinic triage or agricultural crop disease detection using mobile imagery.',
-      expectedOutputs: 'Working web API, trained model weights, evaluation benchmark report, and live demonstration video.',
-      durationWeeks: 4,
+      title: `${domain} Capstone Portfolio & Defense`,
+      problemStatement: `Develop an end-to-end production solution solving real-world challenges in the Nigerian or African market.`,
+      expectedOutputs: 'Working portfolio, documentation, and live demonstration presentation.',
+      durationWeeks: Math.max(1, Math.round(durationWeeks / 3)),
     },
-    certificationRequirements: '80% class attendance, completion of all weekly lab sprints, 75%+ on mid-term assessment, and successful capstone presentation.',
+    certificationRequirements: '80% class attendance, completion of all weekly lab sprints, and passing grade on capstone defense.',
   };
 }
 
@@ -683,87 +943,108 @@ export class GroqProvider implements IAIProvider {
     this.defaultModel = model;
   }
 
+  private getModelCandidates(requestedModel?: string): string[] {
+    const list = [
+      requestedModel,
+      this.defaultModel,
+      'llama-3.3-70b-versatile',
+      'llama-3.1-70b-versatile',
+      'llama-3.1-8b-instant',
+    ].filter(Boolean) as string[];
+    return Array.from(new Set(list));
+  }
+
   async generateStructured<T>(prompt: string, schema: z.ZodType<T>, options?: AIOptions): Promise<AIGenerationResult<T>> {
     const startTime = Date.now();
-    const model = options?.model || this.defaultModel;
-
     const systemPrompt = `${options?.systemInstruction || 'You are the Chief Academic Officer & Senior Curriculum Architect at STEMPACT Academy, an elite STEM, Digital Skills, and Entrepreneurship Institution in Ile-Ife, Nigeria.'}
 You MUST respond with valid JSON strictly adhering to the requested schema. Do NOT include any markdown code blocks, backticks, or extra prose. Return only raw JSON.`;
 
-    try {
-      const completion = await this.groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        model,
-        temperature: options?.temperature ?? 0.2,
-        response_format: { type: 'json_object' },
-      });
+    const candidates = this.getModelCandidates(options?.model);
+    let lastError: any = null;
 
-      const rawText = completion.choices[0]?.message?.content || '{}';
-      const latencyMs = Date.now() - startTime;
-
-      let parsed: any;
+    for (const model of candidates) {
       try {
-        parsed = JSON.parse(rawText);
-      } catch (err) {
-        const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        parsed = JSON.parse(cleaned);
+        console.log(`⚡ [GroqProvider] Attempting structured generation with model: ${model}`);
+        const completion = await this.groq.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          model,
+          temperature: options?.temperature ?? 0.2,
+          response_format: { type: 'json_object' },
+        });
+
+        const rawText = completion.choices[0]?.message?.content || '{}';
+        const latencyMs = Date.now() - startTime;
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(rawText);
+        } catch (err) {
+          const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+          parsed = JSON.parse(cleaned);
+        }
+
+        const validated = safeParseWithHealing(parsed, prompt, schema);
+
+        return {
+          structured: validated,
+          rawText,
+          tokensPrompt: completion.usage?.prompt_tokens || 0,
+          tokensCompletion: completion.usage?.completion_tokens || 0,
+          costEstimate: 0,
+          model,
+          provider: this.name,
+          latencyMs,
+        };
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`⚠️ [GroqProvider] Model ${model} failed (${error.message || error}). Trying next candidate...`);
       }
-
-      const validated = safeParseWithHealing(parsed, prompt, schema);
-
-      return {
-        structured: validated,
-        rawText,
-        tokensPrompt: completion.usage?.prompt_tokens || 0,
-        tokensCompletion: completion.usage?.completion_tokens || 0,
-        costEstimate: 0,
-        model,
-        provider: this.name,
-        latencyMs,
-      };
-    } catch (error: any) {
-      console.error('[GroqProvider Error - Gracefully falling back to MockProvider]:', error.message || error);
-      const mockProvider = new MockProvider();
-      const mockResult = await mockProvider.generateStructured(prompt, schema, options);
-      return {
-        ...mockResult,
-        model: `${model} (offline-resilient-fallback)`,
-      };
     }
+
+    console.error('[GroqProvider Error - All candidates failed. Gracefully falling back to MockProvider]:', lastError?.message || lastError);
+    const mockProvider = new MockProvider();
+    const mockResult = await mockProvider.generateStructured(prompt, schema, options);
+    return {
+      ...mockResult,
+      model: `${candidates[0]} (offline-resilient-fallback)`,
+    };
   }
 
   async generateText(prompt: string, options?: AIOptions): Promise<{ text: string; tokensPrompt: number; tokensCompletion: number; latencyMs: number }> {
     const startTime = Date.now();
-    const model = options?.model || this.defaultModel;
+    const candidates = this.getModelCandidates(options?.model);
 
-    try {
-      const completion = await this.groq.chat.completions.create({
-        messages: [
-          ...(options?.systemInstruction ? [{ role: 'system' as const, content: options.systemInstruction }] : []),
-          { role: 'user' as const, content: prompt },
-        ],
-        model,
-        temperature: options?.temperature ?? 0.7,
-      });
+    for (const model of candidates) {
+      try {
+        const completion = await this.groq.chat.completions.create({
+          messages: [
+            ...(options?.systemInstruction ? [{ role: 'system' as const, content: options.systemInstruction }] : []),
+            { role: 'user' as const, content: prompt },
+          ],
+          model,
+          temperature: options?.temperature ?? 0.7,
+        });
 
-      return {
-        text: completion.choices[0]?.message?.content || '',
-        tokensPrompt: completion.usage?.prompt_tokens || 0,
-        tokensCompletion: completion.usage?.completion_tokens || 0,
-        latencyMs: Date.now() - startTime,
-      };
-    } catch (error: any) {
-      console.error('[GroqProvider Text Error - Falling back to default assistant message]:', error.message || error);
-      return {
-        text: `[STEMPACT Academic Assistant]: Based on approved curriculum standards, here is guidance for: "${prompt.slice(0, 100)}...". All learner progress is actively supported with continuous practical assessments.`,
-        tokensPrompt: 50,
-        tokensCompletion: 80,
-        latencyMs: 120,
-      };
+        return {
+          text: completion.choices[0]?.message?.content || '',
+          tokensPrompt: completion.usage?.prompt_tokens || 0,
+          tokensCompletion: completion.usage?.completion_tokens || 0,
+          latencyMs: Date.now() - startTime,
+        };
+      } catch (error: any) {
+        console.warn(`⚠️ [GroqProvider Text] Model ${model} failed (${error.message || error}). Trying next candidate...`);
+      }
     }
+
+    return {
+      text: `[STEMPACT Academic Assistant]: Based on approved curriculum standards, here is guidance for: "${prompt.slice(0, 100)}...". All learner progress is actively supported with continuous practical assessments.`,
+      tokensPrompt: 50,
+      tokensCompletion: 80,
+      latencyMs: 120,
+    };
   }
 }
 

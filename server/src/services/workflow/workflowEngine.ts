@@ -1,6 +1,7 @@
 import { WorkflowStatus, ProgramStatus, AcademicLevel } from '@prisma/client';
 import prisma from '../../config/prisma.js';
 import { ProgramGenerationData } from '../ai/types.js';
+import { buildDomainProgramCourses } from '../ai/aiProvider.js';
 
 export class WorkflowEngine {
   /**
@@ -67,8 +68,9 @@ export class WorkflowEngine {
     const prerequisites = Array.isArray(rawData.prerequisites)
       ? rawData.prerequisites.join(', ')
       : (rawData.prerequisites || 'Basic computing literacy');
-    const duration = rawData.duration || (rawData.durationWeeks ? `${rawData.durationWeeks} Weeks` : '12 Weeks');
-    const contactHours = typeof rawData.contactHours === 'number' ? rawData.contactHours : 48;
+    const durationWeeks = Number(rawData.durationWeeks) || (parseInt(String(rawData.duration || '').replace(/\D/g, '')) || 3);
+    const duration = `${durationWeeks} Weeks`;
+    const contactHours = typeof rawData.contactHours === 'number' ? rawData.contactHours : (durationWeeks * 12);
     const tools = Array.isArray(rawData.tools)
       ? rawData.tools.join(', ')
       : (rawData.tools || 'Modern Engineering Tools');
@@ -85,7 +87,33 @@ export class WorkflowEngine {
       ? rawData.careerPathways
       : (Array.isArray(rawData.careerOutcomes) ? rawData.careerOutcomes : ['Software Engineer', 'Systems Architect']);
     const careerPathways = careerPathwaysList.join(', ');
-    const level = (rawData.level as AcademicLevel) || AcademicLevel.LEVEL_2_INTERMEDIATE;
+
+    const resolveAcademicLevel = (val: any): AcademicLevel => {
+      if (val === undefined || val === null) return AcademicLevel.LEVEL_1_FOUNDATION;
+      if (typeof val === 'number') {
+        switch (val) {
+          case 0: return AcademicLevel.LEVEL_0_ASSESSMENT;
+          case 1: return AcademicLevel.LEVEL_1_FOUNDATION;
+          case 2: return AcademicLevel.LEVEL_2_INTERMEDIATE;
+          case 3: return AcademicLevel.LEVEL_3_ADVANCED;
+          case 4: return AcademicLevel.LEVEL_4_SPECIALIST;
+          case 5: return AcademicLevel.LEVEL_5_INNOVATION;
+          case 6: return AcademicLevel.LEVEL_6_ENTREPRENEURSHIP;
+          default: return AcademicLevel.LEVEL_1_FOUNDATION;
+        }
+      }
+      const s = String(val).toUpperCase();
+      if (s.includes('0') || s.includes('ASSESS')) return AcademicLevel.LEVEL_0_ASSESSMENT;
+      if (s.includes('1') || s.includes('FOUND') || s.includes('BEGIN')) return AcademicLevel.LEVEL_1_FOUNDATION;
+      if (s.includes('3') || s.includes('ADVANC')) return AcademicLevel.LEVEL_3_ADVANCED;
+      if (s.includes('4') || s.includes('SPEC') || s.includes('MASTERY')) return AcademicLevel.LEVEL_4_SPECIALIST;
+      if (s.includes('5') || s.includes('INNOV')) return AcademicLevel.LEVEL_5_INNOVATION;
+      if (s.includes('6') || s.includes('ENTREP')) return AcademicLevel.LEVEL_6_ENTREPRENEURSHIP;
+      if (s.includes('2') || s.includes('INTER')) return AcademicLevel.LEVEL_2_INTERMEDIATE;
+      return AcademicLevel.LEVEL_1_FOUNDATION;
+    };
+
+    const level = resolveAcademicLevel(rawData.level || rawData.academicLevel);
 
     // 2. Atomic canonical database transaction
     return prisma.$transaction(async (tx) => {
@@ -144,42 +172,34 @@ export class WorkflowEngine {
       // Determine courses to create
       const coursesToCreate = (rawData.courses && Array.isArray(rawData.courses) && rawData.courses.length > 0)
         ? rawData.courses
-        : [
-            {
-              code: `${code}-101`,
-              title: `${name} — Core Curriculum Modules`,
-              description: description || 'Comprehensive practical learning progression.',
-              credits: 4,
-              order: 1,
-              modules: (rawData.modules && Array.isArray(rawData.modules) && rawData.modules.length > 0)
-                ? rawData.modules.map((m: any, idx: number) => ({
-                    title: m.title || `Module ${idx + 1}`,
-                    description: m.description || '',
-                    durationHours: 12,
-                    order: m.weekNumber || idx + 1,
-                    lessons: (m.learningObjectives || ['Core Lesson & Lab']).map((obj: string) => ({
-                      title: obj,
-                      contentSummary: obj,
-                      practicalActivities: m.practicalProjects || ['Practical Lab Sprint'],
-                    })),
-                  }))
-                : [
-                    {
-                      title: 'Foundations & Architecture Sprint',
-                      description: 'Baseline development environment and core paradigms.',
-                      durationHours: 12,
-                      order: 1,
-                      lessons: [
-                        {
-                          title: 'Engineering Best Practices & Environment Setup',
-                          contentSummary: 'Toolchain initialization and architecture principles.',
-                          practicalActivities: ['Hands-on Lab Sprint 1'],
-                        },
-                      ],
-                    },
-                  ],
-            },
-          ];
+        : (rawData.modules && Array.isArray(rawData.modules) && rawData.modules.length > 0)
+          ? [
+              {
+                code: `${code}-101`,
+                title: `${name} — Core Curriculum Modules`,
+                description: description || 'Comprehensive practical learning progression.',
+                credits: Math.min(6, Math.max(3, durationWeeks)),
+                order: 1,
+                level,
+                modules: rawData.modules.map((m: any, idx: number) => ({
+                  title: m.title || `Module ${idx + 1}`,
+                  description: m.description || '',
+                  durationHours: m.durationHours || 12,
+                  order: m.weekNumber || m.order || idx + 1,
+                  assessmentQuiz: m.assessmentQuiz,
+                  assignmentTitle: m.assignmentTitle,
+                  lessons: (m.lessons && Array.isArray(m.lessons) && m.lessons.length > 0)
+                    ? m.lessons
+                    : (m.learningObjectives || ['Core Lesson & Lab']).map((obj: string) => ({
+                        title: obj,
+                        contentSummary: obj,
+                        content: `Instructional lesson overview and guided walkthrough for ${obj}.`,
+                        practicalActivities: m.practicalProjects || ['Practical Lab Sprint'],
+                      })),
+                })),
+              },
+            ]
+          : buildDomainProgramCourses(name, school.code, durationWeeks, level, description);
 
       const createdCourses = [];
       for (const courseData of coursesToCreate) {
@@ -191,7 +211,7 @@ export class WorkflowEngine {
             description: courseData.description || '',
             credits: courseData.credits || 3,
             order: courseData.order || 1,
-            level: (courseData.level as AcademicLevel) || level,
+            level: (courseData.level ? resolveAcademicLevel(courseData.level) : level),
           },
         });
         createdCourses.push(course);
@@ -208,11 +228,18 @@ export class WorkflowEngine {
           });
 
           for (const [idx, lessonData] of (moduleData.lessons || []).entries()) {
+            const lessonContent = lessonData.content && lessonData.content.length > 25
+              ? lessonData.content
+              : (lessonData.contentSummary || `Comprehensive practical lesson and instructional guide for ${lessonData.title || `Lesson ${idx + 1}`}.`);
+
             await tx.lesson.create({
               data: {
                 moduleId: mod.id,
                 title: lessonData.title || `Lesson ${idx + 1}`,
-                content: lessonData.contentSummary || '',
+                content: lessonContent,
+                videoUrl: lessonData.videoUrl || undefined,
+                videoDurationMin: lessonData.videoDurationMin || 20,
+                videoSummary: lessonData.videoSummary || undefined,
                 order: idx + 1,
               },
             });
@@ -229,6 +256,32 @@ export class WorkflowEngine {
                 },
               });
             }
+          }
+
+          if (moduleData.assessmentQuiz) {
+            await tx.practicalActivity.create({
+              data: {
+                moduleId: mod.id,
+                title: `${mod.title} — Knowledge Check & Assessment`,
+                description: moduleData.assessmentQuiz,
+                objectives: 'Verify conceptual understanding and practical mastery.',
+                requiredTools: 'Course Assessment Portal',
+                estimatedDurationMin: 30,
+              },
+            });
+          }
+
+          if (moduleData.assignmentTitle) {
+            await tx.practicalActivity.create({
+              data: {
+                moduleId: mod.id,
+                title: `${mod.title} — Practical Lab Assignment`,
+                description: moduleData.assignmentTitle,
+                objectives: 'Deliver and submit end-of-module practical implementation artifact.',
+                requiredTools: tools.split(',').slice(0, 3).join(', ') || 'Lab Environment',
+                estimatedDurationMin: 90,
+              },
+            });
           }
         }
       }

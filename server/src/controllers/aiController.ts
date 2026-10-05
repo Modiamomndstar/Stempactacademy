@@ -14,6 +14,7 @@ import {
   AssignmentGenerationSchema,
   QualityCheckResultSchema,
   StudentFeedbackSchema,
+  normalizeAcademicLevel,
 } from '../services/ai/types.js';
 import { WorkflowEngine } from '../services/workflow/workflowEngine.js';
 import { aiGovernanceService } from '../services/ai/aiGovernance.js';
@@ -25,27 +26,33 @@ import { sanitizePromptInput } from '../services/ai/aiSanitizer.js';
 export const generateProgram = async (req: AuthRequest, res: Response): Promise<void> => {
   const domain = req.body.domain || req.body.title || 'Full-Stack & Cloud Systems Engineering';
   const targetAudience = req.body.targetAudience || req.body.targetLearners || 'Polytechnic and university students, young tech professionals';
-  const duration = req.body.durationWeeks ? `${req.body.durationWeeks} Weeks` : (req.body.duration || '12 Weeks');
   const durationWeeks = typeof req.body.durationWeeks === 'number'
     ? req.body.durationWeeks
-    : (parseInt(String(req.body.duration || '12').replace(/\D/g, '')) || 12);
-  const level = req.body.academicLevel || req.body.level || 'LEVEL_2_INTERMEDIATE';
+    : (parseInt(String(req.body.duration || '3').replace(/\D/g, '')) || 3);
+  const duration = `${durationWeeks} Weeks`;
+  const normalizedLevel = normalizeAcademicLevel(req.body.academicLevel ?? req.body.level);
   const schoolCode = req.body.schoolCode || 'SCSE';
   const keywords = Array.isArray(req.body.keywords)
     ? req.body.keywords.join(', ')
     : (req.body.keywords || '');
   const specialInstructions = req.body.specialInstructions || req.body.goals || '';
-
-  try {
-    const prompt = `Generate a rigorous, complete STEM academic program for STEMPACT Academy in Ile-Ife, Nigeria.
+  const prompt = `Generate a rigorous, complete STEM academic program for STEMPACT Academy in Ile-Ife, Nigeria.
 Details provided:
 - Title/Concept: ${domain}
 - School Code: ${schoolCode}
 - Target Learners: ${targetAudience}
-- Level: ${level}
-- Duration: ${duration}
+- Level: ${normalizedLevel}
+- Duration: ${duration} (${durationWeeks} Weeks)
 - Key Topics / Technologies: ${keywords || 'Modern industry-standard toolchain'}
 - Special Instructions / Goals: ${specialInstructions || 'Hands-on practical deployment, real-world Nigerian industry alignment, software engineering best practices'}
+
+CRITICAL PEDAGOGICAL REQUIREMENTS:
+1. You MUST generate exactly ${durationWeeks} weekly modules under "courses" (e.g., Week 1, Week 2, ... Week ${durationWeeks}).
+2. Each weekly module MUST contain 3 comprehensive lessons.
+3. Each lesson MUST provide in-depth instructional reading content ("content") of 2-3 detailed paragraphs explaining core mechanics, step-by-step tool workflows, and African/Nigerian industry applications.
+4. Each lesson must have hands-on practical lab activities ("practicalActivities").
+5. Each module must define a knowledge check quiz ("assessmentQuiz") and a practical assignment deliverable ("assignmentTitle").
+6. The curriculum MUST strictly align with "${domain}" and NEVER output generic unrelated foundations.
 
 CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structure:
 {
@@ -54,11 +61,11 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
   "schoolCode": "${schoolCode}",
   "description": "Comprehensive practical curriculum overview...",
   "targetLearner": "${targetAudience}",
-  "entryRequirements": "Basic programming knowledge, laptop, and problem-solving readiness.",
+  "entryRequirements": "Basic digital literacy, laptop with internet connection, and problem-solving readiness.",
   "prerequisites": "Foundational digital literacy or level 1 completion.",
-  "level": "${level}",
+  "level": "${normalizedLevel}",
   "duration": "${duration}",
-  "contactHours": 144,
+  "contactHours": ${durationWeeks * 12},
   "theoryPracticalRatio": "30:70",
   "tools": ["Tool1", "Tool2", "Tool3"],
   "learningOutcomes": ["Outcome 1", "Outcome 2", "Outcome 3"],
@@ -66,20 +73,24 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
   "courses": [
     {
       "code": "CRS-101",
-      "title": "Course Title",
-      "description": "Course overview...",
-      "credits": 3,
+      "title": "${domain} — Core Professional Curriculum",
+      "description": "Comprehensive hands-on curriculum structured into weekly modules.",
+      "credits": ${Math.min(6, Math.max(3, durationWeeks))},
       "order": 1,
+      "level": "${normalizedLevel}",
       "modules": [
         {
-          "title": "Module Title",
+          "title": "Week 1: Foundations & Toolchain Setup",
           "description": "Module overview...",
           "durationHours": 12,
           "order": 1,
+          "assessmentQuiz": "Quiz 1: Core Mechanics",
+          "assignmentTitle": "Assignment 1: Hands-On Lab Implementation",
           "lessons": [
             {
               "title": "Lesson Title",
               "contentSummary": "Summary...",
+              "content": "Comprehensive instructional reading guide...",
               "practicalActivities": ["Hands-on activity 1", "Hands-on activity 2"]
             }
           ]
@@ -90,13 +101,13 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
   "competencies": [
     {
       "code": "COMP-01",
-      "title": "Competency Title",
+      "title": "${domain} Core Mastery",
       "description": "Measurable industry skill standard...",
       "category": "Technical"
     }
   ],
   "capstoneProject": {
-    "title": "Real-world Capstone Solution",
+    "title": "${domain} Capstone Solution",
     "problemStatement": "Practical problem addressing local Nigerian or global market need...",
     "expectedOutputs": "Working software, deployment URL, documentation, and demo video.",
     "durationWeeks": 4
@@ -104,6 +115,7 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
   "certificationRequirements": "80% class attendance, completion of weekly lab sprints, and approved capstone defense."
 }`;
 
+  try {
     const result = await AIOrchestrator.generateStructured({
       actionType: AIActionType.PROGRAM_GENERATION,
       prompt,
@@ -115,14 +127,17 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
 
     const structured = result.structured;
 
-    // Build client-compatible flat modules array if needed
+    // Build client-compatible flat modules array with rich lessons preserved
     const clientModules = (structured.courses || []).flatMap((c: any, cIdx: number) =>
       (c.modules || []).map((m: any, mIdx: number) => ({
-        weekNumber: (cIdx * 4) + mIdx + 1,
+        weekNumber: m.order || (cIdx * 4) + mIdx + 1,
         title: m.title || `Module ${mIdx + 1}`,
         description: m.description || '',
+        assessmentQuiz: m.assessmentQuiz,
+        assignmentTitle: m.assignmentTitle,
         learningObjectives: (m.lessons || []).map((l: any) => l.title),
         practicalProjects: (m.lessons || []).flatMap((l: any) => l.practicalActivities || []),
+        lessons: m.lessons || [],
       }))
     );
 
@@ -131,7 +146,9 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       name: structured.name || domain,
       code: structured.code || `PRG-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       schoolCode: structured.schoolCode || schoolCode,
-      academicLevel: typeof level === 'number' ? level : (parseInt(String(level).replace(/\D/g, '')) || 2),
+      level: normalizedLevel,
+      academicLevel: normalizedLevel,
+      duration: duration,
       durationWeeks: durationWeeks,
       targetAudience: structured.targetLearner || targetAudience,
       targetLearner: structured.targetLearner || targetAudience,
@@ -149,7 +166,8 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
           title: 'Core Fundamentals & Architecture Setup',
           description: 'Establishment of baseline development workflows and theoretical principles.',
           learningObjectives: ['Environment initialization', 'Core principles synthesis'],
-          practicalProjects: ['Lab 1: Baseline Architecture Setup']
+          practicalProjects: ['Lab 1: Baseline Architecture Setup'],
+          lessons: []
         }
       ],
     };
@@ -166,13 +184,15 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
     });
   } catch (error: any) {
     console.error('[generateProgram error - Returning resilient offline draft]:', error);
-    const mock = getDeterministicFallback(domain);
+    const mock = getDeterministicFallback(prompt);
     const fallbackDraft = {
       ...mock,
       name: domain,
       code: `PRG-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       schoolCode,
-      academicLevel: typeof level === 'number' ? level : (parseInt(String(level).replace(/\D/g, '')) || 2),
+      level: normalizedLevel,
+      academicLevel: normalizedLevel,
+      duration: `${durationWeeks} Weeks`,
       durationWeeks,
       targetAudience,
       targetLearner: targetAudience,

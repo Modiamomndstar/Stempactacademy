@@ -1526,11 +1526,11 @@ export const StudentDashboardPage: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                   <BookOpen className="w-4 h-4 text-blue-600" />
-                  <span>Instructional Content & Reading Brief:</span>
+                  <span>Instructional Lesson Reading & Study Guide:</span>
                 </div>
-                <p className="text-slate-600">
+                <div className="text-slate-700 leading-relaxed whitespace-pre-wrap text-xs space-y-2">
                   {selectedLesson.content || selectedLesson.summary || 'In this lesson, you will master baseline conceptual principles, review architectural patterns, and implement hands-on practical exercises guided by your faculty mentor.'}
-                </p>
+                </div>
               </div>
 
               {selectedLesson.learningObjectives && (
