@@ -81,6 +81,9 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Serve local uploads folder statically (fallback for when R2 is not active)
+app.use('/uploads', express.static('uploads'));
+
 // Mount master API router
 app.use('/api', apiRouter);
 

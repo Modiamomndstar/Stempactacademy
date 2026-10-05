@@ -27,13 +27,16 @@ export const removeAuthToken = () => {
 
 async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
   };
 
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   if (token) {
-    (headers as any)['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -366,5 +369,21 @@ export const api = {
       }),
     }),
   getNotificationDeliveries: () => apiRequest('/notifications/deliveries'),
+
+  // Cloudflare R2 File Uploads
+  uploadFile: (file: File, folder: string = 'receipts') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    return apiRequest<{
+      success: boolean;
+      url: string;
+      key: string;
+      size: number;
+      mimeType: string;
+      provider: 'r2' | 'local';
+    }>('/upload', { method: 'POST', body: formData });
+  },
+  getStorageStatus: () => apiRequest('/upload/status'),
 };
 

@@ -32,6 +32,7 @@ import * as aiController from '../controllers/aiController.js';
 import * as academicSessionController from '../controllers/academicSessionController.js';
 import * as centerController from '../controllers/centerController.js';
 import * as progressionController from '../controllers/progressionController.js';
+import * as uploadController from '../controllers/uploadController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -267,5 +268,9 @@ router.post('/bootstrap/seed', authenticate, authorize(Role.SUPER_ADMIN), async 
     res.status(500).json({ error: err.message });
   }
 });
+
+// 23. File Upload & Cloudflare R2 Storage
+router.post('/upload', authenticate, uploadController.uploadMiddleware.single('file'), uploadController.uploadSingleFile);
+router.get('/upload/status', uploadController.getStorageStatus);
 
 export default router;

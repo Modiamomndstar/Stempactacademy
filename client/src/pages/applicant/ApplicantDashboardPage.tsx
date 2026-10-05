@@ -66,6 +66,8 @@ export const ApplicantDashboardPage: React.FC = () => {
   const [senderBank, setSenderBank] = useState<string>('Access Bank');
   const [senderAccount, setSenderAccount] = useState<string>('');
   const [proofUrl, setProofUrl] = useState<string>('');
+  const [uploadingReceipt, setUploadingReceipt] = useState<boolean>(false);
+  const [receiptFileName, setReceiptFileName] = useState<string>('');
   const [paying, setPaying] = useState<boolean>(false);
 
   // Decline Offer Modal State
@@ -189,6 +191,21 @@ export const ApplicantDashboardPage: React.FC = () => {
       setError(err.message || 'Failed to retrieve admission document');
     } finally {
       setLoadingDoc(false);
+    }
+  };
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReceipt(true);
+    try {
+      const res = await api.uploadFile(file, 'receipts');
+      setProofUrl(res.url);
+      setReceiptFileName(file.name);
+    } catch (err: any) {
+      alert('Failed to upload bank transfer receipt: ' + err.message);
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -1149,9 +1166,44 @@ export const ApplicantDashboardPage: React.FC = () => {
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Upload Payment Receipt / Teller *</span>
+                    </span>
+                    {uploadingReceipt && <span className="text-[10px] text-blue-600 animate-pulse">Uploading to Cloud...</span>}
+                  </label>
+
+                  <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50/70 text-center hover:bg-slate-50 transition cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={handleReceiptUpload}
+                      disabled={uploadingReceipt}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    {proofUrl ? (
+                      <div className="flex items-center justify-center gap-2 text-emerald-700 text-xs font-semibold py-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[240px]">{receiptFileName || 'Receipt uploaded successfully'}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 py-1">
+                        <p className="text-slate-600 text-xs font-medium">
+                          Click or drag receipt image / PDF here
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Supports PNG, JPG, WEBP, or PDF (up to 10MB)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  disabled={paying}
+                  disabled={paying || uploadingReceipt}
                   onClick={handleBankTransferSubmit}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
