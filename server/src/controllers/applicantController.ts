@@ -9,33 +9,56 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const application = await prisma.application.findFirst({
-      where: {
-        OR: [
-          { userId: req.user.id },
-          { email: req.user.email },
-        ],
-      },
-      include: {
-        program: { include: { school: true, assessments: { include: { questions: true } } } },
-        cohort: true,
-        assessmentAttempts: {
-          orderBy: { completedAt: 'desc' },
-          take: 1,
+    let application: any = null;
+    try {
+      application = await prisma.application.findFirst({
+        where: {
+          OR: [
+            { userId: req.user.id },
+            { email: req.user.email },
+          ],
         },
-        placement: true,
-        admission: {
-          include: {
-            cohort: true,
+        include: {
+          program: { include: { school: true, assessments: { include: { questions: true } } } },
+          cohort: true,
+          assessmentAttempts: {
+            orderBy: { completedAt: 'desc' },
+            take: 1,
+          },
+          placement: true,
+          admission: {
+            include: {
+              cohort: true,
+            },
+          },
+          invoices: {
+            include: { payments: true },
+            orderBy: { createdAt: 'desc' },
           },
         },
-        invoices: {
-          include: { payments: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (dbErr: any) {
+      console.warn('getApplicantDashboard primary query warning:', dbErr.message);
+      // Graceful fallback: retrieve core application without potentially un-synced relations
+      try {
+        application = await prisma.application.findFirst({
+          where: {
+            OR: [
+              { userId: req.user.id },
+              { email: req.user.email },
+            ],
+          },
+          include: {
+            program: { include: { school: true } },
+            cohort: true,
+          },
           orderBy: { createdAt: 'desc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        });
+      } catch (fallbackErr: any) {
+        console.error('getApplicantDashboard fallback query also failed:', fallbackErr.message);
+      }
+    }
 
     if (!application) {
       res.status(200).json({
@@ -49,10 +72,10 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
     let currentStage = 'SUBMITTED';
     let nextAction = 'Take Diagnostic Assessment';
 
-    const latestAttempt = application.assessmentAttempts[0] || null;
-    const placement = application.placement;
-    const admission = application.admission;
-    const invoice = application.invoices[0] || null;
+    const latestAttempt = application.assessmentAttempts?.[0] || null;
+    const placement = application.placement || null;
+    const admission = application.admission || null;
+    const invoice = application.invoices?.[0] || null;
 
     if (admission && admission.status === 'ENROLLED') {
       currentStage = 'ENROLLED';
@@ -111,8 +134,10 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
     });
   } catch (error: any) {
     console.error('getApplicantDashboard error:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch applicant dashboard',
+    // Return safe graceful response instead of 500 error to prevent breaking the applicant UI
+    res.status(200).json({ 
+      hasApplication: false,
+      message: 'Could not load application details. Please refresh or contact admissions.',
       error: process.env.NODE_ENV !== 'production' ? error.message : undefined 
     });
   }

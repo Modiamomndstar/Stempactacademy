@@ -72,6 +72,17 @@ export class BootstrapService {
       END $$;`
     );
 
+    await runSql(
+      'CertificateType DIPLOMA value',
+      `ALTER TYPE "CertificateType" ADD VALUE IF NOT EXISTS 'DIPLOMA';`
+    );
+
+    // User columns
+    await runSql(
+      'User.isActive column',
+      `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;`
+    );
+
     // 2. LearningCenter table
     await runSql(
       'LearningCenter table',
@@ -133,10 +144,48 @@ export class BootstrapService {
       `ALTER TABLE "Lesson" ADD COLUMN IF NOT EXISTS "interactiveLabType" TEXT;`
     );
 
-    // 5. Application columns
+    // 6. Application columns
     await runSql(
       'Application.preferredCenterId column',
       `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "preferredCenterId" TEXT;`
+    );
+    await runSql(
+      'Application.intendedLevel column',
+      `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "intendedLevel" "AcademicLevel" DEFAULT 'LEVEL_1_FOUNDATION';`
+    );
+
+    // 7. AssessmentAttempt columns
+    await runSql(
+      'AssessmentAttempt.recommendedLevelCode column',
+      `ALTER TABLE "AssessmentAttempt" ADD COLUMN IF NOT EXISTS "recommendedLevelCode" "AcademicLevel";`
+    );
+
+    // 8. Placement columns
+    await runSql(
+      'Placement.recommendedLevelCode column',
+      `ALTER TABLE "Placement" ADD COLUMN IF NOT EXISTS "recommendedLevelCode" "AcademicLevel";`
+    );
+    await runSql(
+      'Placement.approvedLevelCode column',
+      `ALTER TABLE "Placement" ADD COLUMN IF NOT EXISTS "approvedLevelCode" "AcademicLevel";`
+    );
+
+    // 9. Certificate columns
+    await runSql(
+      'Certificate.levelCode column',
+      `ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "levelCode" "AcademicLevel";`
+    );
+    await runSql(
+      'Certificate.isTrackDiploma column',
+      `ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "isTrackDiploma" BOOLEAN NOT NULL DEFAULT false;`
+    );
+    await runSql(
+      'Certificate.endorsingPartner column',
+      `ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "endorsingPartner" TEXT;`
+    );
+    await runSql(
+      'Certificate.accreditationNote column',
+      `ALTER TABLE "Certificate" ADD COLUMN IF NOT EXISTS "accreditationNote" TEXT;`
     );
 
     // 4. Cohort columns
