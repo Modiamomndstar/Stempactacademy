@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { IAIProvider, AIOptions, AIGenerationResult, normalizeAcademicLevel } from './types.js';
+import { getCuratedVideoForLesson } from '../verifiedVideoRegistry.js';
 
 // ---------------------------------------------------------------------------
 // 1. UNWRAPPING & FIELD REPAIR UTILITIES
@@ -31,46 +32,18 @@ export function buildDomainProgramCourses(
 ) {
   const t = (title + ' ' + schoolCode + ' ' + keywords).toLowerCase();
 
-  const getDomainVideo = (domainKey: string, weekIdx: number): { url: string; duration: number; summary: string } => {
-    if (domainKey === 'content') {
-      const vids = [
-        { url: 'https://www.youtube-nocookie.com/embed/bMknfKXIFA8', duration: 24, summary: 'Prompt Engineering & Generative Copywriting complete tutorial.' },
-        { url: 'https://www.youtube-nocookie.com/embed/aircAruvnKk', duration: 22, summary: 'Generative AI Image Synthesis, Diffusion models & visual branding.' },
-        { url: 'https://www.youtube-nocookie.com/embed/nu_pCVPKzTk', duration: 25, summary: 'Generative Video Synthesis, Voice Cloning & Monetization workshop.' },
-      ];
-      return vids[weekIdx % vids.length];
-    }
-    if (domainKey === 'software') {
-      return { url: 'https://www.youtube-nocookie.com/embed/zJSY8tbf_ys', duration: 28, summary: 'Full-stack software development principles, component design and APIs.' };
-    }
-    if (domainKey === 'aiml') {
-      return { url: 'https://www.youtube-nocookie.com/embed/i_LwzRVP7bg', duration: 26, summary: 'Applied machine learning pipelines, deep learning and data processing.' };
-    }
-    if (domainKey === 'robotics') {
-      return { url: 'https://www.youtube-nocookie.com/embed/fJWR7dBuc14', duration: 25, summary: 'Microcontroller architecture, electronic circuits, and sensor interfacing.' };
-    }
-    if (domainKey === 'solar') {
-      return { url: 'https://www.youtube-nocookie.com/embed/gl5yI6K_3hA', duration: 20, summary: 'Solar PV system sizing, inverter integration, and battery storage installation.' };
-    }
-    if (domainKey === 'business') {
-      return { url: 'https://www.youtube-nocookie.com/embed/bNpx7gpSqbY', duration: 18, summary: 'Venture discovery, financial modeling, and go-to-market commercial execution.' };
-    }
-    if (domainKey === 'junior') {
-      return { url: 'https://www.youtube-nocookie.com/embed/jXUZhvl1uY4', duration: 15, summary: 'Algorithmic logic, creative interactive building, and junior coding.' };
-    }
-    return { url: 'https://www.youtube-nocookie.com/embed/bMknfKXIFA8', duration: 20, summary: 'Professional hands-on technology masterclass.' };
-  };
-
   let domainKey = 'software';
-  if (t.includes('content') || t.includes('media') || t.includes('creative') || t.includes('video') || t.includes('prompt') || t.includes('copywriting') || t.includes('dmap') || t.includes('aidm')) {
+  if (t.includes('3d') || t.includes('cad') || t.includes('fabricat') || t.includes('print') || t.includes('fusion') || t.includes('cura') || t.includes('rioth-06')) {
+    domainKey = 'cad_3d_fabrication';
+  } else if (t.includes('content') || t.includes('media') || t.includes('creative') || t.includes('video') || t.includes('prompt') || t.includes('copywriting') || t.includes('dmap')) {
     domainKey = 'content';
-  } else if (t.includes('machine learning') || t.includes('aiml') || t.includes('data science') || t.includes('neural') || t.includes('saiml')) {
+  } else if (t.includes('machine learning') || t.includes('aiml') || t.includes('data science') || t.includes('neural') || t.includes('saiml') || t.includes('aidm')) {
     domainKey = 'aiml';
   } else if (t.includes('robot') || t.includes('iot') || t.includes('hardware') || t.includes('embedded') || t.includes('srih') || t.includes('rioth')) {
     domainKey = 'robotics';
   } else if (t.includes('solar') || t.includes('energy') || t.includes('renewable') || t.includes('sret') || t.includes('rete')) {
     domainKey = 'solar';
-  } else if (t.includes('business') || t.includes('startup') || t.includes('venture') || t.includes('sbie') || t.includes('bie') || t.includes('entrepreneur')) {
+  } else if (t.includes('business') || t.includes('startup') || t.includes('venture') || t.includes('sbie') || t.includes('bie') || t.includes('entrepreneur') || t.includes('isl')) {
     domainKey = 'business';
   } else if (t.includes('kid') || t.includes('junior') || t.includes('scratch') || t.includes('skt')) {
     domainKey = 'junior';
@@ -80,7 +53,6 @@ export function buildDomainProgramCourses(
   const modules = [];
 
   for (let w = 1; w <= numWeeks; w++) {
-    const video = getDomainVideo(domainKey, w - 1);
     let modTitle = `Week ${w}: Applied Practical Sprints`;
     let modDesc = `Structured learning modules and hands-on laboratory exercises for Week ${w}.`;
     let quizTitle = `Quiz ${w}: Week ${w} Knowledge Check & Technical Review`;
@@ -94,32 +66,35 @@ export function buildDomainProgramCourses(
         modDesc = 'Master prompt architecture, few-shot prompting, systemic tone engineering, and automated long-form copywriting pipelines.';
         quizTitle = 'Quiz 1: Prompt Paradigms, Temperature Calibration & Copywriting Architecture';
         assignmentTitle = 'Assignment 1: Omnichannel Brand Copywriting Matrix & Persona Sprint';
+        const cVid0 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Precision Prompting & Few-Shot Architecture', weekIdx: 0, lessonIdx: 0 });
+        const cVid1 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Long-Form Copy, Thought Leadership & SEO Mapping', weekIdx: 0, lessonIdx: 1 });
+        const cVid2 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Automated Social Media Repurposing & Editorial Calendars', weekIdx: 0, lessonIdx: 2 });
         lessons = [
           {
             title: 'Precision Prompting & Few-Shot Architecture',
             contentSummary: 'In-depth breakdown of prompt schemas, persona definitions, and boundary constraints.',
             content: `### 1. Conceptual Framework & Prompt Mechanics\nIn modern generative AI systems, a prompt functions as a programmatic instruction set that steers the probabilistic token distribution of large language models. Rather than treating AI as a conversational toy, professional content architects implement structured prompt templates incorporating System Directives, Persona Definition, Few-Shot In-Context Examples, Output Schema Constraints, and Negative Boundaries. This architectural discipline eliminates hallucinations, guarantees predictable tone, and enforces brand consistency across thousands of marketing deliverables.\n\n### 2. Hands-On Workflow & Toolchain Execution\nTo execute deterministic prompt engineering:\n1. Initialize your workspace using modern LLM playgrounds (Groq, OpenAI, Anthropic).\n2. Construct a System Persona: Establish role context (e.g. "Senior Copywriter specializing in West African consumer fintech").\n3. Provide 3 exemplary input-output pairs (few-shot prompting) demonstrating the exact sentence structure, emotional hook, and call to action.\n4. Specify delimiter tokens (### or XML tags) to isolate dynamic context from instructions.\n5. Calibrate temperature (0.2 for analytical copy, 0.7 for creative storytelling) and verify reproducible output across sample variations.\n\n### 3. Industry Standards & Local Nigerian/African Context\nWhen creating localized copy for Nigerian and African markets, global prompts often yield generic Western idioms. Prompt architects must inject local cultural nuances, vernacular resonance, currency formatting (₦ NGN), and target consumer demographics. Never publish raw model outputs without passing through a secondary fact-checking and brand adherence validation pipeline.`,
-            videoUrl: video.url,
-            videoDurationMin: 24,
-            videoSummary: 'Core principles of few-shot prompting, temperature tuning, and deterministic output structuring.',
+            videoUrl: cVid0.embedUrl,
+            videoDurationMin: cVid0.durationMin,
+            videoSummary: cVid0.summary,
             practicalActivities: ['Lab 1: Design a 5-stage prompt chain translating raw product features into persuasive consumer benefits.'],
           },
           {
             title: 'Long-Form Copy, Thought Leadership & SEO Mapping',
             contentSummary: 'Modular article synthesis, rhetorical structure, and semantic keyword integration.',
             content: `### 1. Architectural Narrative Frameworks\nLong-form content generation requires breaking complex themes into coherent hierarchical outlines before generating paragraphs. AI models suffer from attention degradation when generating thousands of continuous tokens. Professional creators overcome this by implementing modular generation: first synthesizing a comprehensive narrative arc (Hook, Problem Escalation, Solution Paradigm, Practical Demonstration, and Strategic Takeaways), and subsequently prompting the model section-by-section to ensure depth, academic citations, and rhetorical momentum.\n\n### 2. SEO Integration & Keyword Mapping\nTo align AI long-form articles with algorithmic search indexing, creators must embed primary and semantic Latent Semantic Indexing (LSI) search phrases naturally throughout headers (H2, H3), introductory paragraphs, and structured bullet lists. We utilize AI to analyze competitor SERP rankings, identify content gaps, and synthesize original analytical insights rather than repeating generic web summaries.\n\n### 3. Editorial Quality Control\nHigh-performing editorial operations enforce strict readability metrics (Flesch-Kincaid Grade Level 8-10), plagiarism checks (zero tolerance), and factual citation verification. Every generated statistic or case study must be hyperlinked to primary verifiable sources before publication.`,
-            videoUrl: video.url,
-            videoDurationMin: 22,
-            videoSummary: 'Techniques for generating in-depth thought leadership articles without repetitive phrasing.',
+            videoUrl: cVid1.embedUrl,
+            videoDurationMin: cVid1.durationMin,
+            videoSummary: cVid1.summary,
             practicalActivities: ['Lab 2: Synthesize a 1,500-word authoritative industry whitepaper using modular section-by-section prompting.'],
           },
           {
             title: 'Automated Social Media Repurposing & Editorial Calendars',
             contentSummary: 'Transforming core source assets into multi-platform distribution suites.',
             content: `### 1. Omnichannel Repurposing Engines\nA single core asset (such as a podcast transcript, webinar recording, or technical blog) contains the foundation for 30+ micro-content assets. Content architects build automated transformation pipelines that systematically extract Twitter/X threads, LinkedIn carousel scripts, Instagram caption hooks, and email newsletter summaries from one primary transcript.\n\n### 2. Tone Modulation & Platform Nuances\nDifferent digital platforms demand distinct linguistic registers. LinkedIn requires executive clarity, career insights, and analytical data. Twitter/X demands rapid scroll-stopping hooks, punchy declarative sentences, and concise takeaways. Content architects teach models to modulate tone matrices dynamically while preserving the core brand proposition.\n\n### 3. Workflow Automation & Scaling\nConnecting generative LLMs to automation workflows (via webhooks, Zapier, Make, or Python scripts) enables marketing teams to batch-generate and schedule weekly editorial calendars in minutes, freeing creative directors to focus on high-level narrative strategy and visual polish.`,
-            videoUrl: video.url,
-            videoDurationMin: 20,
-            videoSummary: 'Batch generation strategies for multi-platform distribution and editorial planning.',
+            videoUrl: cVid2.embedUrl,
+            videoDurationMin: cVid2.durationMin,
+            videoSummary: cVid2.summary,
             practicalActivities: ['Lab 3: Transform a single 3-minute executive speech transcript into a complete 7-day multi-platform social calendar.'],
           },
         ];
@@ -128,32 +103,35 @@ export function buildDomainProgramCourses(
         modDesc = 'Master latent diffusion mechanics, Midjourney/Stable Diffusion prompt taxonomies, consistent characters, and high-resolution commercial asset exports.';
         quizTitle = 'Quiz 2: Diffusion Architecture, ControlNet & Commercial Asset Production';
         assignmentTitle = 'Assignment 2: Corporate Brand Identity Deck & High-Resolution Ad Pack';
+        const cVid0 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Diffusion Model Mechanics, Camera Directives & Style Control', weekIdx: 1, lessonIdx: 0 });
+        const cVid1 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Consistent Character Generation & Product Mockup Pipelines', weekIdx: 1, lessonIdx: 1 });
+        const cVid2 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Neural Upscaling, Vectorization & High-Resolution Print Output', weekIdx: 1, lessonIdx: 2 });
         lessons = [
           {
             title: 'Diffusion Model Mechanics, Camera Directives & Style Control',
             contentSummary: 'Latent space principles, camera optics descriptors, and negative prompting frameworks.',
             content: `### 1. Diffusion Mathematics & Latent Space Principles\nLatent Diffusion Models generate imagery through iterative denoising within a compressed mathematical latent space. Rather than pasting together existing internet pictures, the model starts with Gaussian noise and iteratively removes random artifacts based on the cross-attention guidance of text embeddings (CLIP/T5). Understanding prompt weighting (::1.5), aspect ratios (--ar 16:9), Classifier-Free Guidance (CFG scale), and seed reproducibility is essential for creative directors needing precise visual control.\n\n### 2. Visual Prompt Engineering & Camera Optics\nMastering commercial image synthesis requires detailed descriptor taxonomies: specifying camera lenses (85mm f/1.4 prime lens), lighting conditions (cinematic volumetric rim lighting, golden hour, diffuse softbox), camera angles (Dutch tilt, eye-level macro), and artistic textures. Crucially, negative prompts strip away common synthetic artifacts such as deformed limbs, oversaturated chromatic aberration, text watermarks, and unnatural skin textures.\n\n### 3. Commercial Art Direction & African Context\nGlobal diffusion models often perpetuate stereotypical visual biases when generating African subjects and settings. Professional creators master targeted prompting that showcases authentic modern African architecture with respectful, high-fidelity lighting and natural skin tones.`,
-            videoUrl: video.url,
-            videoDurationMin: 25,
-            videoSummary: 'Camera descriptors, prompt weighting, and CFG parameters for high-impact visual generation.',
+            videoUrl: cVid0.embedUrl,
+            videoDurationMin: cVid0.durationMin,
+            videoSummary: cVid0.summary,
             practicalActivities: ['Lab 1: Generate a photorealistic 6-image campaign series showcasing modern Nigerian tech entrepreneurs in professional studio lighting.'],
           },
           {
             title: 'Consistent Character Generation & Product Mockup Pipelines',
             contentSummary: 'Locking facial embeddings and products across dynamic settings using ControlNet and Reference tags.',
             content: `### 1. Overcoming the Consistency Challenge\nThe primary hurdle in commercial AI design is character consistency: ensuring the exact same brand ambassador, mascot, or product appears across multiple scenes, emotional expressions, and camera angles. Creators utilize ControlNet (OpenPose, Canny edge detection, Depth maps) and Character Reference tags (--cref in Midjourney) to lock facial features and apparel while dynamically modifying environments.\n\n### 2. Multi-Angle Product Rendering\nFor e-commerce and product packaging, generative tools allow designers to generate photorealistic product renders without expensive 3D studio equipment. By supplying reference wireframes and applying consistent seed and lighting prompts, brands can visualize physical packaging in urban supermarkets, modern kitchens, or billboard mockups.\n\n### 3. Production Workflows in Canva & Figma\nGenerative images must be composited into production layout software. Designers export high-resolution assets, remove backgrounds cleanly using neural segmentation, and integrate typography, brand logos, and vector UI components in Figma to produce publication-ready marketing collaterals.`,
-            videoUrl: video.url,
-            videoDurationMin: 22,
-            videoSummary: 'ControlNet poses, character locking, and product rendering workflows.',
+            videoUrl: cVid1.embedUrl,
+            videoDurationMin: cVid1.durationMin,
+            videoSummary: cVid1.summary,
             practicalActivities: ['Lab 2: Create a single consistent fictional corporate mascot and render them across 4 distinct workplace scenarios.'],
           },
           {
             title: 'Neural Upscaling, Vectorization & High-Resolution Print Output',
             contentSummary: 'Real-ESRGAN super-resolution, raster-to-vector conversion, and CMYK pre-press requirements.',
             content: `### 1. Neural Super-Resolution & Artifact Correction\nStandard diffusion models typically output images at 1024x1024 pixels, which is insufficient for large-format physical billboards, trade show banners, or ultra-HD digital displays. Neural upscalers utilize deep learning to hallucinate realistic high-frequency micro-textures (pores, fabric weaves, foliage) while scaling images up to 8K resolution without blurriness.\n\n### 2. Raster-to-Vector Conversion for Brand Identity\nLogos, icons, and graphic illustrations generated through AI must frequently be converted from raster pixels (PNG/JPG) to scalable vector graphics (SVG). Designers utilize automated vector trace algorithms followed by manual bezier curve refinement in Adobe Illustrator or Inkscape to produce production-grade master logos.\n\n### 3. Pre-Press Quality Control & Color Space Conversion\nBefore sending assets to commercial printers, digital assets rendered in RGB color space must be converted to CMYK with appropriate DPI settings (300 DPI minimum) and bleed margins. Understanding print production ensures AI-generated visuals look as crisp on physical flyers in Ile-Ife as they do on high-resolution smartphone screens.`,
-            videoUrl: video.url,
-            videoDurationMin: 20,
-            videoSummary: 'Upscaling algorithms, DPI standards, and vector conversion techniques.',
+            videoUrl: cVid2.embedUrl,
+            videoDurationMin: cVid2.durationMin,
+            videoSummary: cVid2.summary,
             practicalActivities: ['Lab 3: Upscale and prep an AI-generated event poster for commercial 300 DPI CMYK large-format physical printing.'],
           },
         ];
@@ -162,32 +140,35 @@ export function buildDomainProgramCourses(
         modDesc = 'Cinematic text-to-video with Runway/Pika, neural voice cloning with ElevenLabs, and freelance/agency monetization strategies for Nigerian & global clients.';
         quizTitle = 'Quiz 3: AI Video Generation, Voice Cloning & Agency Retainer Packaging';
         assignmentTitle = 'Assignment 3: 60-Second Commercial AI Video Showcase & Commercial Proposal Deck';
+        const cVid0 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'AI Video Motion Synthesis with Runway, Pika & Sora Models', weekIdx: 2, lessonIdx: 0 });
+        const cVid1 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Voice Cloning, Multilingual Audio Dubbing & Sound Design', weekIdx: 2, lessonIdx: 1 });
+        const cVid2 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Packaging, Commercial Retainers & Freelance Monetization', weekIdx: 2, lessonIdx: 2 });
         lessons = [
           {
             title: 'AI Video Motion Synthesis with Runway, Pika & Sora Models',
             contentSummary: 'Text-to-video, image-to-video, camera paths, and cinematic b-roll direction.',
             content: `### 1. The Video Diffusion Revolution\nGenerative AI video transforms static visual concepts into cinematic moving footage through spatio-temporal diffusion architectures. Models like Runway Gen-3, Pika Labs, and Luma Dream Machine synthesize coherent frame sequences by interpolating motion vectors across temporal latents. Creators master text-to-video, image-to-video, and camera motion prompts (pan, tilt, pedestal, zoom, orbit) to produce Hollywood-grade b-roll without physical cameras or location scouting.\n\n### 2. Motion Brush, Camera Paths & Temporal Coherence\nAchieving photorealistic video requires isolating motion to specific elements while keeping structural background geometry rock-solid. Creators utilize motion brush controls and trajectory keyframes to dictate directional velocity, preventing the surreal morphing artifacts typical of unconstrained video generations.\n\n### 3. Assembling the Director's Storyboard\nProfessional video creators don't generate 60-second clips in one pass. They decompose scripts into 3-second to 5-second cinematic shots, meticulously prompting shot types, lighting continuity, and pacing to build a cohesive narrative storyboard ready for the edit suite.`,
-            videoUrl: video.url,
-            videoDurationMin: 25,
-            videoSummary: 'Camera motion controls, motion brush targeting, and multi-shot storyboard assembly.',
+            videoUrl: cVid0.embedUrl,
+            videoDurationMin: cVid0.durationMin,
+            videoSummary: cVid0.summary,
             practicalActivities: ['Lab 1: Generate a 5-shot cinematic video montage showcasing a future smart city in Nigeria with coherent camera motion.'],
           },
           {
             title: 'Voice Cloning, Multilingual Audio Dubbing & Sound Design',
             contentSummary: 'ElevenLabs voice synthesis, multilingual African accent dubbing, and AI soundtrack scoring.',
             content: `### 1. Neural Voice Synthesis & Expressive Voice Cloning\nGenerative voice models analyze short audio samples to construct high-fidelity acoustic embeddings capturing pitch cadence, timbre, emotional inflections, and breath patterns. Using tools like ElevenLabs, audio engineers can clone custom brand voices or synthesize professional voiceovers in dozens of languages and accents with photorealistic realism.\n\n### 2. Multilingual Dubbing & Accents for Local Market Reach\nIn diverse markets like Nigeria, communicating across English, Pidgin, Yoruba, Igbo, and Hausa drastically expands campaign reach and listener trust. Neural dubbing pipelines preserve the original speaker's vocal identity while seamlessly translating script copy and synchronizing lip timing for video broadcasts.\n\n### 3. Sound Effects & Generative Background Scores\nComplete video production requires immersive audio soundscapes. Designers utilize text-to-audio synthesis to generate contextual foley effects and generative music platforms to compose royalty-free background themes that elevate video production value.`,
-            videoUrl: video.url,
-            videoDurationMin: 22,
-            videoSummary: 'Voice cloning workflows, multilingual lip-sync translation, and soundtrack synthesis.',
+            videoUrl: cVid1.embedUrl,
+            videoDurationMin: cVid1.durationMin,
+            videoSummary: cVid1.summary,
             practicalActivities: ['Lab 2: Clone an executive voiceover sample and produce a dual-language (English and Yoruba/Pidgin) marketing audio narration.'],
           },
           {
             title: 'Packaging, Commercial Retainers & Freelance Monetization',
             contentSummary: 'Pricing frameworks (₦250k-₦750k/mo), Upwork/Fiverr client acquisition, and commercial copyright law.',
             content: `### 1. Commercial Value Proposition & Client Packaging\nThe true power of mastering AI content creation lies in commercial monetization. Businesses in Nigeria and across the globe spend millions of Naira monthly on advertising agencies, copywriters, and video editors. By leveraging AI workflows, a solo content specialist or boutique studio can produce agency-grade deliverables at 10x speed, packaging offerings into high-ticket monthly retainers (e.g., ₦250,000 - ₦750,000/month for corporate social dominance suites).\n\n### 2. Navigating Global Platforms: Upwork, Fiverr & Direct B2B Outreach\nContent architects build international freelance revenue streams by targeting high-demand service categories: AI Prompt Consultant, Generative Ad Creative Specialist, YouTube Faceless Channel Producer, and Corporate AI Content Strategist. We implement client onboarding agreements, scope of work templates, and milestone billing structures.\n\n### 3. Ethics, Copyright Law & Commercial Licensing\nProfessional content architects understand intellectual property law regarding synthetic media. We examine current Nigerian and international copyright doctrines, commercial usage terms of generative platforms, deepfake ethics, and disclosure guidelines. Delivering commercial assurance to corporate clients differentiates elite professionals from casual hobbyists.`,
-            videoUrl: video.url,
-            videoDurationMin: 26,
-            videoSummary: 'Monetization pricing models, client retainers, contract scopes, and copyright compliance.',
+            videoUrl: cVid2.embedUrl,
+            videoDurationMin: cVid2.durationMin,
+            videoSummary: cVid2.summary,
             practicalActivities: ['Lab 3: Develop a client pitch proposal, contract scope of work document, and pricing calculator for an AI content agency retainer.'],
           },
         ];
@@ -196,32 +177,35 @@ export function buildDomainProgramCourses(
         modDesc = `Scaling autonomous multi-modal content pipelines, cross-platform video automation, and client capstone defense.`;
         quizTitle = `Quiz ${w}: Multi-Modal Pipeline Architecture & Production Benchmarks`;
         assignmentTitle = `Assignment ${w}: End-to-End Enterprise Multi-Modal Campaign Delivery`;
+        const cVid0 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Advanced Automation Pipelines & Webhook Integrations', weekIdx: w - 1, lessonIdx: 0 });
+        const cVid1 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Brand Safety, Bias Mitigation & Disclosure Compliance', weekIdx: w - 1, lessonIdx: 1 });
+        const cVid2 = getCuratedVideoForLesson({ programName: title, schoolCode, moduleTitle: modTitle, lessonTitle: 'Capstone Campaign Presentation & Commercial Defense', weekIdx: w - 1, lessonIdx: 2 });
         lessons = [
           {
             title: `Advanced Automation Pipelines & Webhook Integrations (Week ${w})`,
             contentSummary: 'Automated script-to-video-to-publish workflows using Python and workflow webhooks.',
             content: `### 1. Automation Frameworks\nScaling generative media beyond manual prompting requires programmatic pipeline automation. By leveraging REST APIs inside Python or Make.com workflows, teams trigger automated asset production upon CMS publication schedules.\n\n### 2. Quality Evaluation & Human-in-the-Loop Review\nAutonomous workflows must integrate human-in-the-loop review checkpoints to catch anomalous generations before public dissemination.\n\n### 3. Operational Efficiency\nOperating autonomous media engines reduces production costs by up to 85% while enabling 24/7 localized content generation.`,
-            videoUrl: video.url,
-            videoDurationMin: 20,
-            videoSummary: 'Pipeline orchestration, API webhooks, and validation checkpoints.',
+            videoUrl: cVid0.embedUrl,
+            videoDurationMin: cVid0.durationMin,
+            videoSummary: cVid0.summary,
             practicalActivities: [`Lab 1: Build an automated Python/Make webhook pipeline that turns blog posts into short-form video scripts.`],
           },
           {
             title: `Brand Safety, Bias Mitigation & Disclosure Compliance (Week ${w})`,
             contentSummary: 'Enterprise risk management, model bias audits, and regulatory disclosure standards.',
             content: `### 1. Brand Safety Guardrails\nEnterprise clients require ironclad brand protection against copyright claims, unintended hallucinations, or culturally insensitive imagery.\n\n### 2. Synthetic Media Disclosure Standards\nIn alignment with global AI regulatory standards (such as NITDA and EU AI Act), enterprise campaigns must provide clear watermark metadata or synthetic media tags on photorealistic AI-generated human avatars.\n\n### 3. Audit Logging & Client Protection\nMaintaining comprehensive audit logs of all model prompts protects creators in commercial disputes.`,
-            videoUrl: video.url,
-            videoDurationMin: 18,
-            videoSummary: 'Regulatory compliance, brand safety filters, and synthetic media disclosure protocols.',
+            videoUrl: cVid1.embedUrl,
+            videoDurationMin: cVid1.durationMin,
+            videoSummary: cVid1.summary,
             practicalActivities: [`Lab 2: Conduct a brand safety audit on a generative advertising campaign and implement compliance watermarking.`],
           },
           {
             title: `Capstone Campaign Presentation & Commercial Defense (Week ${w})`,
             contentSummary: 'Defending a full commercial AI media campaign in front of academic and industry faculty.',
             content: `### 1. Capstone Structure & Deliverables\nThe capstone project synthesizes all competencies learned throughout the program into a comprehensive commercial artifact.\n\n### 2. Live Faculty Presentation & Rubrics\nStudents present their campaigns before STEMPACT faculty and industry evaluators, demonstrating technical workflow execution and commercial economic viability.\n\n### 3. Portfolio Publishing & Career Launch\nUpon passing defense, all artifacts are packaged into public portfolios, positioning graduates for immediate freelance contracts or agency employment.`,
-            videoUrl: video.url,
-            videoDurationMin: 25,
-            videoSummary: 'Capstone defense standards, portfolio presentation, and commercial kickoff.',
+            videoUrl: cVid2.embedUrl,
+            videoDurationMin: cVid2.durationMin,
+            videoSummary: cVid2.summary,
             practicalActivities: [`Lab 3: Finalize, package, and publish your capstone portfolio showcase ready for faculty review.`],
           },
         ];
@@ -231,32 +215,58 @@ export function buildDomainProgramCourses(
       modDesc = `In-depth technical architecture, hands-on lab sprints, and measurable skill acquisition for Week ${w}.`;
       quizTitle = `Quiz ${w}: Week ${w} Technical Architecture & Mechanics`;
       assignmentTitle = `Assignment ${w}: Hands-On Laboratory Implementation Sprint`;
+      
+      const vid0 = getCuratedVideoForLesson({
+        programName: title,
+        schoolCode,
+        moduleTitle: modTitle,
+        lessonTitle: `Technical Foundations & Systems Architecture (Week ${w})`,
+        weekIdx: w - 1,
+        lessonIdx: 0,
+      });
+      const vid1 = getCuratedVideoForLesson({
+        programName: title,
+        schoolCode,
+        moduleTitle: modTitle,
+        lessonTitle: `Hands-On Lab Sprint & Guided Build (Week ${w})`,
+        weekIdx: w - 1,
+        lessonIdx: 1,
+      });
+      const vid2 = getCuratedVideoForLesson({
+        programName: title,
+        schoolCode,
+        moduleTitle: modTitle,
+        lessonTitle: `Review, Edge Cases & Industry Application (Week ${w})`,
+        weekIdx: w - 1,
+        lessonIdx: 2,
+      });
+
       lessons = [
         {
           title: `Technical Foundations & Systems Architecture (Week ${w})`,
           contentSummary: `Core principles, design patterns, and engineering paradigms for Week ${w}.`,
           content: `### 1. Theoretical Foundations & Architecture\nComprehensive technical breakdown of core concepts, standard industry patterns, and architectural principles required for production deployment.\n\n### 2. Hands-On Implementation Guide\nStep-by-step practical implementation walkthrough configuring tools, writing modular code, and verifying test suites.\n\n### 3. Industry Standards & Real-World Practices\nProduction standards, performance optimizations, safety procedures, and local Nigerian/African market application.`,
-          videoUrl: video.url,
-          videoDurationMin: video.duration,
-          videoSummary: video.summary,
+          videoUrl: vid0.embedUrl,
+          videoDurationMin: vid0.durationMin,
+          videoSummary: vid0.summary,
           practicalActivities: [`Lab 1: Configure environment and implement foundational technical prototype for Week ${w}.`],
         },
         {
           title: `Hands-On Lab Sprint & Guided Build (Week ${w})`,
           contentSummary: `Practical guided laboratory build applying toolchains to real-world engineering challenges.`,
           content: `### 1. Laboratory Objectives & System Specifications\nDetailed specifications for the weekly hands-on project, defining input requirements and expected output deliverables.\n\n### 2. Step-by-Step Build Walkthrough\nComplete guided implementation sprint emphasizing error handling, modular structuring, and code cleanliness.\n\n### 3. Quality Assurance & Benchmarks\nVerifying correctness through unit tests, physical measurements, or functional demonstrations.`,
-          videoUrl: video.url,
-          videoDurationMin: video.duration + 5,
-          videoSummary: 'Practical walkthrough and implementation details.',
+          videoUrl: vid1.embedUrl,
+          videoDurationMin: vid1.durationMin,
+          videoSummary: vid1.summary,
           practicalActivities: [`Lab 2: Execute practical build and verify deliverables against technical benchmarks.`],
         },
         {
           title: `Review, Edge Cases & Industry Application (Week ${w})`,
           contentSummary: `Quality verification, troubleshooting edge cases, and preparing portfolio deliverables.`,
           content: `### 1. Advanced Considerations & Edge Cases\nIdentifying edge cases, fault conditions, and mitigation strategies for real-world production environments.\n\n### 2. Performance Tuning & Scalability\nTechniques for optimizing resource utilization, latency, energy efficiency, or financial returns.\n\n### 3. Portfolio Documentation & Delivery\nPackaging deliverables with comprehensive documentation for client or faculty review.`,
-          videoUrl: video.url,
-          videoDurationMin: video.duration - 2,
-          videoSummary: 'Review of common pitfalls and portfolio best practices.',
+          videoUrl: vid2.embedUrl,
+          videoDurationMin: vid2.durationMin,
+          videoSummary: vid2.summary,
           practicalActivities: [`Lab 3: Document deliverables and commit artifacts to portfolio repository.`],
         },
       ];
@@ -359,9 +369,18 @@ export function repairStructuredFields(obj: any, prompt: string): any {
                   l.content = refLesson?.content || l.contentSummary || 'Detailed instructional lesson guide.';
                 }
                 if (!l.videoUrl) {
-                  l.videoUrl = refLesson?.videoUrl;
-                  l.videoDurationMin = refLesson?.videoDurationMin || 20;
-                  l.videoSummary = refLesson?.videoSummary;
+                  const curatedVid = getCuratedVideoForLesson({
+                    programName: obj.name,
+                    programCode: obj.code,
+                    schoolCode: obj.schoolCode,
+                    moduleTitle: m.title,
+                    lessonTitle: l.title,
+                    weekIdx: mIdx,
+                    lessonIdx: lIdx,
+                  });
+                  l.videoUrl = curatedVid.embedUrl;
+                  l.videoDurationMin = curatedVid.durationMin;
+                  l.videoSummary = curatedVid.summary;
                 }
               }
             }
@@ -513,7 +532,165 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
   }
 
   if (p.includes('assessment') || p.includes('diagnostic')) {
+    const isMedia = p.includes('content') || p.includes('media') || p.includes('market') || p.includes('productiv') || p.includes('creative') || p.includes('video') || p.includes('graphic');
     const isHardware = p.includes('hardware') || p.includes('embedded') || p.includes('robot') || p.includes('iot');
+    
+    if (isMedia) {
+      return {
+        title: 'Diagnostic Placement Assessment: Digital Media, Marketing & AI Productivity',
+        description: 'Adaptive diagnostic evaluation assessing digital literacy, creative problem-solving, and AI content creation workflows.',
+        timeLimitMinutes: 30,
+        passingScorePercentage: 60,
+        questions: [
+          {
+            questionText: 'In digital media asset management, what is the primary distinction between raster images (e.g. JPEG, PNG) and vector graphics (e.g. SVG)?',
+            questionType: 'MCQ',
+            category: 'DIGITAL_LITERACY',
+            difficulty: 'EASY',
+            points: 5,
+            options: [
+              'Vector graphics scale infinitely without resolution loss, while raster images pixelate when enlarged',
+              'Raster images have no file size, while vector graphics cannot be viewed in web browsers',
+              'Vector graphics only support black and white colors',
+              'There is no functional distinction between raster and vector graphics',
+            ],
+            correctAnswer: 'Vector graphics scale infinitely without resolution loss, while raster images pixelate when enlarged',
+            explanation: 'Vectors use mathematical coordinates that remain crisp at any display resolution.',
+          },
+          {
+            questionText: 'A digital content creator schedules an automated video publishing workflow. Video rendering takes 20 minutes, thumbnail generation takes 10 minutes, and platform uploading/processing takes 15 minutes. What is the latest time to initiate rendering for a scheduled 5:00 PM release?',
+            questionType: 'MCQ',
+            category: 'LOGICAL_REASONING',
+            difficulty: 'MEDIUM',
+            points: 5,
+            options: ['4:15 PM', '4:45 PM', '3:30 PM', '4:55 PM'],
+            correctAnswer: '4:15 PM',
+            explanation: 'Total lead time required is 20 + 10 + 15 = 45 minutes; starting at 4:15 PM completes pipeline right by 5:00 PM.',
+          },
+          {
+            questionText: 'Which aspect ratio and resolution standard is canonically designed for vertical short-form mobile video (TikTok, Instagram Reels, YouTube Shorts)?',
+            questionType: 'MCQ',
+            category: 'DIGITAL_LITERACY',
+            difficulty: 'EASY',
+            points: 5,
+            options: [
+              '9:16 aspect ratio (typically 1080 × 1920 pixels)',
+              '16:9 aspect ratio (typically 1920 × 1080 pixels)',
+              '4:3 aspect ratio (typically 1024 × 768 pixels)',
+              '1:1 square aspect ratio only',
+            ],
+            correctAnswer: '9:16 aspect ratio (typically 1080 × 1920 pixels)',
+            explanation: 'Vertical 9:16 aspect ratio matches modern full-screen mobile smartphone viewports.',
+          },
+          {
+            questionText: 'In Generative AI copywriting and creative storytelling, what is the role of a "System Prompt" or "Role Framing" (e.g. "Act as a senior tech branding strategist")?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'EASY',
+            points: 5,
+            options: [
+              'It primes the Large Language Model with persona, behavioral constraints, tone of voice, and contextual directives',
+              'It increases the computer\'s download internet bandwidth',
+              'It automatically shuts down the AI model when idle',
+              'It translates English sentences into binary assembly machine code',
+            ],
+            correctAnswer: 'It primes the Large Language Model with persona, behavioral constraints, tone of voice, and contextual directives',
+            explanation: 'System prompts establish behavioral constraints and persona framing in language models.',
+          },
+          {
+            questionText: 'When generating visual concepts using diffusion models (e.g. Midjourney, Stable Diffusion), what is the primary purpose of a "Negative Prompt"?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'EASY',
+            points: 5,
+            options: [
+              'To specify unwanted attributes, artifacts, or styles to actively exclude from the generated image',
+              'To darken the exposure of the final image render',
+              'To delete the user account immediately following generation',
+              'To publish negative critique of the artwork on social media',
+            ],
+            correctAnswer: 'To specify unwanted attributes, artifacts, or styles to actively exclude from the generated image',
+            explanation: 'Negative prompts guide latent diffusion away from unwanted features and artifacts.',
+          },
+          {
+            questionText: 'In AI video and image synthesis pipelines, what does the "Seed" parameter determine across repeated generations?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'MEDIUM',
+            points: 5,
+            options: [
+              'A starting numerical value for the noise generator that allows reproducing consistent visual outputs when other parameters are unchanged',
+              'The financial fee charged per generation request',
+              'The maximum duration in seconds of the video clip',
+              'The physical number of computer monitors attached to the graphics card',
+            ],
+            correctAnswer: 'A starting numerical value for the noise generator that allows reproducing consistent visual outputs when other parameters are unchanged',
+            explanation: 'The seed initializes pseudo-random noise generation for deterministic reproducibility.',
+          },
+          {
+            questionText: 'Which metric on digital content algorithms (YouTube, Instagram, LinkedIn) most strongly correlates with sustained organic distribution and recommendation reach?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'MEDIUM',
+            points: 5,
+            options: [
+              'Average Watch Time / Audience Retention and meaningful shares/saves',
+              'Total count of arbitrary hashtags placed in the caption description',
+              'The specific time of day the author registered their account',
+              'How loudly the creator speaks in the first second of the video',
+            ],
+            correctAnswer: 'Average Watch Time / Audience Retention and meaningful shares/saves',
+            explanation: 'Recommendation algorithms prioritize audience retention rate and high-intent engagement like saves and shares.',
+          },
+          {
+            questionText: 'In ethical AI content production and commercial publishing, what is the standard professional governance standard regarding AI voice cloning and likeness?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'EASY',
+            points: 5,
+            options: [
+              'Obtain explicit verified consent and commercial rights clearance before replicating an individual\'s voice or likeness',
+              'Voice cloning can be used freely on any public person without disclosure or consent',
+              'AI voice cloning cannot be uploaded to the internet under any circumstances',
+              'Consent is only required for children under 5 years of age',
+            ],
+            correctAnswer: 'Obtain explicit verified consent and commercial rights clearance before replicating an individual\'s voice or likeness',
+            explanation: 'Responsible AI ethics requires explicit consent and rights clearance for synthetic identity replicas.',
+          },
+          {
+            questionText: 'In Search Engine Optimization (SEO) and automated content generation, why is human editorial review and "E-E-A-T" (Experience, Expertise, Authoritativeness, Trustworthiness) vital?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'MEDIUM',
+            points: 5,
+            options: [
+              'Search engines penalize unverified, hallucinated, low-value AI spam while rewarding verifiable original insights and real-world expertise',
+              'Because AI text cannot be converted into HTML code',
+              'Because modern computers cannot read articles longer than 200 words',
+              'To prevent internet cloud servers from running out of digital memory storage',
+            ],
+            correctAnswer: 'Search engines penalize unverified, hallucinated, low-value AI spam while rewarding verifiable original insights and real-world expertise',
+            explanation: 'Modern search algorithms downrank generic synthetic spam in favor of expert human perspectives.',
+          },
+          {
+            questionText: 'In Generative AI prompt engineering and creative writing, how does adjusting the "Temperature" parameter from 0.2 to 0.8 affect the model\'s output?',
+            questionType: 'MCQ',
+            category: 'DOMAIN_SPECIFIC',
+            difficulty: 'MEDIUM',
+            points: 5,
+            options: [
+              'Higher temperature introduces more creative variation and lexical novelty, while lower temperature yields deterministic and focused responses',
+              'Higher temperature causes the computer fan to spin faster and heat up physically',
+              'Higher temperature restricts the response length to 10 words or fewer',
+              'Temperature only controls the color brightness of generated photos',
+            ],
+            correctAnswer: 'Higher temperature introduces more creative variation and lexical novelty, while lower temperature yields deterministic and focused responses',
+            explanation: 'Temperature controls softmax probability distribution randomness across the vocabulary.',
+          },
+        ],
+      };
+    }
+
     return {
       title: isHardware
         ? 'Diagnostic Placement Assessment: Computer Hardware & Systems Engineering'

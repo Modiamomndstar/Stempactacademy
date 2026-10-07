@@ -99,6 +99,7 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
         schoolName: application.program?.school?.name || 'STEMPACT Academy',
         cohortName: application.cohort?.name || 'Assigned upon admission',
         status: application.status,
+        intendedLevel: application.intendedLevel || 'LEVEL_1_FOUNDATION',
         createdAt: application.createdAt,
       },
       assessmentAttempt: latestAttempt,

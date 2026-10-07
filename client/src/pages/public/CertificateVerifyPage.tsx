@@ -158,11 +158,21 @@ export const CertificateVerifyPage: React.FC = () => {
                   STEMPACT ACADEMY • ILE-IFE, OSUN STATE, NIGERIA
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">
-                  {certData.certificateType.replace(/_/g, ' ')} CERTIFICATE
+                  {certData.isTrackDiploma || certData.certificateType === 'DIPLOMA'
+                    ? 'PROFESSIONAL GRADUATION DIPLOMA'
+                    : `${certData.certificateType.replace(/_/g, ' ')} CERTIFICATE`}
                 </h2>
                 <p className="text-xs text-slate-400 italic">
-                  Stem Skills for Real World Impact
+                  STEM Skills for Real-World Impact
                 </p>
+                {certData.endorsingPartner && (
+                  <div className="pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold">
+                      <Award className="w-3.5 h-3.5 text-indigo-600" />
+                      In Institutional Endorsement with {certData.endorsingPartner}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="py-2 text-xs text-slate-600">
@@ -174,8 +184,9 @@ export const CertificateVerifyPage: React.FC = () => {
               </div>
 
               <div className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                has successfully mastered all practical laboratory milestones, course modules, and defended the
-                prescribed capstone project in
+                {certData.isTrackDiploma || certData.certificateType === 'DIPLOMA'
+                  ? 'has successfully completed all academic progression tiers (Foundation through Mastery), practical laboratory milestones, and defended the capstone project in'
+                  : 'has successfully mastered all prescribed curriculum modules, laboratory practicals, and coursework milestones in'}
               </div>
 
               <div className="text-lg sm:text-xl font-extrabold text-slate-900">

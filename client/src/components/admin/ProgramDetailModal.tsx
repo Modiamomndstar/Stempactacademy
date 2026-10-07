@@ -51,6 +51,71 @@ export const extractYouTubeId = (url?: string | null): string | null => {
   return null;
 };
 
+export interface VideoPlayerInfo {
+  type: 'youtube' | 'gdrive' | 'vimeo' | 'direct' | 'external';
+  embedUrl: string;
+  isDirectVideo: boolean;
+  label: string;
+}
+
+export const getVideoPlayerInfo = (url?: string | null): VideoPlayerInfo | null => {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // 1. YouTube
+  const ytId = extractYouTubeId(trimmed);
+  if (ytId) {
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube.com/embed/${ytId}`,
+      isDirectVideo: false,
+      label: 'YouTube Embed',
+    };
+  }
+
+  // 2. Google Drive video share link: /file/d/{ID}/view -> /file/d/{ID}/preview
+  const gDriveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (gDriveMatch && gDriveMatch[1]) {
+    return {
+      type: 'gdrive',
+      embedUrl: `https://drive.google.com/file/d/${gDriveMatch[1]}/preview`,
+      isDirectVideo: false,
+      label: 'Google Drive Stream',
+    };
+  }
+
+  // 3. Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return {
+      type: 'vimeo',
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
+      isDirectVideo: false,
+      label: 'Vimeo Video',
+    };
+  }
+
+  // 4. Direct video file (Cloudflare R2, AWS S3, MP4, WebM)
+  const isDirect = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(trimmed) || trimmed.includes('.r2.dev') || trimmed.includes('r2.cloudflarestorage.com');
+  if (isDirect) {
+    return {
+      type: 'direct',
+      embedUrl: trimmed,
+      isDirectVideo: true,
+      label: 'Direct Storage / R2 Video',
+    };
+  }
+
+  // 5. External URL
+  return {
+    type: 'external',
+    embedUrl: trimmed,
+    isDirectVideo: false,
+    label: 'External Video',
+  };
+};
+
 export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
   isOpen,
   onClose,
@@ -198,9 +263,9 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
     if (!editingLesson) return;
     setSavingVideo(true);
     try {
-      const ytId = extractYouTubeId(videoEditForm.videoUrl);
-      const cleanUrl = ytId
-        ? `https://www.youtube.com/embed/${ytId}`
+      const playerInfo = getVideoPlayerInfo(videoEditForm.videoUrl);
+      const cleanUrl = playerInfo
+        ? playerInfo.embedUrl
         : (videoEditForm.videoUrl ? videoEditForm.videoUrl.trim() : null);
 
       await api.updateLessonVideo(editingLesson.id, {
@@ -265,7 +330,7 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
     if (!program?.id) return;
     setCuratingAllVideos(true);
     try {
-      const res = await api.curateProgramVideos(program.id);
+      const res = await api.curateProgramVideos(program.id, { overwrite: true });
       setCurateSuccessMessage(`AI Video Curator dispatched! Curated ${res?.result?.totalCurated || res?.lessonsCount || 0} module lessons with verified YouTube tutorial iframes.`);
       await loadProgramDetail();
       setTimeout(() => setCurateSuccessMessage(''), 5000);
@@ -966,19 +1031,56 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
             {/* Video Player & Details */}
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {(() => {
-                const ytId = extractYouTubeId(previewLesson.videoUrl);
-                return ytId ? (
-                  <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-lg border border-slate-800" style={{ paddingBottom: '56.25%' }}>
-                    <iframe
-                      src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
-                      title={previewLesson.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="absolute inset-0 w-full h-full"
-                      style={{ border: 0 }}
-                    />
-                  </div>
-                ) : previewLesson.videoUrl ? (
+                const playerInfo = getVideoPlayerInfo(previewLesson.videoUrl);
+                if (!playerInfo) {
+                  return (
+                    <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-3">
+                      <Video className="w-10 h-10 text-slate-400 mx-auto" />
+                      <p className="text-xs text-slate-500 font-medium">No video tutorial currently embedded for this lesson.</p>
+                    </div>
+                  );
+                }
+
+                if (playerInfo.isDirectVideo) {
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <Play className="w-3.5 h-3.5" />
+                        <span>Playing: {playerInfo.label}</span>
+                      </div>
+                      <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-lg border border-slate-800" style={{ paddingBottom: '56.25%' }}>
+                        <video
+                          src={playerInfo.embedUrl}
+                          controls
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (playerInfo.type === 'youtube' || playerInfo.type === 'gdrive' || playerInfo.type === 'vimeo') {
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                        <Play className="w-3.5 h-3.5" />
+                        <span>Source: {playerInfo.label}</span>
+                      </div>
+                      <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-lg border border-slate-800" style={{ paddingBottom: '56.25%' }}>
+                        <iframe
+                          src={playerInfo.embedUrl}
+                          title={previewLesson.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full"
+                          style={{ border: 0 }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
                   <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-center space-y-3">
                     <Video className="w-10 h-10 text-slate-400 mx-auto" />
                     <div>
@@ -994,11 +1096,6 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                         {previewLesson.videoUrl}
                       </a>
                     </div>
-                  </div>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-3">
-                    <Video className="w-10 h-10 text-slate-400 mx-auto" />
-                    <p className="text-xs text-slate-500 font-medium">No video tutorial currently embedded for this lesson.</p>
                   </div>
                 );
               })()}
@@ -1092,41 +1189,67 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
             <form onSubmit={handleSaveLessonVideo} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                  <span>YouTube Video Link or Embed URL *</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Supports watch, youtu.be, or 11-char ID</span>
+                  <span>Video Source URL (YouTube, Google Drive, Cloudflare R2 / MP4, Vimeo) *</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Supports YouTube, Drive preview, Vimeo & MP4</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. https://www.youtube.com/watch?v=kqtD5dpn9C8 or youtu.be/kqtD5dpn9C8"
+                  placeholder="e.g. YouTube watch link, Google Drive share link, or Cloudflare R2 .mp4 URL"
                   value={videoEditForm.videoUrl}
                   onChange={(e) => setVideoEditForm((prev) => ({ ...prev, videoUrl: e.target.value }))}
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Live Preview If Valid YouTube */}
+              {/* Live Preview If Valid Video Format */}
               {(() => {
-                const liveId = extractYouTubeId(videoEditForm.videoUrl);
-                return liveId ? (
-                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Valid YouTube Video Detected (ID: {liveId})</span>
+                const liveInfo = getVideoPlayerInfo(videoEditForm.videoUrl);
+                if (!liveInfo) return null;
+
+                if (liveInfo.isDirectVideo) {
+                  return (
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Valid Direct Video File (Cloudflare R2 / MP4 Storage)</span>
+                      </div>
+                      <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ paddingBottom: '45%' }}>
+                        <video
+                          src={liveInfo.embedUrl}
+                          controls
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      </div>
                     </div>
-                    <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ paddingBottom: '45%' }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${liveId}?rel=0`}
-                        title="Live Preview"
-                        className="absolute inset-0 w-full h-full"
-                        style={{ border: 0 }}
-                      />
+                  );
+                }
+
+                if (liveInfo.type === 'youtube' || liveInfo.type === 'gdrive' || liveInfo.type === 'vimeo') {
+                  return (
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Valid {liveInfo.label} Stream Detected</span>
+                      </div>
+                      <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ paddingBottom: '45%' }}>
+                        <iframe
+                          src={liveInfo.embedUrl}
+                          title="Live Preview"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full"
+                          style={{ border: 0 }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : videoEditForm.videoUrl ? (
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                    ⚠️ Enter a standard YouTube video URL (e.g. youtube.com/watch?v=...) to enable inline player embedding.
+                  );
+                }
+
+                return (
+                  <p className="text-[11px] text-blue-600 dark:text-blue-400">
+                    ℹ️ Custom video URL detected ({liveInfo.embedUrl}). Will be linked directly in student portal.
                   </p>
-                ) : null;
+                );
               })()}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

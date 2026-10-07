@@ -501,6 +501,10 @@ export interface Certificate {
   verified: boolean;
   signers: string | { name: string; title: string }[];
   verificationCode: string;
+  levelCode?: string;
+  isTrackDiploma?: boolean;
+  endorsingPartner?: string;
+  accreditationNote?: string;
 }
 
 export interface EventItem {

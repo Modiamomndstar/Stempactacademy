@@ -42,6 +42,8 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
       financialAssistanceReason,
       financialNotes,
       password, // applicant chooses password or default
+      intendedLevel,
+      preferredCenterId,
     } = req.body;
 
     if (!programId || !fullName || !email || !phone || !statementOfPurpose) {
@@ -89,6 +91,9 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
     // 2. Generate unique collision-safe Application ID
     const applicationNumber = await identifierService.generateApplicationNumber();
 
+    const allowedLevels = ['LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_MASTERY'];
+    const validIntendedLevel = intendedLevel && allowedLevels.includes(intendedLevel) ? intendedLevel : 'LEVEL_1_FOUNDATION';
+
     // 3. Create Application Record
     const application = await prisma.application.create({
       data: {
@@ -96,6 +101,8 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
         userId: user.id,
         programId,
         cohortId: cohortId || null,
+        preferredCenterId: preferredCenterId || null,
+        intendedLevel: validIntendedLevel,
         preferredSchedule: preferredSchedule || 'Flexible',
         fullName,
         dateOfBirth: birthDate,

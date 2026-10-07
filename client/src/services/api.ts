@@ -75,7 +75,8 @@ export const api = {
   updateProgram: (id: string, data: any) => apiRequest(`/admin/programs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProgram: (id: string) => apiRequest(`/admin/programs/${id}`, { method: 'DELETE' }),
   updateProgramStatus: (id: string, data: any) => apiRequest(`/programs/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
-  curateProgramVideos: (id: string) => apiRequest(`/admin/programs/${id}/curate-videos`, { method: 'POST' }),
+  curateProgramVideos: (id: string, data: { overwrite?: boolean } = {}) =>
+    apiRequest(`/admin/programs/${id}/curate-videos`, { method: 'POST', body: JSON.stringify(data) }),
   updateLessonVideo: (lessonId: string, data: { videoUrl?: string | null; videoDurationMin?: number | null; videoSummary?: string | null }) =>
     apiRequest(`/admin/lessons/${lessonId}/video`, { method: 'PATCH', body: JSON.stringify(data) }),
   curateSingleLessonVideo: (lessonId: string) =>

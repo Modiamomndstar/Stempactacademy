@@ -149,6 +149,7 @@ enum CertificateType {
   ADVANCED_PROFESSIONAL
   SPECIALIST
   INNOVATION
+  DIPLOMA
 }
 
 enum AdmissionStatus {
@@ -446,6 +447,7 @@ model Application {
   preferredCenterId   String?
   preferredCenter     LearningCenter?   @relation(fields: [preferredCenterId], references: [id], onDelete: SetNull)
   preferredSchedule   String
+  intendedLevel       AcademicLevel?    @default(LEVEL_1_FOUNDATION)
   fullName            String
   dateOfBirth         DateTime
   gender              String
@@ -1078,6 +1080,10 @@ model Certificate {
   verified          Boolean         @default(true)
   signers           String          // JSON array e.g. ["Dr. Director of Academics", "Lead Instructor"]
   verificationCode  String          @unique
+  levelCode         AcademicLevel?
+  isTrackDiploma    Boolean         @default(false)
+  endorsingPartner  String?
+  accreditationNote String?
   createdAt         DateTime        @default(now())
 }
 

@@ -3,6 +3,7 @@ import prisma from '../config/prisma.js';
 import { AssessmentService } from './assessmentService.js';
 import { emailService } from './emailService.js';
 import { createNotification } from './notificationService.js';
+import { identifierService } from './identifierService.js';
 
 export const CURRENT_PLACEMENT_RULE_VERSION = 'STEMPACT_RULES_V1';
 
@@ -150,9 +151,48 @@ export class PlacementService {
       }
 
       if (!application) {
-        const notFoundErr: any = new Error('No active application found for your account. Please submit an application before taking the placement assessment.');
-        notFoundErr.statusCode = 400;
-        throw notFoundErr;
+        // Safeguard: If the authenticated candidate takes an assessment without a pre-existing application record,
+        // auto-provision the official Application record to prevent blocking their assessment submission.
+        let resolvedProgramId: string | null = programId ? String(programId) : (assessment.programId || null);
+        if (!resolvedProgramId) {
+          const firstProg = await prisma.program.findFirst({ select: { id: true } });
+          resolvedProgramId = firstProg?.id || null;
+        }
+
+        if (resolvedProgramId) {
+          const applicationNumber = await identifierService.generateApplicationNumber();
+          const userRecord = await prisma.user.findUnique({ where: { id: authUser.id } });
+          const userFull = userRecord
+            ? `${userRecord.firstName || ''} ${userRecord.lastName || ''}`.trim() || authUser.email
+            : authUser.email;
+
+          application = await prisma.application.create({
+            data: {
+              applicationNumber,
+              userId: authUser.id,
+              programId: resolvedProgramId,
+              fullName: userFull,
+              email: authUser.email,
+              phone: userRecord?.phone || '',
+              address: 'Ile-Ife, Osun State',
+              educationLevel: 'Undergraduate / Technical Candidate',
+              careerGoals: 'Practical STEM Mastery & Real-World Impact',
+              learningObjectives: 'Hands-on Technical Excellence',
+              statementOfPurpose: 'Diagnostic Placement Assessment initiated via STEMPACT Academy Portal.',
+              preferredSchedule: 'Hybrid (Weekend & Evening)',
+              intendedLevel: 'LEVEL_1_FOUNDATION',
+              status: ApplicationStatus.SUBMITTED,
+              dateOfBirth: new Date(Date.now() - 18 * 365 * 24 * 3600 * 1000),
+              gender: 'Unspecified',
+            },
+            include: { program: true },
+          });
+          console.log(`✔ [PlacementService] Auto-provisioned application ${application.applicationNumber} for candidate ${authUser.email}`);
+        } else {
+          const notFoundErr: any = new Error('No active application found for your account. Please submit an application before taking the placement assessment.');
+          notFoundErr.statusCode = 400;
+          throw notFoundErr;
+        }
       }
     }
 

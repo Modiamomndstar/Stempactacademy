@@ -609,13 +609,25 @@ export const ApplicantDashboardPage: React.FC = () => {
                     <strong className="text-slate-900">{app.programName}</strong>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-500 block">Intended Starting Level</span>
+                    <strong className="text-indigo-700 font-bold">
+                      {app.intendedLevel ? app.intendedLevel.replace(/_/g, ' ') : 'Level 1 Foundation'}
+                    </strong>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
                     <span className="text-slate-500 block">Assigned Cohort</span>
-                    <strong className="text-slate-900">{app.cohortName}</strong>
+                    <strong className="text-slate-900">{app.cohortName || 'Pending Allocation'}</strong>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl">
                     <span className="text-slate-500 block">Preferred Schedule</span>
                     <strong className="text-slate-900">{app.preferredSchedule}</strong>
                   </div>
+                  {app.preferredCenterName && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-500 block">Preferred Learning Center</span>
+                      <strong className="text-slate-900">{app.preferredCenterName}</strong>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-6 text-center text-slate-500 text-xs">
@@ -662,6 +674,104 @@ export const ApplicantDashboardPage: React.FC = () => {
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Academic Placement & Level Progression Architecture Panel */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-900/50 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold tracking-wide uppercase border border-indigo-400/20">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  Orientation & Admissions Policy Guide
+                </div>
+                <h3 className="text-xl font-black text-white tracking-tight">
+                  Academic Placement & 4-Level Progression Architecture
+                </h3>
+                <p className="text-xs text-indigo-200/80 max-w-2xl leading-relaxed">
+                  Understand how your diagnostic assessment score, intended starting level, and school evaluation shape your journey from admission to graduation.
+                </p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('assessment')}
+                  className="px-4 py-2.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-indigo-50 transition shadow-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <span>View Diagnostic Status</span>
+                  <ArrowRight className="w-4 h-4 text-indigo-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* 3 Pillars of Placement */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-xs">
+                  01
+                </div>
+                <h4 className="font-bold text-white text-sm">Purpose of Diagnostic Assessment</h4>
+                <p className="text-[11px] text-indigo-200/80 leading-relaxed">
+                  The placement assessment consists of <strong>30% general foundation</strong> (digital literacy & analytical reasoning) and <strong>70% program-specific</strong> technical problems. It is a benchmark diagnostic, not an exclusionary exam.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 font-bold text-xs">
+                  02
+                </div>
+                <h4 className="font-bold text-white text-sm">Intended vs. Ratified Level</h4>
+                <p className="text-[11px] text-indigo-200/80 leading-relaxed">
+                  Your selected preference (e.g. <em>{app?.intendedLevel ? app.intendedLevel.replace(/_/g, ' ') : 'Level 1'}</em>) informs the Admissions Committee, but final placement is determined by your diagnostic score and available cohort levels in this cycle.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300 font-bold text-xs">
+                  03
+                </div>
+                <h4 className="font-bold text-white text-sm">Cohort-to-Cohort Continuity</h4>
+                <p className="text-[11px] text-indigo-200/80 leading-relaxed">
+                  Once you complete a level, you earn guaranteed progression eligibility. You can advance immediately into the next cohort cycle or defer to any future term that fits your schedule.
+                </p>
+              </div>
+            </div>
+
+            {/* 4 Progression Tiers */}
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                STEMPACT 4-Tier Academic Progression Structure
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/40 transition space-y-1.5">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Level 1</span>
+                  <h5 className="font-bold text-white text-xs">Foundation Stage</h5>
+                  <p className="text-[10px] text-slate-300 leading-normal">
+                    Zero-to-one fundamentals, core syntax, environment setup, and foundational principles. Ideal for career starters.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-blue-400/40 transition space-y-1.5">
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Level 2</span>
+                  <h5 className="font-bold text-white text-xs">Intermediate Stage</h5>
+                  <p className="text-[10px] text-slate-300 leading-normal">
+                    Applied industry toolsets, intermediate architectures, data structures, and practical group projects.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-purple-400/40 transition space-y-1.5">
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Level 3</span>
+                  <h5 className="font-bold text-white text-xs">Advanced Specialization</h5>
+                  <p className="text-[10px] text-slate-300 leading-normal">
+                    Complex enterprise workflows, advanced optimization, systems integration, and production deployment.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/40 transition space-y-1.5">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Level 4</span>
+                  <h5 className="font-bold text-white text-xs">Mastery & Capstone</h5>
+                  <p className="text-[10px] text-slate-300 leading-normal">
+                    Autonomous research, commercial capstone development, mentorship readiness, and industry certification.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -770,19 +880,47 @@ export const ApplicantDashboardPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-3">
-                <Sparkles className="w-8 h-8 text-blue-600 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-800">Ready to Take Your Diagnostic?</h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  The assessment takes approximately 25–30 minutes. Ensure you have a quiet environment and stable internet connection.
+              <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    {app ? `Diagnostic Placement Assessment for ${app.programName || 'Your Specialization'}` : 'Diagnostic Placement Assessment'}
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-lg mx-auto mt-1 leading-relaxed">
+                    This comprehensive diagnostic placement assessment evaluates your baseline competency: <strong>30% general foundational principles</strong> (digital literacy, logic, systems thinking) and <strong>70% program-specific</strong> technical problems in {app?.programName || 'your applied specialization'}.
+                  </p>
+                  {app?.intendedLevel && (
+                    <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200">
+                      <span>Your Stated Level Preference:</span>
+                      <strong>{app.intendedLevel.replace(/_/g, ' ')}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    to={`/portal/applicant/assessment?appId=${app?.id || ''}&programId=${app?.programId || ''}`}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
+                  >
+                    <span>Launch Diagnostic Test Now</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  {!app && (
+                    <Link
+                      to="/apply"
+                      className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Submit Official Application</span>
+                    </Link>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-400">
+                  Timed for 25–30 minutes. Once submitted, your diagnostic report is reviewed by the Academic Board for final cohort and level placement.
                 </p>
-                <Link
-                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
-                >
-                  <span>Launch Diagnostic Test</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
               </div>
             )}
           </div>

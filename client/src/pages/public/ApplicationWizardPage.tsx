@@ -30,6 +30,7 @@ import {
   MessageCircle,
   Laptop,
   CheckCircle,
+  Layers,
 } from 'lucide-react';
 
 export const ApplicationWizardPage: React.FC = () => {
@@ -57,6 +58,7 @@ export const ApplicationWizardPage: React.FC = () => {
     cohortId: searchParams.get('cohortId') || '',
     preferredCenterId: '',
     preferredSchedule: 'Weekday Evenings (4:00 PM - 7:00 PM WAT)',
+    intendedLevel: 'LEVEL_1_FOUNDATION',
     fullName: '',
     dateOfBirth: '',
     gender: 'Male',
@@ -681,6 +683,79 @@ export const ApplicationWizardPage: React.FC = () => {
                   <div className="text-[10px] text-slate-500 font-mono">
                     {currentProgram.contactHours} Contact Hours
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Intended Academic Starting Level */}
+            {formData.programId && (
+              <div className="space-y-3 pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Intended Starting Academic Level (Candidate Preference)</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                    Levels 1 &rarr; 4 Progressive Track
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    {
+                      code: 'LEVEL_1_FOUNDATION',
+                      title: 'Level 1: Foundation (Zero-to-One)',
+                      desc: 'For beginners building fundamental digital literacy, tool setup, and baseline core principles.',
+                      badge: 'Beginner',
+                    },
+                    {
+                      code: 'LEVEL_2_INTERMEDIATE',
+                      title: 'Level 2: Intermediate (Practitioner)',
+                      desc: 'For learners with prior exposure seeking applied technical depth, pipelines, and industry workflows.',
+                      badge: 'Applied',
+                    },
+                    {
+                      code: 'LEVEL_3_ADVANCED',
+                      title: 'Level 3: Advanced (Specialist)',
+                      desc: 'For proficient builders focusing on complex system architecture, optimization, and specialization.',
+                      badge: 'Specialist',
+                    },
+                    {
+                      code: 'LEVEL_4_MASTERY',
+                      title: 'Level 4: Mastery (Innovation & Capstone)',
+                      desc: 'For advanced practitioners aiming for capstone production, leadership, and venture building.',
+                      badge: 'Mastery',
+                    },
+                  ].map((lvl) => (
+                    <div
+                      key={lvl.code}
+                      onClick={() => setFormData((prev) => ({ ...prev, intendedLevel: lvl.code }))}
+                      className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        formData.intendedLevel === lvl.code
+                          ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-xs text-slate-900">{lvl.title}</span>
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            formData.intendedLevel === lvl.code ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {lvl.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">{lvl.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                  <HelpCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong className="text-slate-800">Academic Board Evaluation Notice:</strong> Your selected starting level is an expression of preference. The Academic Admissions Board determines your official starting level following evaluation of your diagnostic assessment and academic background, subject to cohort availability for the upcoming intake cycle.
+                  </p>
                 </div>
               </div>
             )}

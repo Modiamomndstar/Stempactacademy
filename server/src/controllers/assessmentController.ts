@@ -10,10 +10,32 @@ import { placementService } from '../services/placementService.js';
 export const getAssessmentForProgram = async (req: Request, res: Response): Promise<void> => {
   try {
     const { programId, applicationId } = req.query;
+    let resolvedProgramId = programId ? String(programId) : undefined;
+    let resolvedApplicationId = applicationId ? String(applicationId) : undefined;
+
+    // If query params are missing, attempt to resolve from the authenticated user session
+    if (!resolvedProgramId && !resolvedApplicationId && req.headers.authorization) {
+      try {
+        const token = req.headers.authorization.replace('Bearer ', '');
+        const decoded: any = jwt.verify(token, getJwtSecret());
+        if (decoded?.id) {
+          const userApp = await prisma.application.findFirst({
+            where: { OR: [{ userId: decoded.id }, { email: decoded.email }] },
+            orderBy: { createdAt: 'desc' },
+          });
+          if (userApp) {
+            resolvedApplicationId = userApp.id;
+            resolvedProgramId = userApp.programId;
+          }
+        }
+      } catch (authErr) {
+        // Token optional on this public endpoint, ignore errors
+      }
+    }
 
     const data = await assessmentService.getAssessmentForProgram({
-      programId: programId ? String(programId) : undefined,
-      applicationId: applicationId ? String(applicationId) : undefined,
+      programId: resolvedProgramId,
+      applicationId: resolvedApplicationId,
     });
 
     if (!data || !data.assessment) {

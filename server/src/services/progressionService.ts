@@ -129,7 +129,7 @@ export class ProgressionService {
         },
       });
 
-      // 2. Generate verifiable Certificate
+      // 2. Generate verifiable Professional Certificate of Completion for this specific level
       const certYear = new Date().getFullYear();
       const certificateNumber = await identifierService.generateCertificateNumber({ year: certYear });
       const verificationCode = `V-${certificateNumber.replace('CERT-', '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -141,14 +141,43 @@ export class ProgressionService {
           studentName: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
           programName: `${enrollment.cohort.program.name} (${LEVEL_DISPLAY_NAMES[currentLevelCode]})`,
           certificateType: CertificateType.COMPLETION,
-          achievement: `Successfully completed ${LEVEL_DISPLAY_NAMES[currentLevelCode]} under cohort ${enrollment.cohort.name}.`,
+          levelCode: currentLevelCode,
+          isTrackDiploma: false,
+          achievement: `Professional Certificate of Completion awarded for demonstrating practical mastery in ${LEVEL_DISPLAY_NAMES[currentLevelCode]} under cohort ${enrollment.cohort.name}.`,
           verificationCode,
           verified: true,
           signers: JSON.stringify(['Director of Academics & Training', 'Lead Faculty Mentor']),
+          endorsingPartner: 'STEMPACT Academic Council',
+          accreditationNote: 'Formally recorded on the STEMPACT Academic Council registry.',
         },
       });
 
-      // 3. Create permanent ProgressionEligibility for next level (if not at terminal level)
+      // 3. If student just completed the terminal tier of this track, issue the Track Graduation Diploma
+      let trackDiploma: any = null;
+      if (!nextLevelCode) {
+        const diplomaCertNumber = await identifierService.generateCertificateNumber({ year: certYear });
+        const diplomaVerificationCode = `D-${diplomaCertNumber.replace('CERT-', '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        trackDiploma = await tx.certificate.create({
+          data: {
+            certificateNumber: diplomaCertNumber,
+            studentId,
+            studentName: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+            programName: `Professional Diploma in ${enrollment.cohort.program.name}`,
+            certificateType: CertificateType.DIPLOMA,
+            levelCode: currentLevelCode,
+            isTrackDiploma: true,
+            achievement: `Comprehensive Track Graduation Diploma awarded for full 4-tier specialization mastery (Foundation, Intermediate, Advanced, Mastery) in ${enrollment.cohort.program.name}.`,
+            verificationCode: diplomaVerificationCode,
+            verified: true,
+            signers: JSON.stringify(['Provost & Executive Director', 'Dean of Academic Board']),
+            endorsingPartner: 'STEMPACT Academic Council & Partner Institutions',
+            accreditationNote: 'Recognized professional track diploma awarded upon complete four-tier syllabus fulfillment and capstone defense.',
+          },
+        });
+      }
+
+      // 4. Create permanent ProgressionEligibility for next level (if not at terminal level)
       let progressionEligibility: any = null;
       if (nextLevelCode) {
         progressionEligibility = await tx.progressionEligibility.create({
@@ -169,7 +198,7 @@ export class ProgressionService {
       await tx.studentProfile.update({
         where: { id: studentId },
         data: {
-          currentLevel: nextLevelCode ? LEVEL_DISPLAY_NAMES[nextLevelCode] : 'Graduate',
+          currentLevel: nextLevelCode ? LEVEL_DISPLAY_NAMES[nextLevelCode] : 'Track Graduate',
           completionRate: 100,
         },
       });
@@ -177,13 +206,14 @@ export class ProgressionService {
       return {
         enrollment: updatedEnrollment,
         certificate,
+        trackDiploma,
         progressionEligibility,
       };
     });
 
-    // 4. Send notifications
+    // 5. Send notifications
     const studentUser = enrollment.student.user;
-    const certNotice = `Congratulations ${studentUser.firstName}! You have successfully completed ${LEVEL_DISPLAY_NAMES[currentLevelCode]} in ${enrollment.cohort.program.name}. Your Certificate (${result.certificate.certificateNumber}) is now available in your portal.`;
+    const certNotice = `Congratulations ${studentUser.firstName}! You have successfully completed ${LEVEL_DISPLAY_NAMES[currentLevelCode]} in ${enrollment.cohort.program.name}. Your Certificate of Completion (${result.certificate.certificateNumber}) is now available in your portal.`;
     
     await createNotification({
       userId: studentUser.id,
@@ -205,10 +235,32 @@ export class ProgressionService {
       });
     }
 
+    // If Track Diploma was also issued, dispatch diploma notification
+    if (result.trackDiploma) {
+      await createNotification({
+        userId: studentUser.id,
+        title: `Track Graduation: Professional Diploma Awarded!`,
+        message: `Outstanding achievement ${studentUser.firstName}! Having completed all 4 levels of ${enrollment.cohort.program.name}, you have been awarded the official Track Graduation Diploma (${result.trackDiploma.certificateNumber}).`,
+        type: 'SUCCESS',
+        link: '/portal/student?tab=certificates',
+      });
+
+      if (studentUser.email) {
+        await emailService.sendCertificateIssuedEmail({
+          to: studentUser.email,
+          fullName: `${studentUser.firstName} ${studentUser.lastName}`,
+          programName: `Professional Diploma in ${enrollment.cohort.program.name}`,
+          certificateNumber: result.trackDiploma.certificateNumber,
+          verificationCode: result.trackDiploma.verificationCode,
+        });
+      }
+    }
+
     return {
       success: true,
       enrollment: result.enrollment,
       certificate: result.certificate,
+      trackDiploma: result.trackDiploma,
       progressionEligibility: result.progressionEligibility,
     };
   }

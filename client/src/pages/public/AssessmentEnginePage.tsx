@@ -91,7 +91,7 @@ export const AssessmentEnginePage: React.FC<{ portalMode?: boolean }> = ({ porta
     try {
       const response = await api.submitAssessmentAttempt({
         applicationId: applicationId || undefined,
-        programId: programId || undefined,
+        programId: programId || assessment.programId || undefined,
         assessmentId: assessment.id,
         answers,
       });
@@ -164,7 +164,9 @@ export const AssessmentEnginePage: React.FC<{ portalMode?: boolean }> = ({ porta
           </div>
 
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            This diagnostic placement assessment evaluates baseline competencies across digital literacy, analytical logic, mathematics, and problem-solving. Your results help the Academic Board recommend your optimal cohort level.
+            This diagnostic placement assessment evaluates your baseline digital readiness and practical domain concepts.
+            Questions comprise <strong>30% foundational digital literacy & logic</strong> and <strong>70% specialized questions directly tailored to your selected academic discipline</strong>.
+            Your score guides the Academic Admissions Board in assigning your optimal starting cohort level (Level 1 Foundation through Level 4 Mastery).
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">

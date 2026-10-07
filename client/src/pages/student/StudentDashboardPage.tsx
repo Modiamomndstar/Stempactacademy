@@ -37,6 +37,7 @@ import {
   Download,
 } from 'lucide-react';
 import { StudentCopilotModal } from '../../components/StudentCopilotModal';
+import { getVideoPlayerInfo } from '../../components/admin/ProgramDetailModal';
 
 export const StudentDashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -1413,26 +1414,47 @@ export const StudentDashboardPage: React.FC = () => {
               <h3 className="font-bold text-base text-slate-900">Issued Institutional Certificates</h3>
               {certificates && certificates.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {certificates.map((cert: any) => (
-                    <Card key={cert.id} className="p-6 space-y-3 border-emerald-200">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="green">Verified Credential</Badge>
-                        <span className="text-[11px] font-mono text-slate-400">
-                          {cert.certificateNumber}
-                        </span>
-                      </div>
-                      <h4 className="font-bold text-sm text-slate-900">{cert.title || program?.name}</h4>
-                      <div className="pt-2 flex items-center justify-between">
-                        <Link
-                          to={`/verify/${cert.certificateNumber}`}
-                          className="text-xs text-blue-600 hover:underline font-bold inline-flex items-center gap-1"
-                        >
-                          <span>Public Verification</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-                    </Card>
-                  ))}
+                  {certificates.map((cert: any) => {
+                    const isDiploma = cert.isTrackDiploma || cert.certificateType === 'DIPLOMA';
+                    return (
+                      <Card key={cert.id} className={`p-6 space-y-3 ${isDiploma ? 'border-indigo-300 bg-gradient-to-br from-indigo-50/40 to-white' : 'border-emerald-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <Badge variant={isDiploma ? 'purple' : 'green'}>
+                            {isDiploma ? 'Track Graduation Diploma' : 'Level Completion Certificate'}
+                          </Badge>
+                          <span className="text-[11px] font-mono text-slate-500 font-bold">
+                            {cert.certificateNumber}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900">{cert.programName || cert.title || program?.name}</h4>
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">{cert.achievement}</p>
+                        </div>
+                        {cert.issueDate && (
+                          <div className="text-[10px] text-slate-400">
+                            Issued: {new Date(cert.issueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        )}
+                        <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                          <Link
+                            to={`/verify/${cert.certificateNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 font-bold inline-flex items-center gap-1.5"
+                          >
+                            <span>View & Verify Credential</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+                          <Link
+                            to={`/verify/${cert.certificateNumber}`}
+                            className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition"
+                          >
+                            Print Certificate
+                          </Link>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="p-8 text-center text-slate-400 text-xs">
@@ -1468,33 +1490,38 @@ export const StudentDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {/* YouTube Video Player */}
+            {/* Multi-Platform Video Player */}
             {selectedLesson.videoUrl && (() => {
-              // Extract YouTube video ID from various URL formats
-              const getYouTubeId = (url: string): string | null => {
-                const patterns = [
-                  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/,
-                ];
-                for (const pattern of patterns) {
-                  const match = url.match(pattern);
-                  if (match) return match[1];
-                }
-                return null;
-              };
-              const videoId = getYouTubeId(selectedLesson.videoUrl);
+              const playerInfo = getVideoPlayerInfo(selectedLesson.videoUrl);
               return (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                     <Play className="w-4 h-4 text-rose-600" />
                     <span>Video Lecture</span>
+                    {playerInfo && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {playerInfo.label}
+                      </span>
+                    )}
                     {selectedLesson.videoDurationMin && (
                       <span className="ml-auto text-slate-400 font-normal">{selectedLesson.videoDurationMin} min</span>
                     )}
                   </div>
-                  {videoId ? (
-                    <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ paddingBottom: '56.25%' }}>
+                  {playerInfo?.isDirectVideo ? (
+                    <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-sm border border-slate-200">
+                      <video
+                        src={playerInfo.embedUrl}
+                        controls
+                        controlsList="nodownload"
+                        className="w-full max-h-[460px] object-contain mx-auto"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  ) : playerInfo && (playerInfo.type === 'youtube' || playerInfo.type === 'gdrive' || playerInfo.type === 'vimeo') ? (
+                    <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-black" style={{ paddingBottom: '56.25%' }}>
                       <iframe
-                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                        src={playerInfo.embedUrl}
                         title={selectedLesson.title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen

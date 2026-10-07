@@ -52,6 +52,10 @@ export const verifyCertificate = async (req: Request, res: Response): Promise<vo
         verified: certificate.verified,
         signers: signersList,
         institution: 'STEMPACT ACADEMY - Ile-Ife, Osun State, Nigeria',
+        levelCode: certificate.levelCode,
+        isTrackDiploma: certificate.isTrackDiploma,
+        endorsingPartner: certificate.endorsingPartner,
+        accreditationNote: certificate.accreditationNote,
       },
     });
   } catch (error: any) {
@@ -62,7 +66,16 @@ export const verifyCertificate = async (req: Request, res: Response): Promise<vo
 
 export const issueCertificate = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { studentId, programName, certificateType, achievement } = req.body;
+    const {
+      studentId,
+      programName,
+      certificateType,
+      achievement,
+      levelCode,
+      isTrackDiploma,
+      endorsingPartner,
+      accreditationNote,
+    } = req.body;
 
     const student = await prisma.studentProfile.findUnique({
       where: { id: studentId },
@@ -75,7 +88,7 @@ export const issueCertificate = async (req: Request, res: Response): Promise<voi
     }
 
     const year = new Date().getFullYear();
-    const certificateNumber = await identifierService.generateCertificateNumber({ year: year + 2 });
+    const certificateNumber = await identifierService.generateCertificateNumber({ year });
     const verificationCode = identifierService.generateCertificateVerificationCode();
 
     const certificate = await prisma.certificate.create({
@@ -85,6 +98,10 @@ export const issueCertificate = async (req: Request, res: Response): Promise<voi
         studentName: `${student.user.firstName} ${student.user.lastName}`,
         programName: programName || 'Advanced STEM Specialization',
         certificateType: (certificateType as CertificateType) || CertificateType.PROFESSIONAL,
+        levelCode: levelCode || null,
+        isTrackDiploma: isTrackDiploma === true,
+        endorsingPartner: endorsingPartner || null,
+        accreditationNote: accreditationNote || null,
         achievement: achievement || 'Successfully completed practical curriculum with high merit',
         issueDate: new Date(),
         verified: true,

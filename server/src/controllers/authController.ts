@@ -90,6 +90,14 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       programId,
       cohortId,
       dateOfBirth,
+      preferredSchedule,
+      preferredCenterId,
+      intendedLevel,
+      address,
+      educationLevel,
+      careerGoals,
+      learningObjectives,
+      statementOfPurpose,
       parentDetails,
     } = req.body;
 
@@ -133,7 +141,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         },
       });
 
-      // If student profile
+      // If registered as STUDENT, provision student profile
       if (userRole === Role.STUDENT) {
         const studentIdNumber = await identifierService.generateStudentIdNumber({ tx });
         
@@ -144,38 +152,42 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             currentLevel: 'Foundation',
           },
         });
+      }
 
-        // If enrolled directly for a program, generate an application record
-        if (programId) {
-          const applicationNumber = await identifierService.generateApplicationNumber({ tx });
+      // If registered as APPLICANT or STUDENT and selected a program, register the official Application record
+      if ((userRole === Role.APPLICANT || userRole === Role.STUDENT) && programId) {
+        const applicationNumber = await identifierService.generateApplicationNumber({ tx });
+        const allowedLevels = ['LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_MASTERY'];
+        const validIntendedLevel = intendedLevel && allowedLevels.includes(intendedLevel) ? (intendedLevel as any) : 'LEVEL_1_FOUNDATION';
 
-          appRecord = await tx.application.create({
-            data: {
-              applicationNumber,
-              userId: user.id,
-              programId,
-              cohortId: cohortId || null,
-              preferredSchedule: 'Hybrid (Weekend & Evening)',
-              fullName: `${firstName} ${lastName}`,
-              dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date(Date.now() - 17 * 365 * 24 * 3600 * 1000),
-              gender: 'Unspecified',
-              phone: phone || '',
-              email,
-              address: 'Ile-Ife, Osun State',
-              educationLevel: 'High School / Undergraduate',
-              careerGoals: 'Practical STEM Mastery & Real-World Impact',
-              learningObjectives: 'Hands-on Technical Excellence',
-              statementOfPurpose: 'Enrolling directly via STEMPACT ACADEMY Admissions Portal.',
-              status: ApplicationStatus.SUBMITTED,
-              isMinor: parentDetails ? true : false,
-              parentName: parentDetails?.name || null,
-              parentRelationship: parentDetails?.relationship || null,
-              parentPhone: parentDetails?.phone || null,
-              parentEmail: parentDetails?.email || null,
-              consentAccepted: true,
-            },
-          });
-        }
+        appRecord = await tx.application.create({
+          data: {
+            applicationNumber,
+            userId: user.id,
+            programId,
+            cohortId: cohortId || null,
+            preferredCenterId: preferredCenterId || null,
+            intendedLevel: validIntendedLevel,
+            preferredSchedule: preferredSchedule || 'Hybrid (Weekend & Evening)',
+            fullName: `${firstName} ${lastName}`,
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date(Date.now() - 17 * 365 * 24 * 3600 * 1000),
+            gender: 'Unspecified',
+            phone: phone || '',
+            email: email.trim().toLowerCase(),
+            address: address || 'Ile-Ife, Osun State',
+            educationLevel: educationLevel || 'High School / Undergraduate',
+            careerGoals: careerGoals || 'Practical STEM Mastery & Real-World Impact',
+            learningObjectives: learningObjectives || 'Hands-on Technical Excellence',
+            statementOfPurpose: statementOfPurpose || 'Enrolling directly via STEMPACT ACADEMY Admissions Portal.',
+            status: ApplicationStatus.SUBMITTED,
+            isMinor: parentDetails ? true : false,
+            parentName: parentDetails?.name || null,
+            parentRelationship: parentDetails?.relationship || null,
+            parentPhone: parentDetails?.phone || null,
+            parentEmail: parentDetails?.email || null,
+            consentAccepted: true,
+          },
+        });
       } else if (userRole === Role.PARENT) {
         await tx.parentProfile.create({
           data: {
@@ -214,6 +226,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         role: result.user.role,
       },
       applicationId: result.application?.id || null,
+      applicationNumber: result.application?.applicationNumber || null,
     });
   } catch (error: any) {
     console.error('Registration error:', error);

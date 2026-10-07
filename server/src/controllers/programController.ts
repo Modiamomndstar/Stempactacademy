@@ -327,8 +327,9 @@ export const deleteProgram = async (req: Request, res: Response): Promise<void> 
 export const curateVideos = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const { overwrite } = req.body || {};
     const { videoCuratorService } = await import('../services/videoCuratorService.js');
-    const result = await videoCuratorService.curateProgramVideos(id);
+    const result = await videoCuratorService.curateProgramVideos(id, Boolean(overwrite));
     res.status(200).json({
       message: `Successfully curated videos for ${result.totalCurated} lesson(s).`,
       result,
