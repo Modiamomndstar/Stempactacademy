@@ -149,8 +149,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           items: [
             { key: 'cockpit', label: 'Faculty Cockpit', icon: TrendingUp, route: '/portal/instructor' },
             { key: 'cohorts', label: 'Assigned Cohorts', icon: Users, route: '/portal/instructor' },
+            { key: 'curriculum', label: 'Curriculum & Lessons', icon: BookOpen, route: '/portal/instructor' },
             { key: 'attendance', label: 'Mark Attendance', icon: CheckCircle2, route: '/portal/instructor' },
+            { key: 'sessions', label: 'Class Timetable', icon: Calendar, route: '/portal/instructor' },
             { key: 'grading', label: 'Submissions & Grading', icon: ClipboardList, route: '/portal/instructor' },
+            { key: 'projects', label: 'Capstone Projects', icon: Layers, route: '/portal/instructor' },
             { key: 'competencies', label: 'Competency Evaluation', icon: Award, route: '/portal/instructor' },
           ],
         },
@@ -229,6 +232,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         title: 'OVERVIEW',
         items: [
           { key: 'analytics', label: 'Executive Dashboard', icon: TrendingUp, route: '/portal/admin' },
+          { key: 'directory', label: 'Learners & Community Directory', icon: Users, route: '/portal/admin' },
         ],
       },
       {

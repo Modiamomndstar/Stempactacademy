@@ -175,6 +175,7 @@ export const api = {
   createClassSession: (data: any) => apiRequest('/instructor/sessions', { method: 'POST', body: JSON.stringify(data) }),
   evaluateCompetency: (data: { studentId: string; competencyId: string; status: 'ACQUIRED' | 'IN_PROGRESS' | 'NEEDS_PRACTICE' | string; score?: number; evidenceNotes?: string }) =>
     apiRequest('/instructor/competencies/evaluate', { method: 'POST', body: JSON.stringify(data) }),
+  getCohortCurriculum: (cohortId: string) => apiRequest(`/instructor/cohorts/${cohortId}/curriculum`),
 
   // Academic Progression & Multi-Cohort Entitlements
   getAcademicJourney: (studentId?: string) =>
@@ -464,6 +465,28 @@ export const api = {
     apiRequest(`/inquiries/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
   replyToInquiry: (id: string, data: { subject: string; message: string; notes?: string }) =>
     apiRequest(`/inquiries/${id}/reply`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Directory & Learner 360 Hub
+  getDirectoryStats: () => apiRequest('/admin/directory/stats'),
+  getDirectoryUsers: (params?: {
+    search?: string;
+    role?: string;
+    cohortId?: string;
+    paymentStatus?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.role) query.append('role', params.role);
+    if (params?.cohortId) query.append('cohortId', params.cohortId);
+    if (params?.paymentStatus) query.append('paymentStatus', params.paymentStatus);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.pageSize) query.append('pageSize', String(params.pageSize));
+    const qs = query.toString();
+    return apiRequest(`/admin/directory/users${qs ? `?${qs}` : ''}`);
+  },
+  getUserProfile360: (id: string) => apiRequest(`/admin/directory/users/${id}/profile360`),
 };
 
 

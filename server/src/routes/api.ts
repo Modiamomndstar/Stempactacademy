@@ -36,6 +36,7 @@ import * as uploadController from '../controllers/uploadController.js';
 import * as financeController from '../controllers/financeController.js';
 import * as marketingController from '../controllers/marketingController.js';
 import * as inquiryController from '../controllers/inquiryController.js';
+import * as adminDirectoryController from '../controllers/adminDirectoryController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -118,6 +119,7 @@ router.get('/parent/dashboard', authenticate, parentController.getParentDashboar
 router.post('/parent/wards', authenticate, authorize(Role.SUPER_ADMIN, Role.PARENT), parentController.registerWard);
 router.get('/parent/wards/:studentId/academic-records', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PARENT), parentController.getWardAcademicRecords);
 router.get('/instructor/dashboard', authenticate, instructorController.getInstructorDashboard);
+router.get('/instructor/cohorts/:cohortId/curriculum', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.getCohortCurriculum);
 router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.createClassSession);
 router.post('/instructor/competencies/evaluate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.evaluateCompetency);
 router.get('/applicant/dashboard', authenticate, applicantController.getApplicantDashboard);
@@ -202,6 +204,11 @@ router.post('/cms/blog', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC
 
 // 15. Admin Analytics
 router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminStatsController.getAdminStats);
+
+// 15b. Learners & Community Directory (360° Profile Hub & Analytics)
+router.get('/admin/directory/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminDirectoryController.getDirectoryStats);
+router.get('/admin/directory/users', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getDirectoryUsers);
+router.get('/admin/directory/users/:id/profile360', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminDirectoryController.getUserProfile360);
 
 // 16. Admin & Staff Management
 router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);

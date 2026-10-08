@@ -14,6 +14,7 @@ import { CertificateManager } from '../../components/admin/CertificateManager';
 import { AIAdminManager } from '../../components/admin/AIAdminManager';
 import { NotificationDeliveriesManager } from '../../components/admin/NotificationDeliveriesManager';
 import { MarketingLeadsManager } from '../../components/admin/MarketingLeadsManager';
+import { Directory360Manager } from '../../components/admin/Directory360Manager';
 import {
   TrendingUp,
   Users,
@@ -250,6 +251,12 @@ export const AdminDashboardPage: React.FC = () => {
   const availableTabs = useMemo(() => {
     return [
       { id: 'analytics', name: 'Executive Intelligence', icon: TrendingUp },
+      {
+        id: 'directory',
+        name: 'Learners & Directory',
+        icon: Users,
+        visible: isSuperAdmin || isAcademicAdmin || isFinanceAdmin || isAdmissionsAdmin || isCoordinator,
+      },
       {
         id: 'admissions',
         name: `Admissions & Placements (${applications.length})`,
@@ -586,6 +593,13 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           ),
         };
+      case 'directory':
+        return {
+          title: 'Learners & Community Directory',
+          subtitle: '360° dossiers for registered applicants, enrolled students, guardians, and faculty.',
+          badge: <Badge variant="blue">360° Hub</Badge>,
+          actions: null,
+        };
       case 'admissions':
         return {
           title: 'Admissions & Placements',
@@ -907,6 +921,11 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* TAB: LEARNERS & COMMUNITY DIRECTORY */}
+        {activeTab === 'directory' && (
+          <Directory360Manager />
         )}
 
         {/* TAB 2: ADMISSIONS & PLACEMENT MANAGER */}

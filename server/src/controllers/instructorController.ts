@@ -30,6 +30,20 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
       where: { status: { in: ['OPEN', 'ALMOST_FULL', 'IN_PROGRESS'] } },
       include: {
         program: { include: { school: true } },
+        learningCenter: true,
+        curriculumVersion: {
+          include: {
+            courses: {
+              include: {
+                modules: {
+                  include: { lessons: { orderBy: { order: 'asc' } } },
+                  orderBy: { order: 'asc' },
+                },
+              },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         studentProfiles: {
           include: { user: true },
         },
@@ -40,9 +54,14 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
         assignments: {
           include: { submissions: true },
         },
+        projects: {
+          include: {
+            members: { include: { student: { include: { user: true } } } },
+          },
+        },
         classSessions: {
           orderBy: { date: 'desc' },
-          take: 3,
+          take: 5,
         },
       },
     });
@@ -55,7 +74,21 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
         student: { include: { user: true } },
       },
       orderBy: { submittedAt: 'asc' },
-      take: 20,
+      take: 30,
+    });
+
+    // Capstone projects across active cohorts
+    const activeCohortIds = activeCohorts.map((c) => c.id);
+    const cohortProjects = await prisma.project.findMany({
+      where: {
+        cohortId: { in: activeCohortIds },
+      },
+      include: {
+        cohort: { select: { id: true, name: true, cohortCode: true, level: true } },
+        program: { select: { id: true, name: true } },
+        members: { include: { student: { include: { user: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
     });
 
     res.status(200).json({
@@ -74,6 +107,7 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
           },
       cohorts: activeCohorts,
       pendingSubmissions,
+      projects: cohortProjects,
       recentSessions: instructorProfile?.classSessions || [],
     });
   } catch (error: any) {
@@ -81,6 +115,59 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
     res.status(500).json({ message: 'Failed to load instructor dashboard' });
   }
 };
+
+export const getCohortCurriculum = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { cohortId } = req.params;
+    const cohort = await prisma.cohort.findUnique({
+      where: { id: cohortId },
+      include: {
+        program: { include: { school: true } },
+        learningCenter: true,
+        curriculumVersion: {
+          include: {
+            courses: {
+              include: {
+                modules: {
+                  include: { lessons: { orderBy: { order: 'asc' } } },
+                  orderBy: { order: 'asc' },
+                },
+              },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        assignments: {
+          include: {
+            submissions: {
+              include: { student: { include: { user: true } } },
+            },
+          },
+        },
+        projects: {
+          include: {
+            members: { include: { student: { include: { user: true } } } },
+          },
+        },
+        classSessions: {
+          orderBy: { date: 'desc' },
+        },
+      },
+    });
+
+    if (!cohort) {
+      res.status(404).json({ message: 'Cohort not found.' });
+      return;
+    }
+
+    res.status(200).json({ cohort });
+  } catch (error: any) {
+    console.error('getCohortCurriculum error:', error);
+    res.status(500).json({ message: 'Failed to fetch cohort curriculum' });
+  }
+};
+
+
 
 export const createClassSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

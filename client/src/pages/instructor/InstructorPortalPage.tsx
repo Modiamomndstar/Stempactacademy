@@ -24,6 +24,10 @@ import {
   Video,
   MapPin,
   Search,
+  Layers,
+  Play,
+  ExternalLink,
+  Eye,
 } from 'lucide-react';
 import { AILessonPlanModal } from '../../components/AILessonPlanModal';
 import { AIFeedbackModal } from '../../components/AIFeedbackModal';
@@ -82,6 +86,15 @@ export const InstructorPortalPage: React.FC = () => {
   // AI Grade Assistant State
   const [aiGradeDraftLoading, setAiGradeDraftLoading] = useState<string | null>(null); // stores submissionId being processed
   const [aiGradeDrafts, setAiGradeDrafts] = useState<Record<string, any>>({}); // submissionId -> draft result
+
+  // Capstone Project Evaluation State
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectScore, setProjectScore] = useState<number>(90);
+  const [projectFeedback, setProjectFeedback] = useState<string>('');
+  const [savingProjectEval, setSavingProjectEval] = useState<boolean>(false);
+
+  // Curriculum Lesson Preview State
+  const [previewLesson, setPreviewLesson] = useState<any | null>(null);
 
   // Sync Tab with URL
   const handleTabChange = (tabId: string) => {
@@ -264,6 +277,25 @@ export const InstructorPortalPage: React.FC = () => {
     }
   };
 
+  // Evaluate Capstone Project Action
+  const handleEvaluateProject = async (projectId: string) => {
+    setSavingProjectEval(true);
+    setErrorMsg('');
+    try {
+      await api.evaluateProject(projectId, {
+        score: Number(projectScore),
+        feedback: projectFeedback || 'Capstone project reviewed and verified by lead faculty.',
+      });
+      setFeedbackMsg('Capstone project evaluated and grade recorded successfully!');
+      setSelectedProjectId(null);
+      await loadInstructorData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to submit capstone evaluation');
+    } finally {
+      setSavingProjectEval(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner message="Loading Faculty & Instructor Workstation..." />;
   if (!data) return null;
 
@@ -305,6 +337,18 @@ export const InstructorPortalPage: React.FC = () => {
               <span>New Session</span>
             </button>
           ),
+        };
+      case 'curriculum':
+        return {
+          title: 'Curriculum & Course Materials',
+          subtitle: 'Inspect module syllabi, video lectures, lesson notes, and hands-on practicums for your classes.',
+          badge: <Badge variant="blue">Curriculum Matrix</Badge>,
+        };
+      case 'projects':
+        return {
+          title: 'Capstone Projects Desk',
+          subtitle: 'Review student capstone projects, inspect GitHub code repositories, and verify live demos.',
+          badge: <Badge variant="purple">Capstone Studio</Badge>,
         };
       case 'cohorts':
       case 'cockpit':
@@ -963,6 +1007,370 @@ export const InstructorPortalPage: React.FC = () => {
             </form>
           </Card>
         )}
+
+        {/* TAB: CURRICULUM & COURSE MATERIALS */}
+        {activeTab === 'curriculum' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Curriculum & Learning Content</h2>
+                <p className="text-xs text-slate-500">
+                  Inspect the academic structure, modules, lessons, video lectures, and practical activities for your classes.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">Active Cohort:</span>
+                <select
+                  value={selectedCohortId}
+                  onChange={(e) => setSelectedCohortId(e.target.value)}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
+                >
+                  {cohorts.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.levelCode?.replace(/_/g, ' ') || 'Foundation'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {currentCohort && (
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-white/20">
+                    {currentCohort.program?.school?.name || 'STEMPACT Academy'}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                    {currentCohort.levelCode?.replace(/_/g, ' ') || 'Level 1 Foundation'}
+                  </span>
+                  {currentCohort.learningCenter && (
+                    <span className="text-[10px] font-semibold text-slate-300 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-rose-400" />
+                      {currentCohort.learningCenter.name}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-lg font-black">{currentCohort.program?.name || currentCohort.name}</h3>
+                <p className="text-xs text-slate-300 max-w-3xl">
+                  {currentCohort.program?.description || 'Comprehensive industry-aligned STEM training track.'}
+                </p>
+              </div>
+            )}
+
+            {currentCohort?.curriculumVersion?.courses && currentCohort.curriculumVersion.courses.length > 0 ? (
+              <div className="space-y-6">
+                {currentCohort.curriculumVersion.courses.map((course: any, cIdx: number) => (
+                  <div key={course.id || cIdx} className="p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
+                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                          {course.code || `CRS-${cIdx + 1}`}
+                        </span>
+                        <h4 className="text-base font-black text-slate-900 mt-1">{course.title}</h4>
+                        <p className="text-xs text-slate-500">{course.description}</p>
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 shrink-0">
+                        {course.modules?.length || 0} Modules
+                      </span>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {course.modules?.map((mod: any, mIdx: number) => (
+                        <div key={mod.id || mIdx} className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                {mIdx + 1}
+                              </span>
+                              <div>
+                                <h5 className="font-bold text-slate-900 text-xs">{mod.title}</h5>
+                                <p className="text-[10px] text-slate-400">{mod.durationHours || 12} contact hours</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              {mod.lessons?.length || 0} Lessons
+                            </span>
+                          </div>
+
+                          {mod.lessons && mod.lessons.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              {mod.lessons.map((les: any, lIdx: number) => (
+                                <div
+                                  key={les.id || lIdx}
+                                  className="p-3 rounded-lg bg-white border border-slate-200 shadow-2xs hover:border-blue-400 transition flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-slate-800 truncate">{les.title}</span>
+                                      {les.videoUrl && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-200 flex items-center gap-1">
+                                          <Play className="w-2.5 h-2.5" /> Video
+                                        </span>
+                                      )}
+                                      {les.interactiveLabType && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-50 text-purple-700">
+                                          {les.interactiveLabType}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {les.videoDurationMin && (
+                                      <p className="text-[10px] text-slate-400 mt-0.5">
+                                        Duration: {les.videoDurationMin} mins
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewLesson(les)}
+                                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                                      title="Preview Lesson & Video"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSessionTopic(les.title);
+                                        setShowLessonPlanModal(true);
+                                      }}
+                                      className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition cursor-pointer"
+                                      title="Generate AI Lesson Plan"
+                                    >
+                                      <Sparkles className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-3 bg-white">
+                <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+                <h4 className="font-bold text-slate-700 text-sm">No Curriculum Modules Configured</h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  This cohort currently uses standard syllabus milestones. Course modules will appear here as they are published by the Academic Administrator.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: CAPSTONE PROJECTS DESK */}
+        {activeTab === 'projects' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Capstone Projects Studio</h2>
+                <p className="text-xs text-slate-500">
+                  Review student capstone projects, inspect GitHub repositories, verify live deployment links, and evaluate final project submissions.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">Filter Cohort:</span>
+                <select
+                  value={selectedCohortId}
+                  onChange={(e) => setSelectedCohortId(e.target.value)}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
+                >
+                  <option value="">All My Cohorts</option>
+                  {cohorts.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {(() => {
+              const projectsToDisplay = (cohorts || []).flatMap((c: any) => {
+                if (selectedCohortId && c.id !== selectedCohortId) return [];
+                return (c.projects || []).map((p: any) => ({ ...p, cohortName: c.name }));
+              });
+
+              if (projectsToDisplay.length === 0) {
+                return (
+                  <div className="p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-3 bg-white">
+                    <Layers className="w-10 h-10 text-slate-300 mx-auto" />
+                    <h4 className="font-bold text-slate-700 text-sm">No Capstone Projects Logged</h4>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      Student teams in your assigned cohorts have not initiated capstone project submissions yet.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {projectsToDisplay.map((proj: any) => {
+                    const isEvaluating = selectedProjectId === proj.id;
+                    return (
+                      <div
+                        key={proj.id}
+                        className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4 flex flex-col justify-between"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <span className="text-[10px] font-bold text-blue-600 uppercase px-2 py-0.5 rounded-md bg-blue-50">
+                                {proj.cohortName}
+                              </span>
+                              <h3 className="font-black text-slate-900 text-sm mt-1">{proj.title}</h3>
+                            </div>
+                            <span
+                              className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                                proj.status === 'EVALUATED' || proj.score !== null
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : proj.status === 'SUBMITTED'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {proj.score !== null && proj.score !== undefined
+                                ? `Score: ${proj.score}%`
+                                : proj.status}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-600 line-clamp-2">
+                            {proj.description || 'Hands-on practical capstone project submission.'}
+                          </p>
+
+                          {proj.members && proj.members.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-bold uppercase text-slate-400">Team Members:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {proj.members.map((m: any, mIdx: number) => (
+                                  <span
+                                    key={m.id || mIdx}
+                                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700"
+                                  >
+                                    {m.student?.user?.firstName} {m.student?.user?.lastName}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 pt-1 text-xs">
+                            {proj.githubUrl && (
+                              <a
+                                href={proj.githubUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>GitHub Repository</span>
+                              </a>
+                            )}
+                            {proj.liveDemoUrl && (
+                              <a
+                                href={proj.liveDemoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1 text-emerald-600 hover:underline font-semibold"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Live Demo</span>
+                              </a>
+                            )}
+                          </div>
+
+                          {proj.feedback && !isEvaluating && (
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
+                              <strong className="text-slate-800">Faculty Evaluation:</strong> {proj.feedback}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100">
+                          {isEvaluating ? (
+                            <div className="space-y-3 p-4 rounded-xl bg-purple-50/50 border border-purple-200">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs text-purple-900">Project Evaluation Desk</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedProjectId(null)}
+                                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-700">Final Score (0 - 100):</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={projectScore}
+                                  onChange={(e) => setProjectScore(Number(e.target.value))}
+                                  className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-700">Qualitative Rubric Feedback:</label>
+                                <textarea
+                                  rows={3}
+                                  placeholder="Provide detailed feedback on architecture, UI/UX, code clarity, and execution..."
+                                  value={projectFeedback}
+                                  onChange={(e) => setProjectFeedback(e.target.value)}
+                                  className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedProjectId(null)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={savingProjectEval}
+                                  onClick={() => handleEvaluateProject(proj.id)}
+                                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                                >
+                                  {savingProjectEval ? 'Submitting...' : 'Save Evaluation'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400">
+                                {proj.updatedAt ? `Updated ${new Date(proj.updatedAt).toLocaleDateString()}` : ''}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProjectId(proj.id);
+                                  setProjectScore(proj.score ?? 85);
+                                  setProjectFeedback(proj.feedback || '');
+                                }}
+                                className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition cursor-pointer"
+                              >
+                                {proj.score !== null && proj.score !== undefined ? 'Re-Evaluate Project' : 'Evaluate Project'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* SCHEDULE NEW SESSION MODAL */}
@@ -1127,6 +1535,121 @@ export const InstructorPortalPage: React.FC = () => {
           setShowFeedbackModal(false);
         }}
       />
+
+      {/* FOCUSED LESSON PREVIEW & VIDEO PLAYER MODAL */}
+      {previewLesson && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto"
+        >
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-start justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-blue-600 uppercase">Lesson Material</span>
+                <h3 className="text-base font-black text-slate-900 mt-0.5">{previewLesson.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewLesson(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video Player */}
+            {previewLesson.videoUrl && (() => {
+              const getYouTubeId = (url: string): string | null => {
+                const patterns = [
+                  /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{11})/,
+                ];
+                for (const pattern of patterns) {
+                  const match = url.match(pattern);
+                  if (match) return match[1];
+                }
+                return null;
+              };
+              const videoId = getYouTubeId(previewLesson.videoUrl);
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <Play className="w-4 h-4 text-rose-600" />
+                    <span>Curated Video Lecture</span>
+                    {previewLesson.videoDurationMin && (
+                      <span className="ml-auto text-slate-400 font-normal">
+                        {previewLesson.videoDurationMin} mins
+                      </span>
+                    )}
+                  </div>
+                  {videoId ? (
+                    <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{ paddingBottom: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                        title={previewLesson.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                        style={{ border: 0 }}
+                      />
+                    </div>
+                  ) : (
+                    <a
+                      href={previewLesson.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Watch External Video Resource
+                    </a>
+                  )}
+                  {previewLesson.videoSummary && (
+                    <p className="text-[11px] text-slate-500 leading-relaxed p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <strong className="text-slate-700">Lecture Summary:</strong> {previewLesson.videoSummary}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Instructional Content */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase text-slate-400">Lesson Content / Overview:</span>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
+                {previewLesson.content || 'Content guidelines available in syllabus.'}
+              </div>
+            </div>
+
+            {/* Resources & Labs */}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+              {previewLesson.resources ? (
+                <a
+                  href={previewLesson.resources}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline font-semibold flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3 h-3" /> Learning Resources
+                </a>
+              ) : (
+                <span className="text-slate-400">No external links</span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSessionTopic(previewLesson.title);
+                  setShowLessonPlanModal(true);
+                  setPreviewLesson(null);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-bold text-xs cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> AI Lesson Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PortalLayout>
   );
 };
