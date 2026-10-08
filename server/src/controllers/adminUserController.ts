@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { identifierService } from '../services/identifierService.js';
+import { logAudit, extractReqMeta } from '../services/auditService.js';
 
 // 1. Create an Admin Account (SUPER_ADMIN only)
 export const createAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -100,6 +101,19 @@ export const createAdmin = async (req: AuthRequest, res: Response): Promise<void
     res.status(201).json({
       message: `Staff account (${adminRole.replace('_', ' ')}) created successfully.`,
       admin: user,
+    });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'CREATE_ADMIN_ACCOUNT',
+      resource: 'USER',
+      resourceId: user.id,
+      newValue: { targetEmail: user.email, targetRole: user.role, name: `${user.firstName} ${user.lastName}` },
+      ipAddress,
+      userAgent,
     });
   } catch (error: any) {
     console.error('Error creating admin account:', error);
@@ -233,6 +247,19 @@ export const createInstructor = async (req: AuthRequest, res: Response): Promise
         loginUrl: '/portal/instructor/login',
       },
     });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'CREATE_INSTRUCTOR_ACCOUNT',
+      resource: 'USER',
+      resourceId: instructor.user.id,
+      newValue: { email: instructor.user.email, staffCode: instructor.profile.staffCode, specialization },
+      ipAddress,
+      userAgent,
+    });
   } catch (error: any) {
     console.error('Error creating instructor account:', error);
     res.status(500).json({ message: 'Failed to create instructor account. Internal server error.' });
@@ -306,6 +333,20 @@ export const updateAdminUser = async (req: AuthRequest, res: Response): Promise<
     });
 
     res.status(200).json({ message: 'User account updated successfully.', admin: updated });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'UPDATE_USER_ACCOUNT',
+      resource: 'USER',
+      resourceId: id,
+      previousValue: { role: targetUser.role, firstName: targetUser.firstName, lastName: targetUser.lastName },
+      newValue: { role: updated.role, firstName: updated.firstName, lastName: updated.lastName },
+      ipAddress,
+      userAgent,
+    });
   } catch (error: any) {
     console.error('Error updating admin user:', error);
     res.status(500).json({ message: 'Failed to update user account.' });
@@ -348,6 +389,19 @@ export const toggleUserBan = async (req: AuthRequest, res: Response): Promise<vo
     res.status(200).json({
       message: `User account has been ${statusLabel} successfully.${reason ? ` Reason: ${reason}` : ''}`,
       admin: updated,
+    });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: action === 'BAN' ? 'BAN_USER' : 'UNBAN_USER',
+      resource: 'USER',
+      resourceId: id,
+      newValue: { targetEmail: targetUser.email, targetRole: targetUser.role, reason: reason || 'Administrative action' },
+      ipAddress,
+      userAgent,
     });
   } catch (error: any) {
     console.error('Error toggling user ban:', error);

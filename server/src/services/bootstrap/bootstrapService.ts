@@ -388,6 +388,30 @@ export class BootstrapService {
       );`
     );
 
+    // 14. Phase 13 AcademicInquiry Table
+    await runSql(
+      'AcademicInquiry table',
+      `CREATE TABLE IF NOT EXISTS "AcademicInquiry" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "email" TEXT NOT NULL,
+        "phone" TEXT,
+        "subject" TEXT NOT NULL DEFAULT 'Program & Syllabus Inquiries',
+        "message" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'NEW',
+        "notes" TEXT,
+        "respondedById" TEXT,
+        "respondedAt" TIMESTAMP(3),
+        "ipAddress" TEXT,
+        "userAgent" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`
+    );
+    await runSql('AcademicInquiry.status index', `CREATE INDEX IF NOT EXISTS "AcademicInquiry_status_idx" ON "AcademicInquiry"("status");`);
+    await runSql('AcademicInquiry.email index', `CREATE INDEX IF NOT EXISTS "AcademicInquiry_email_idx" ON "AcademicInquiry"("email");`);
+    await runSql('AcademicInquiry.createdAt index', `CREATE INDEX IF NOT EXISTS "AcademicInquiry_createdAt_idx" ON "AcademicInquiry"("createdAt");`);
+
     return { success: true, results };
   }
 

@@ -35,6 +35,7 @@ import * as progressionController from '../controllers/progressionController.js'
 import * as uploadController from '../controllers/uploadController.js';
 import * as financeController from '../controllers/financeController.js';
 import * as marketingController from '../controllers/marketingController.js';
+import * as inquiryController from '../controllers/inquiryController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -300,5 +301,11 @@ router.post('/bootstrap/seed', authenticate, authorize(Role.SUPER_ADMIN), async 
 // 23. File Upload & Cloudflare R2 Storage
 router.post('/upload', authenticate, uploadController.uploadMiddleware.single('file'), uploadController.uploadSingleFile);
 router.get('/upload/status', uploadController.getStorageStatus);
+
+// 24. Public Academic Inquiries & Contact Forms
+router.post('/inquiries', inquiryController.submitPublicInquiry);
+router.get('/inquiries', authenticate, authorize(Role.SUPER_ADMIN, Role.ADMISSIONS_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), inquiryController.getInquiries);
+router.patch('/inquiries/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.ADMISSIONS_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), inquiryController.updateInquiryStatus);
+router.post('/inquiries/:id/reply', authenticate, authorize(Role.SUPER_ADMIN, Role.ADMISSIONS_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), inquiryController.replyToInquiry);
 
 export default router;

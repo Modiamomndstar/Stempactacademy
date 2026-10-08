@@ -35,6 +35,9 @@ import {
   UserCheck,
   Eye,
   EyeOff,
+  Search,
+  Filter,
+  History,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -68,6 +71,12 @@ export const AdminDashboardPage: React.FC = () => {
   const [notificationDeliveries, setNotificationDeliveries] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Audit Trail Search & Filter State
+  const [auditSearch, setAuditSearch] = useState<string>('');
+  const [auditActionFilter, setAuditActionFilter] = useState<string>('ALL');
+  const [selectedAuditLog, setSelectedAuditLog] = useState<any | null>(null);
+  const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
 
   // Global action notifications
   const [actionSuccess, setActionSuccess] = useState<string>('');
@@ -221,6 +230,22 @@ export const AdminDashboardPage: React.FC = () => {
     loadAllData();
   }, []);
 
+  const handleReloadAuditLogs = async (searchVal = auditSearch, actionVal = auditActionFilter) => {
+    setLoadingAudit(true);
+    try {
+      const res = await api.getAuditLogs({
+        limit: 100,
+        search: searchVal.trim() || undefined,
+        action: actionVal !== 'ALL' ? actionVal : undefined,
+      });
+      setAuditLogs(res?.logs || []);
+    } catch (err) {
+      console.warn('Failed to reload audit logs:', err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   // Canonical tab registry with role-based visibility
   const availableTabs = useMemo(() => {
     return [
@@ -327,6 +352,12 @@ export const AdminDashboardPage: React.FC = () => {
   const handleTabChange = (newTabId: string) => {
     setSearchParams({ tab: newTabId });
   };
+
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      handleReloadAuditLogs(auditSearch, auditActionFilter);
+    }
+  }, [activeTab, auditActionFilter]);
 
   // Broadcast Announcement
   const handleBroadcastAnnouncement = async (e: React.FormEvent) => {
@@ -1364,11 +1395,98 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 11: AUDIT TRAIL */}
         {activeTab === 'audit' && isSuperAdmin && (
           <div className="space-y-6 animate-fadeIn">
-            <div>
-              <h2 className="text-lg font-bold text-white">System & Security Audit Trail</h2>
-              <p className="text-xs text-slate-400">
-                Immutable chronological log of privileged administrative and academic state transitions.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-xl font-bold text-white">System & Security Audit Trail</h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    {auditLogs.length} events logged
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Immutable chronological audit logs capturing user authentication, staff privilege escalations, financial approvals, coupon issuances, and academic inquiries.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleReloadAuditLogs()}
+                disabled={loadingAudit}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 border border-white/10 transition cursor-pointer self-start sm:self-auto shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingAudit ? 'animate-spin text-blue-400' : ''}`} />
+                <span>Refresh Audit Logs</span>
+              </button>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleReloadAuditLogs(auditSearch, auditActionFilter);
+                }}
+                className="flex flex-col sm:flex-row gap-3"
+              >
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search audit trail by actor name, action, resource, target ID, IP address..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={auditActionFilter}
+                    onChange={(e) => setAuditActionFilter(e.target.value)}
+                    className="py-2.5 px-3 rounded-xl bg-slate-950/80 border border-white/10 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="ALL">All Actions</option>
+                    <optgroup label="Authentication & Users">
+                      <option value="USER_LOGIN">USER_LOGIN</option>
+                      <option value="USER_REGISTER">USER_REGISTER</option>
+                      <option value="CREATE_ADMIN_ACCOUNT">CREATE_ADMIN_ACCOUNT</option>
+                      <option value="CREATE_INSTRUCTOR_ACCOUNT">CREATE_INSTRUCTOR_ACCOUNT</option>
+                      <option value="UPDATE_USER_ACCOUNT">UPDATE_USER_ACCOUNT</option>
+                      <option value="BAN_USER">BAN_USER</option>
+                      <option value="UNBAN_USER">UNBAN_USER</option>
+                    </optgroup>
+                    <optgroup label="Financial Operations">
+                      <option value="APPROVE_BANK_TRANSFER">APPROVE_BANK_TRANSFER</option>
+                      <option value="REJECT_BANK_TRANSFER">REJECT_BANK_TRANSFER</option>
+                      <option value="CREATE_COUPON">CREATE_COUPON</option>
+                      <option value="UPDATE_PAYMENT_SETTINGS">UPDATE_PAYMENT_SETTINGS</option>
+                    </optgroup>
+                    <optgroup label="Academic Inquiries">
+                      <option value="SUBMIT_ACADEMIC_INQUIRY">SUBMIT_ACADEMIC_INQUIRY</option>
+                      <option value="UPDATE_INQUIRY_STATUS">UPDATE_INQUIRY_STATUS</option>
+                      <option value="REPLY_ACADEMIC_INQUIRY">REPLY_ACADEMIC_INQUIRY</option>
+                    </optgroup>
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer"
+                  >
+                    Filter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuditSearch('');
+                      setAuditActionFilter('ALL');
+                      handleReloadAuditLogs('', 'ALL');
+                    }}
+                    className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </form>
             </div>
 
             <div className="bg-slate-900/60 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
@@ -1378,38 +1496,92 @@ export const AdminDashboardPage: React.FC = () => {
                     <tr className="border-b border-white/5 bg-slate-950/50 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
                       <th className="py-4 px-6">Timestamp</th>
                       <th className="py-4 px-6">Action</th>
-                      <th className="py-4 px-6">Entity</th>
-                      <th className="py-4 px-6">Staff Member</th>
+                      <th className="py-4 px-6">Resource / Entity</th>
+                      <th className="py-4 px-6">Staff Member / User</th>
                       <th className="py-4 px-6">IP / Origin</th>
+                      <th className="py-4 px-6 text-right">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-xs text-slate-300">
-                    {auditLogs.length === 0 ? (
+                    {loadingAudit ? (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-slate-500">
-                          No audit trail events logged yet.
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-400" />
+                          Loading audit trail events...
+                        </td>
+                      </tr>
+                    ) : auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          No audit trail events match your current filter.
                         </td>
                       </tr>
                     ) : (
-                      auditLogs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-white/[0.02] transition">
-                          <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">
-                            {log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/A'}
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="font-semibold text-white">{log.action}</span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="text-brand-300 font-mono">{log.entityType || log.entityId}</span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="text-slate-200">
-                              {log.user ? `${log.user.firstName} ${log.user.lastName}` : log.userId || 'System'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">{log.ipAddress || 'Internal'}</td>
-                        </tr>
-                      ))
+                      auditLogs.map((log: any) => {
+                        const getActionBadgeColor = (action: string) => {
+                          if (action.includes('BAN') || action.includes('REJECT')) return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+                          if (action.includes('APPROVE') || action.includes('RESOLVE')) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                          if (action.includes('CREATE') || action.includes('REGISTER')) return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+                          if (action.includes('LOGIN')) return 'bg-sky-500/20 text-sky-300 border-sky-500/30';
+                          if (action.includes('PAYMENT') || action.includes('COUPON')) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                          if (action.includes('INQUIRY')) return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+                          return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+                        };
+
+                        const hasDiff = log.previousValue || log.newValue;
+
+                        return (
+                          <tr key={log.id} className="hover:bg-white/[0.02] transition">
+                            <td className="py-4 px-6 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                              {log.createdAt ? new Date(log.createdAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }) : 'N/A'}
+                            </td>
+                            <td className="py-4 px-6 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold font-mono border ${getActionBadgeColor(log.action)}`}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex flex-col">
+                                <span className="text-white font-semibold">{log.resource || log.entityType || 'Resource'}</span>
+                                {(log.resourceId || log.entityId) && (
+                                  <span className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">
+                                    ID: {log.resourceId || log.entityId}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex flex-col">
+                                <span className="text-slate-200 font-medium">
+                                  {log.userName || (log.user ? `${log.user.firstName} ${log.user.lastName}` : log.userId || 'System')}
+                                </span>
+                                {log.userRole && (
+                                  <span className="text-[10px] text-indigo-400 uppercase font-semibold">
+                                    {log.userRole.replace('_', ' ')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">
+                              <span>{log.ipAddress || 'Internal'}</span>
+                            </td>
+                            <td className="py-4 px-6 text-right whitespace-nowrap">
+                              {hasDiff ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedAuditLog(log)}
+                                  className="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold transition cursor-pointer flex items-center gap-1.5 ml-auto"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View Diff</span>
+                                </button>
+                              ) : (
+                                <span className="text-slate-600 text-[11px]">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -2051,6 +2223,95 @@ export const AdminDashboardPage: React.FC = () => {
         onClose={() => setSelectedCohortAnalysis(null)}
         cohortId={selectedCohortAnalysis || ''}
       />
+
+      {/* AUDIT LOG INSPECTION / DIFF MODAL */}
+      {selectedAuditLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    {selectedAuditLog.action}
+                  </span>
+                  <span className="text-white font-bold text-sm">
+                    {selectedAuditLog.resource}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Triggered by <strong>{selectedAuditLog.userName || 'System'}</strong> ({selectedAuditLog.userRole || 'ROLE'}) on {selectedAuditLog.createdAt ? new Date(selectedAuditLog.createdAt).toLocaleString() : 'N/A'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="text-slate-400 hover:text-white transition text-lg cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Metadata bar */}
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-950/60 border border-white/5 text-xs text-slate-400">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">IP Address</span>
+                <span className="font-mono text-slate-300">{selectedAuditLog.ipAddress || 'Internal'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Target Resource ID</span>
+                <span className="font-mono text-slate-300 truncate block">{selectedAuditLog.resourceId || 'N/A'}</span>
+              </div>
+              {selectedAuditLog.userAgent && (
+                <div className="col-span-2">
+                  <span className="text-slate-500 block text-[10px] uppercase font-bold">User Agent</span>
+                  <span className="font-mono text-[11px] text-slate-400 truncate block">{selectedAuditLog.userAgent}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Previous vs New State Diff */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-1.5">
+                <span className="font-bold text-slate-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  Previous State
+                </span>
+                <pre className="p-3.5 rounded-xl bg-slate-950/90 border border-white/5 text-rose-300 font-mono text-[11px] overflow-x-auto max-h-64 whitespace-pre-wrap leading-relaxed">
+                  {selectedAuditLog.previousValue
+                    ? typeof selectedAuditLog.previousValue === 'object'
+                      ? JSON.stringify(selectedAuditLog.previousValue, null, 2)
+                      : String(selectedAuditLog.previousValue)
+                    : '<Empty / None>'}
+                </pre>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="font-bold text-slate-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  New State / Applied Change
+                </span>
+                <pre className="p-3.5 rounded-xl bg-slate-950/90 border border-white/5 text-emerald-300 font-mono text-[11px] overflow-x-auto max-h-64 whitespace-pre-wrap leading-relaxed">
+                  {selectedAuditLog.newValue
+                    ? typeof selectedAuditLog.newValue === 'object'
+                      ? JSON.stringify(selectedAuditLog.newValue, null, 2)
+                      : String(selectedAuditLog.newValue)
+                    : '<Empty / None>'}
+                </pre>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setSelectedAuditLog(null)}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PortalLayout>
   );
 };

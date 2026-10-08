@@ -18,6 +18,8 @@ import {
 export const ContactPage: React.FC = () => {
   const [centers, setCenters] = useState<any[]>([]);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,9 +34,31 @@ export const ContactPage: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
+    setSubmitting(true);
+    setErrorMessage('');
+    try {
+      await api.submitInquiry({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || undefined,
+        subject: formData.subject,
+        message: formData.message.trim(),
+      });
+      setFormSubmitted(true);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        subject: 'Program Inquiries',
+        message: '',
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to submit inquiry. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -257,12 +281,19 @@ export const ContactPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {errorMessage && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                      {errorMessage}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
-                    className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 transition-colors shadow-sm"
+                    disabled={submitting}
+                    className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Send Message</span>
+                    <span>{submitting ? 'Submitting Inquiry...' : 'Send Message'}</span>
                   </button>
                 </form>
               )}

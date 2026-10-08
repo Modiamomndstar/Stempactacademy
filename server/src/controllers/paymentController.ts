@@ -5,6 +5,7 @@ import { AuthRequest } from '../middlewares/auth.js';
 import { Role } from '@prisma/client';
 import { identifierService } from '../services/identifierService.js';
 import { financialClearanceService } from '../services/financialClearanceService.js';
+import { logAudit, extractReqMeta } from '../services/auditService.js';
 
 /**
  * Fetch invoices filtered by student, application, or status
@@ -273,6 +274,19 @@ export const approveBankTransfer = async (req: AuthRequest, res: Response): Prom
       invoiceBalance: result.invoiceBalance,
       invoiceStatus: result.invoiceStatus,
     });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'APPROVE_BANK_TRANSFER',
+      resource: 'PAYMENT',
+      resourceId: paymentId,
+      newValue: { amount: result.payment.amount, invoiceId: result.payment.invoiceId, invoiceBalance: result.invoiceBalance },
+      ipAddress,
+      userAgent,
+    });
   } catch (error: any) {
     console.error('approveBankTransfer error:', error);
     res.status(500).json({ message: error.message || 'Failed to approve bank transfer' });
@@ -293,6 +307,19 @@ export const rejectBankTransfer = async (req: AuthRequest, res: Response): Promi
     res.status(200).json({
       message: 'Bank transfer has been rejected.',
       payment,
+    });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'REJECT_BANK_TRANSFER',
+      resource: 'PAYMENT',
+      resourceId: paymentId,
+      newValue: { rejectionReason: rejectionReason || 'Payment could not be verified on bank statement' },
+      ipAddress,
+      userAgent,
     });
   } catch (error: any) {
     console.error('rejectBankTransfer error:', error);

@@ -213,6 +213,7 @@ model User {
   notificationDeliveries     NotificationDelivery[]
   couponsCreated             Coupon[]
   recordedFollowUps          LeadFollowUp[]
+  academicInquiriesResponded AcademicInquiry[]
 }
 
 model School {
@@ -1900,5 +1901,28 @@ model LeadFollowUp {
   @@index([applicationId])
   @@index([recordedById])
 }
+
+model AcademicInquiry {
+  id             String    @id @default(uuid())
+  name           String
+  email          String
+  phone          String?
+  subject        String    @default("Program & Syllabus Inquiries")
+  message        String
+  status         String    @default("NEW") // "NEW", "CONTACTED", "RESOLVED", "SPAM"
+  notes          String?
+  respondedById  String?
+  respondedBy    User?     @relation(fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedAt    DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([createdAt])
+}
+
 
 

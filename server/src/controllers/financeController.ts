@@ -4,6 +4,7 @@ import { AuthRequest } from '../middlewares/auth.js';
 import { Role, CouponType, InvoiceStatus } from '@prisma/client';
 import { identifierService } from '../services/identifierService.js';
 import { createNotification } from '../services/notificationService.js';
+import { logAudit, extractReqMeta } from '../services/auditService.js';
 
 // ===========================================================================
 // 1. COUPON MANAGEMENT & VERIFICATION
@@ -57,6 +58,19 @@ export const createCoupon = async (req: AuthRequest, res: Response): Promise<voi
     });
 
     res.status(201).json({ message: `Coupon "${cleanCode}" created successfully.`, coupon });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'CREATE_COUPON',
+      resource: 'COUPON',
+      resourceId: coupon.id,
+      newValue: { code: coupon.code, discountValue: coupon.discountValue, discountType: coupon.discountType },
+      ipAddress,
+      userAgent,
+    });
   } catch (error: any) {
     console.error('createCoupon error:', error);
     res.status(500).json({ message: error.message || 'Failed to create coupon' });
@@ -949,6 +963,25 @@ export const updatePaymentSettings = async (req: AuthRequest, res: Response): Pr
     res.status(200).json({
       message: 'Payment gateways and account details updated successfully!',
       settings: updated,
+    });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: req.user?.id,
+      userName: `${req.user?.firstName} ${req.user?.lastName}`,
+      userRole: req.user?.role,
+      action: 'UPDATE_PAYMENT_SETTINGS',
+      resource: 'INSTITUTIONAL_SETTINGS',
+      resourceId: updated.id,
+      newValue: {
+        paystackEnabled: updated.paystackEnabled,
+        flutterwaveEnabled: updated.flutterwaveEnabled,
+        bankTransferEnabled: updated.bankTransferEnabled,
+        cryptoTransferEnabled: updated.cryptoTransferEnabled,
+        bankName: updated.bankName,
+      },
+      ipAddress,
+      userAgent,
     });
   } catch (error: any) {
     console.error('updatePaymentSettings error:', error);

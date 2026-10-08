@@ -26,6 +26,8 @@ import {
   Flame,
   Phone,
   RefreshCw,
+  Inbox,
+  MessageCircle,
 } from 'lucide-react';
 
 interface MarketingLeadsManagerProps {
@@ -34,6 +36,9 @@ interface MarketingLeadsManagerProps {
 }
 
 export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ currentUser, onRefresh }) => {
+  // Main view switcher: Leads CRM vs Website Inquiries
+  const [activeMainTab, setActiveMainTab] = useState<'CRM_LEADS' | 'ACADEMIC_INQUIRIES'>('CRM_LEADS');
+
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<any>(null);
   const [search, setSearch] = useState<string>('');
@@ -41,6 +46,24 @@ export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ cu
   const [funnelFilter, setFunnelFilter] = useState<string>('ALL');
   const [minorsOnly, setMinorsOnly] = useState<boolean>(false);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
+
+  // Academic Inquiries State
+  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [inquiryCounts, setInquiryCounts] = useState<{ total: number; new: number; contacted: number; resolved: number; spam: number }>({
+    total: 0,
+    new: 0,
+    contacted: 0,
+    resolved: 0,
+    spam: 0,
+  });
+  const [loadingInquiries, setLoadingInquiries] = useState<boolean>(false);
+  const [inquirySearch, setInquirySearch] = useState<string>('');
+  const [inquiryStatusFilter, setInquiryStatusFilter] = useState<string>('ALL');
+  const [replyModalInquiry, setReplyModalInquiry] = useState<any | null>(null);
+  const [replySubject, setReplySubject] = useState<string>('');
+  const [replyMessage, setReplyMessage] = useState<string>('');
+  const [replyNotes, setReplyNotes] = useState<string>('');
+  const [sendingReply, setSendingReply] = useState<boolean>(false);
 
   // Follow-up Log Modal State
   const [logModalLead, setLogModalLead] = useState<any | null>(null);
@@ -187,6 +210,75 @@ export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ cu
     }
   };
 
+  const loadInquiries = async () => {
+    setLoadingInquiries(true);
+    try {
+      const res = await api.getInquiries({
+        search: inquirySearch.trim() || undefined,
+        status: inquiryStatusFilter !== 'ALL' ? inquiryStatusFilter : undefined,
+      });
+      setInquiries(res.inquiries || []);
+      setInquiryCounts(res.counts || { total: 0, new: 0, contacted: 0, resolved: 0, spam: 0 });
+    } catch (err: any) {
+      console.error('Failed to load inquiries:', err);
+    } finally {
+      setLoadingInquiries(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInquiries();
+  }, [inquiryStatusFilter]);
+
+  const handleSearchInquiriesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadInquiries();
+  };
+
+  const handleUpdateInquiryStatus = async (id: string, newStatus: string) => {
+    try {
+      await api.updateInquiryStatus(id, { status: newStatus });
+      setActionSuccess(`Inquiry marked as ${newStatus}`);
+      setTimeout(() => setActionSuccess(''), 3000);
+      loadInquiries();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to update inquiry status');
+    }
+  };
+
+  const openInquiryReplyModal = (inq: any) => {
+    setReplyModalInquiry(inq);
+    setReplySubject(`Re: ${inq.subject || 'Academic Inquiry at STEMPACT Academy'}`);
+    setReplyMessage(
+      `Dear ${inq.name},\n\nThank you for reaching out to STEMPACT Academy regarding "${inq.subject}".\n\nIn response to your inquiry:\n\n[Please enter details regarding cohort dates, syllabus, or fee arrangement here]\n\nIf you have any further questions, please do not hesitate to reply to this email or call our admissions desk at +234 803 123 4567.\n\nWarm regards,\nSTEMPACT Academy Admissions Team`
+    );
+    setReplyNotes('');
+  };
+
+  const handleSendInquiryReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyModalInquiry || !replySubject.trim() || !replyMessage.trim()) return;
+    setSendingReply(true);
+    try {
+      await api.replyToInquiry(replyModalInquiry.id, {
+        subject: replySubject.trim(),
+        message: replyMessage.trim(),
+        notes: replyNotes.trim() || undefined,
+      });
+      setActionSuccess(`Official email reply sent to ${replyModalInquiry.email} and inquiry status updated to RESOLVED.`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      setReplyModalInquiry(null);
+      setReplySubject('');
+      setReplyMessage('');
+      setReplyNotes('');
+      loadInquiries();
+    } catch (err: any) {
+      alert('Failed to send reply: ' + err.message);
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const metrics = data?.metrics || {};
   const leads = data?.leads || [];
   const registeredOnly = data?.registeredOnlyUsers || [];
@@ -218,11 +310,65 @@ export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ cu
         </div>
       )}
 
-      {/* Funnel Analytics Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-semibold">Total Pipeline</span>
+      {/* Top Main Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('CRM_LEADS')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeMainTab === 'CRM_LEADS'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <PhoneCall className="w-4 h-4" />
+          <span>Applicant Leads (CRM)</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+              activeMainTab === 'CRM_LEADS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {metrics.totalLeads ?? 0}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainTab('ACADEMIC_INQUIRIES');
+            loadInquiries();
+          }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeMainTab === 'ACADEMIC_INQUIRIES'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Inbox className="w-4 h-4" />
+          <span>Website Academic Inquiries</span>
+          {inquiryCounts.new > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+              {inquiryCounts.new} NEW
+            </span>
+          ) : (
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeMainTab === 'ACADEMIC_INQUIRIES' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {inquiryCounts.total}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeMainTab === 'CRM_LEADS' && (
+        <>
+          {/* Funnel Analytics Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-semibold">Total Pipeline</span>
             <Users className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-xl font-black text-slate-900">{metrics.totalLeads ?? 0}</div>
@@ -693,6 +839,263 @@ export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ cu
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {/* TAB 2: WEBSITE ACADEMIC INQUIRIES DESK */}
+      {activeMainTab === 'ACADEMIC_INQUIRIES' && (
+        <div className="space-y-6">
+          {/* Metrics Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-semibold">Total Inquiries</span>
+                <Inbox className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">{inquiryCounts.total}</div>
+              <div className="text-[10px] text-slate-500">Submitted from /contact</div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-semibold">New / Unread</span>
+                <Sparkles className="w-4 h-4 text-rose-500" />
+              </div>
+              <div className="text-2xl font-black text-rose-600">{inquiryCounts.new}</div>
+              <div className="text-[10px] text-rose-500 font-semibold">Awaiting first contact</div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-semibold">Contacted</span>
+                <PhoneCall className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-2xl font-black text-amber-600">{inquiryCounts.contacted}</div>
+              <div className="text-[10px] text-slate-500">In discussion</div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-semibold">Resolved</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-black text-emerald-600">{inquiryCounts.resolved}</div>
+              <div className="text-[10px] text-slate-500">Official reply sent</div>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+            <form onSubmit={handleSearchInquiriesSubmit} className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search inquiries by visitor name, email, phone, subject, or message..."
+                  value={inquirySearch}
+                  onChange={(e) => setInquirySearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Search</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInquirySearch('');
+                  setInquiryStatusFilter('ALL');
+                  api.getInquiries().then((res) => {
+                    setInquiries(res.inquiries || []);
+                    setInquiryCounts(res.counts || { total: 0, new: 0, contacted: 0, resolved: 0, spam: 0 });
+                  });
+                }}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            </form>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+              <span className="text-slate-400 font-semibold flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" /> Status Filter:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: 'ALL', label: 'All Inquiries' },
+                  { value: 'NEW', label: 'New / Unread' },
+                  { value: 'CONTACTED', label: 'Contacted' },
+                  { value: 'RESOLVED', label: 'Resolved' },
+                  { value: 'SPAM', label: 'Spam' },
+                ].map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setInquiryStatusFilter(s.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                      inquiryStatusFilter === s.value
+                        ? 'bg-blue-600 text-white font-bold'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Inquiries Cards List */}
+          {loadingInquiries ? (
+            <div className="p-12 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+              <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-600" />
+              Loading academic inquiries...
+            </div>
+          ) : inquiries.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200 space-y-2">
+              <Inbox className="w-8 h-8 mx-auto text-slate-300" />
+              <div className="font-bold text-slate-700">No Inquiries Found</div>
+              <p className="text-slate-400">
+                {inquirySearch || inquiryStatusFilter !== 'ALL'
+                  ? 'No inquiries match your current search or filter criteria.'
+                  : 'Visitors submitting questions from stempactacademy.vercel.app/contact will appear here automatically.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {inquiries.map((inq: any) => {
+                const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
+                  NEW: { bg: 'bg-rose-100 border-rose-200', text: 'text-rose-700 font-bold', label: 'NEW / UNREAD' },
+                  CONTACTED: { bg: 'bg-amber-100 border-amber-200', text: 'text-amber-800 font-semibold', label: 'CONTACTED' },
+                  RESOLVED: { bg: 'bg-emerald-100 border-emerald-200', text: 'text-emerald-800 font-bold', label: 'RESOLVED' },
+                  SPAM: { bg: 'bg-slate-100 border-slate-200', text: 'text-slate-600', label: 'SPAM' },
+                };
+                const style = statusStyles[inq.status] || statusStyles.NEW;
+
+                return (
+                  <div
+                    key={inq.id}
+                    className="p-5 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4 hover:border-slate-300 transition"
+                  >
+                    {/* Header Row */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-slate-900 text-sm">{inq.name}</h4>
+                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full border ${style.bg} ${style.text}`}>
+                            {style.label}
+                          </span>
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700">
+                            {inq.subject}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                          <a
+                            href={`mailto:${inq.email}`}
+                            className="flex items-center gap-1 hover:text-blue-600 transition"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            <span>{inq.email}</span>
+                          </a>
+                          {inq.phone && (
+                            <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                              <Phone className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{inq.phone}</span>
+                            </span>
+                          )}
+                          <span className="text-[11px] text-slate-400">
+                            • {inq.createdAt ? new Date(inq.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Selector Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase">Status:</span>
+                        <select
+                          value={inq.status}
+                          onChange={(e) => handleUpdateInquiryStatus(inq.id, e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold bg-white text-slate-700 focus:ring-2 focus:ring-blue-300 cursor-pointer"
+                        >
+                          <option value="NEW">New</option>
+                          <option value="CONTACTED">Contacted</option>
+                          <option value="RESOLVED">Resolved</option>
+                          <option value="SPAM">Spam</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Inquiry Content */}
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      <p className="font-semibold text-slate-900 mb-1">Visitor Question:</p>
+                      {inq.message}
+                    </div>
+
+                    {/* Internal Notes or Response info if available */}
+                    {(inq.respondedAt || inq.notes) && (
+                      <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100 text-xs space-y-1">
+                        {inq.respondedAt && (
+                          <div className="flex items-center gap-1.5 text-blue-900 font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>
+                              Replied by {inq.respondedBy ? `${inq.respondedBy.firstName} ${inq.respondedBy.lastName}` : 'Admissions Staff'} on {new Date(inq.respondedAt).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        {inq.notes && (
+                          <p className="text-slate-600 text-[11px]">
+                            <strong className="text-slate-800">Staff Notes:</strong> {inq.notes}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Buttons Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {inq.phone && (
+                          <>
+                            <a
+                              href={`tel:${inq.phone}`}
+                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Call Visitor</span>
+                            </a>
+                            <a
+                              href={formatWhatsAppUrl(inq.phone, inq.name)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs flex items-center gap-1.5 transition"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>WhatsApp</span>
+                            </a>
+                          </>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openInquiryReplyModal(inq)}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs ml-auto"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Reply via Official Email</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODAL 1: LOG FOLLOW-UP CALL / INTERACTION */}
       {logModalLead && (
@@ -912,6 +1315,99 @@ export const MarketingLeadsManager: React.FC<MarketingLeadsManagerProps> = ({ cu
           </div>
         </div>
       )}
+
+      {/* MODAL 3: REPLY TO ACADEMIC INQUIRY VIA EMAIL */}
+      {replyModalInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-blue-600" />
+                  <span>Reply to Academic Inquiry</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Recipient: <strong>{replyModalInquiry.name}</strong> ({replyModalInquiry.email})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyModalInquiry(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Context snippet */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+              <span className="font-bold text-slate-800">Original Inquiry ({replyModalInquiry.subject}):</span>
+              <p className="line-clamp-3 text-[11px] italic">"{replyModalInquiry.message}"</p>
+            </div>
+
+            <form onSubmit={handleSendInquiryReply} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Email Subject *</label>
+                <input
+                  type="text"
+                  required
+                  value={replySubject}
+                  onChange={(e) => setReplySubject(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Official Reply Message *</label>
+                <textarea
+                  required
+                  rows={7}
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 font-sans focus:ring-2 focus:ring-blue-300 leading-relaxed"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Internal Staff Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sent syllabus details and scheduled follow-up call"
+                  value={replyNotes}
+                  onChange={(e) => setReplyNotes(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+
+              <div className="p-2.5 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center gap-2 text-[11px] text-blue-700">
+                <Send className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  This email will be dispatched via Resend and the inquiry marked as <strong>RESOLVED</strong>.
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setReplyModalInquiry(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingReply || !replySubject.trim() || !replyMessage.trim()}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{sendingReply ? 'Sending Reply...' : 'Send Official Reply'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

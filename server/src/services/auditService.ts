@@ -79,3 +79,10 @@ export const fetchAuditLogs = async (options: {
 
   return { logs, total };
 };
+
+export const extractReqMeta = (req: any) => {
+  const ip = req.headers?.['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket?.remoteAddress || req.ip || '';
+  const userAgent = req.headers?.['user-agent'] || '';
+  return { ipAddress: ip, userAgent };
+};
+

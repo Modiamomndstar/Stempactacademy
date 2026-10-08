@@ -6,6 +6,7 @@ import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
 import { identifierService } from '../services/identifierService.js';
+import { logAudit, extractReqMeta } from '../services/auditService.js';
 
 /**
  * Ensures Super Admin account is provisioned directly from .env variables
@@ -228,6 +229,19 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       applicationId: result.application?.id || null,
       applicationNumber: result.application?.applicationNumber || null,
     });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: result.user.id,
+      userName: `${result.user.firstName} ${result.user.lastName}`,
+      userRole: result.user.role,
+      action: 'USER_REGISTER',
+      resource: 'USER',
+      resourceId: result.user.id,
+      newValue: { email: result.user.email, role: result.user.role, applicationId: result.application?.id },
+      ipAddress,
+      userAgent,
+    });
   } catch (error: any) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Registration failed. Internal server error.' });
@@ -338,6 +352,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         instructorProfile: user.instructorProfile,
         parentProfile: user.parentProfile,
       },
+    });
+
+    const { ipAddress, userAgent } = extractReqMeta(req);
+    await logAudit({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userRole: user.role,
+      action: 'USER_LOGIN',
+      resource: 'AUTH',
+      resourceId: user.id,
+      newValue: { portal: portal || 'DEFAULT', email: user.email },
+      ipAddress,
+      userAgent,
     });
   } catch (error: any) {
     console.error('Login error:', error);

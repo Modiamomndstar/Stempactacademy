@@ -447,5 +447,23 @@ export const api = {
     }>('/upload', { method: 'POST', body: formData });
   },
   getStorageStatus: () => apiRequest('/upload/status'),
+
+  // Academic Inquiries & Contact Forms
+  submitInquiry: (data: { name: string; email: string; phone?: string; subject: string; message: string }) =>
+    apiRequest('/inquiries', { method: 'POST', body: JSON.stringify(data) }),
+  getInquiries: (params?: { search?: string; status?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.status) query.append('status', params.status);
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.offset) query.append('offset', String(params.offset));
+    const qs = query.toString();
+    return apiRequest(`/inquiries${qs ? `?${qs}` : ''}`);
+  },
+  updateInquiryStatus: (id: string, data: { status: string; notes?: string }) =>
+    apiRequest(`/inquiries/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  replyToInquiry: (id: string, data: { subject: string; message: string; notes?: string }) =>
+    apiRequest(`/inquiries/${id}/reply`, { method: 'POST', body: JSON.stringify(data) }),
 };
+
 

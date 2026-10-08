@@ -437,6 +437,70 @@ class EmailService {
     `;
     return this.send({ to: params.to, subject: params.subject, html: this.wrapTemplate(heading, body) });
   }
+
+  /**
+   * Alert admissions/superadmin about a new website inquiry
+   */
+  public async sendAcademicInquiryAdminAlert(params: {
+    to: string;
+    inquiryId: string;
+    name: string;
+    email: string;
+    phone?: string;
+    subject: string;
+    message: string;
+  }): Promise<EmailDispatchResult> {
+    const heading = 'New Academic Website Inquiry';
+    const body = `
+      <p>A new visitor has submitted an academic inquiry via the website contact portal:</p>
+      <div class="callout" style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 16px 0;">
+        <p style="margin: 0 0 6px 0;"><strong>Visitor Name:</strong> ${params.name}</p>
+        <p style="margin: 0 0 6px 0;"><strong>Email Address:</strong> <a href="mailto:${params.email}">${params.email}</a></p>
+        <p style="margin: 0 0 6px 0;"><strong>Phone / WhatsApp:</strong> ${params.phone || 'Not provided'}</p>
+        <p style="margin: 0 0 6px 0;"><strong>Subject:</strong> ${params.subject}</p>
+        <p style="margin: 12px 0 0 0;"><strong>Message:</strong></p>
+        <p style="margin: 4px 0 0 0; font-style: italic; color: #334155;">"${params.message}"</p>
+      </div>
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${this.getClientUrl()}/portal/admin?tab=marketing" class="btn">View in Admissions CRM &rarr;</a>
+      </div>
+    `;
+    return this.send({
+      to: params.to,
+      subject: `[New Inquiry] ${params.subject} - ${params.name}`,
+      html: this.wrapTemplate(heading, body),
+    });
+  }
+
+  /**
+   * Auto-reply confirmation to the visitor who submitted the inquiry
+   */
+  public async sendAcademicInquiryConfirmation(params: {
+    to: string;
+    name: string;
+    subject: string;
+  }): Promise<EmailDispatchResult> {
+    const heading = 'Thank You for Contacting STEMPACT Academy';
+    const body = `
+      <p>Dear <strong>${params.name}</strong>,</p>
+      <p>Thank you for reaching out to <strong>STEMPACT Academy</strong> regarding <em>${params.subject}</em>.</p>
+      <p>We have successfully received your inquiry. An admissions counselor or campus coordinator will review your request and contact you via email or phone within 1 to 2 business days.</p>
+      <div class="callout" style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin: 16px 0;">
+        <p style="margin: 0; font-size: 13px; color: #166534;">
+          <strong>Want to explore programs immediately?</strong><br/>
+          You can browse our accredited schools, course syllabi, and upcoming cohort timetables directly on our portal.
+        </p>
+      </div>
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="${this.getClientUrl()}/programs" class="btn">Explore Programs & Cohorts &rarr;</a>
+      </div>
+    `;
+    return this.send({
+      to: params.to,
+      subject: `We received your inquiry: ${params.subject} - STEMPACT Academy`,
+      html: this.wrapTemplate(heading, body),
+    });
+  }
 }
 
 export const emailService = new EmailService();
