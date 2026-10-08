@@ -5,6 +5,7 @@ import { CreateCouponModal } from './CreateCouponModal';
 import { CustomInvoiceModal } from './CustomInvoiceModal';
 import { SignatoriesModal } from './SignatoriesModal';
 import { LearnerPaymentHistoryModal } from './LearnerPaymentHistoryModal';
+import { PaymentSettingsModal } from './PaymentSettingsModal';
 import {
   CreditCard,
   Building,
@@ -69,6 +70,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [showCreateCouponModal, setShowCreateCouponModal] = useState(false);
   const [showCustomInvoiceModal, setShowCustomInvoiceModal] = useState(false);
   const [showSignatoriesModal, setShowSignatoriesModal] = useState(false);
+  const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
   const [selectedLearnerRecord, setSelectedLearnerRecord] = useState<any | null>(null);
 
   // Reminder Dispatch State
@@ -446,6 +448,13 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             >
               <Gift className="w-3.5 h-3.5" />
               <span>Adjustment</span>
+            </button>
+            <button
+              onClick={() => setShowPaymentSettingsModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+              <span>Gateways & Accounts</span>
             </button>
           </div>
         )}
@@ -1411,6 +1420,15 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         record={selectedLearnerRecord}
         onClose={() => setSelectedLearnerRecord(null)}
         onSendReminder={(invoiceId) => handleSendReminder(invoiceId)}
+      />
+
+      {/* PAYMENT SETTINGS & TRANSFER ACCOUNTS MODAL */}
+      <PaymentSettingsModal
+        isOpen={showPaymentSettingsModal}
+        onClose={() => setShowPaymentSettingsModal(false)}
+        onSaved={async () => {
+          await onDataRefresh();
+        }}
       />
     </div>
   );

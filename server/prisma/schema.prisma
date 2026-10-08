@@ -212,6 +212,7 @@ model User {
   notificationPreference     NotificationPreference?
   notificationDeliveries     NotificationDelivery[]
   couponsCreated             Coupon[]
+  recordedFollowUps          LeadFollowUp[]
 }
 
 model School {
@@ -483,6 +484,9 @@ model Application {
   scholarshipRequested      Boolean           @default(false)
   financialAssistanceReason String?           // Stated reason if requesting scholarship or payment plan
   financialNotes            String?           // Optional applicant financial note
+  marketingStatus           String?           @default("NEW_LEAD") // "NEW_LEAD", "CONTACTED", "FOLLOWING_UP", "PAYMENT_COMMITTED", "CONVERTED", "LOST"
+  marketingNotes            String?
+  lastContactedAt           DateTime?
   status              ApplicationStatus @default(SUBMITTED)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
@@ -493,8 +497,10 @@ model Application {
   invoices            Invoice[]
   financialClearances FinancialClearance[]
   enrollments         StudentCohortEnrollment[]
+  followUps           LeadFollowUp[]
 
   @@index([preferredCenterId])
+  @@index([marketingStatus])
 }
 
 model Assessment {
@@ -1851,7 +1857,48 @@ model InstitutionalSettings {
   endorsingPartnerTitle       String?  @default("Accreditation & Quality Assurance Council")
   endorsingPartnerLogo        String?
 
+  // Payment Gateways & Active Channel Toggles
+  paystackEnabled             Boolean  @default(true)
+  flutterwaveEnabled          Boolean  @default(false)
+  stripeEnabled               Boolean  @default(false)
+  bankTransferEnabled         Boolean  @default(true)
+  cryptoTransferEnabled       Boolean  @default(false)
+
+  // Primary Bank Account Details
+  bankName                    String   @default("Access Bank Plc")
+  bankAccountNumber           String   @default("1234567890")
+  bankAccountName             String   @default("STEMPACT Academy Ltd")
+  bankSortCode                String?
+  bankTransferInstructions    String?  @default("Include your Application Reference Number or Full Name in the transfer narration.")
+
+  // Cryptocurrency Transfer Details (for International / Web3 Learners)
+  cryptoCurrency              String?  @default("USDT (TRC-20)")
+  cryptoNetwork               String?  @default("TRON (TRC20)")
+  cryptoWalletAddress         String?  @default("")
+  cryptoInstructions          String?  @default("Please send exact USDT equivalent to this wallet. After payment, paste the Transaction Hash (TxID) and upload screenshot proof.")
+
+  // Additional Payment Accounts / Methods (JSON string: [{ id, type, name, accountNo, network, details, instructions, isActive }])
+  customPaymentMethodsJson    String?  @default("[]")
+
   updatedAt                   DateTime @updatedAt
   createdAt                   DateTime @default(now())
 }
+
+model LeadFollowUp {
+  id               String      @id @default(uuid())
+  applicationId    String
+  application      Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  recordedById     String
+  recordedBy       User        @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+  contactChannel   String      @default("PHONE_CALL") // PHONE_CALL, WHATSAPP, EMAIL, SMS, IN_PERSON
+  contactTarget    String      @default("APPLICANT") // APPLICANT, PARENT_GUARDIAN, SPONSOR
+  outcome          String      @default("CONNECTED_INTERESTED") // CONNECTED_INTERESTED, PROMISED_PAYMENT, CALLBACK_REQUESTED, NO_ANSWER, BUSY, WRONG_NUMBER, NOT_INTERESTED, ENROLLED
+  notes            String
+  nextFollowUpDate DateTime?
+  createdAt        DateTime    @default(now())
+
+  @@index([applicationId])
+  @@index([recordedById])
+}
+
 

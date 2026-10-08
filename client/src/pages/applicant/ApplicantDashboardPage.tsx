@@ -32,6 +32,8 @@ import {
   GraduationCap,
   Tag,
   Percent,
+  Coins,
+  Copy,
 } from 'lucide-react';
 
 export const ApplicantDashboardPage: React.FC = () => {
@@ -64,13 +66,16 @@ export const ApplicantDashboardPage: React.FC = () => {
 
   // Payment Checkout Modal State
   const [showCheckout, setShowCheckout] = useState<boolean>(false);
-  const [paymentChannel, setPaymentChannel] = useState<'PAYSTACK' | 'FLUTTERWAVE' | 'BANK_TRANSFER'>('PAYSTACK');
+  const [paymentChannel, setPaymentChannel] = useState<'PAYSTACK' | 'FLUTTERWAVE' | 'BANK_TRANSFER' | 'CRYPTO'>('PAYSTACK');
   const [senderBank, setSenderBank] = useState<string>('Access Bank');
   const [senderAccount, setSenderAccount] = useState<string>('');
   const [proofUrl, setProofUrl] = useState<string>('');
   const [uploadingReceipt, setUploadingReceipt] = useState<boolean>(false);
   const [receiptFileName, setReceiptFileName] = useState<string>('');
   const [paying, setPaying] = useState<boolean>(false);
+  const [paymentSettings, setPaymentSettings] = useState<any>(null);
+  const [copiedBank, setCopiedBank] = useState<string>('');
+  const [copiedCrypto, setCopiedCrypto] = useState<boolean>(false);
 
   // Decline Offer Modal State
   const [showDeclineModal, setShowDeclineModal] = useState<boolean>(false);
@@ -131,6 +136,25 @@ export const ApplicantDashboardPage: React.FC = () => {
         setInstitutionalSettings(settingsRes);
       } catch (sErr) {
         console.warn('Institutional settings fetch:', sErr);
+      }
+
+      // Load active payment gateways and transfer details
+      try {
+        const paySettings = await api.getPublicPaymentSettings();
+        setPaymentSettings(paySettings);
+        if (paySettings?.channels) {
+          if (paySettings.channels.paystack) {
+            setPaymentChannel('PAYSTACK');
+          } else if (paySettings.channels.bankTransfer) {
+            setPaymentChannel('BANK_TRANSFER');
+          } else if (paySettings.channels.crypto) {
+            setPaymentChannel('CRYPTO');
+          } else if (paySettings.channels.flutterwave) {
+            setPaymentChannel('FLUTTERWAVE');
+          }
+        }
+      } catch (pErr) {
+        console.warn('Public payment settings fetch:', pErr);
       }
 
       // Load applicant notifications
@@ -321,7 +345,9 @@ export const ApplicantDashboardPage: React.FC = () => {
   };
 
   const handleBankTransferSubmit = async () => {
-    if (!dashboardData?.invoice?.id || !senderBank) {
+    if (!dashboardData?.invoice?.id) return;
+    const isCrypto = paymentChannel === 'CRYPTO';
+    if (!isCrypto && !senderBank) {
       alert('Please specify your sending bank name.');
       return;
     }
@@ -331,8 +357,11 @@ export const ApplicantDashboardPage: React.FC = () => {
       await api.submitBankTransfer({
         invoiceId: dashboardData.invoice.id,
         amount: payableAmount,
-        senderBank,
-        senderAccount: senderAccount || '0123456789',
+        channel: isCrypto ? 'CRYPTO' : 'BANK_TRANSFER',
+        senderBank: isCrypto
+          ? `${paymentSettings?.cryptoDetails?.currency || 'USDT'} (${paymentSettings?.cryptoDetails?.network || 'TRC20'})`
+          : senderBank,
+        senderAccount: senderAccount || (isCrypto ? 'Crypto-TxHash' : '0123456789'),
         proofUrl: proofUrl || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80',
         payerName: `${user?.firstName} ${user?.lastName}`,
         payerEmail: user?.email,
@@ -341,7 +370,7 @@ export const ApplicantDashboardPage: React.FC = () => {
       setActionSuccessMsg('Payment verification is pending. Your financial clearance will update after the payment is verified by STEMPACT Academy.');
       loadApplicantData();
     } catch (err: any) {
-      alert('Transfer submission failed: ' + err.message);
+      alert((isCrypto ? 'Crypto transfer submission failed: ' : 'Transfer submission failed: ') + err.message);
     } finally {
       setPaying(false);
     }
@@ -1604,49 +1633,127 @@ export const ApplicantDashboardPage: React.FC = () => {
             </div>
 
             {/* Payment Method Selector */}
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentChannel('PAYSTACK')}
-                className={`p-3 rounded-xl border text-xs font-bold transition-all ${
-                  paymentChannel === 'PAYSTACK'
-                    ? 'border-blue-600 bg-blue-50 text-blue-900'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Paystack
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentChannel('FLUTTERWAVE')}
-                className={`p-3 rounded-xl border text-xs font-bold transition-all ${
-                  paymentChannel === 'FLUTTERWAVE'
-                    ? 'border-blue-600 bg-blue-50 text-blue-900'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Flutterwave
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentChannel('BANK_TRANSFER')}
-                className={`p-3 rounded-xl border text-xs font-bold transition-all ${
-                  paymentChannel === 'BANK_TRANSFER'
-                    ? 'border-blue-600 bg-blue-50 text-blue-900'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                Bank Transfer
-              </button>
-            </div>
+            {(() => {
+              const channels = [
+                ...(paymentSettings?.channels?.paystack !== false ? [{ id: 'PAYSTACK' as const, label: 'Paystack', badge: 'Card / USSD' }] : []),
+                ...(paymentSettings?.channels?.flutterwave ? [{ id: 'FLUTTERWAVE' as const, label: 'Flutterwave', badge: 'Card / Mobile Money' }] : []),
+                ...(paymentSettings?.channels?.bankTransfer !== false ? [{ id: 'BANK_TRANSFER' as const, label: 'Bank Transfer', badge: 'Direct Deposit' }] : []),
+                ...(paymentSettings?.channels?.crypto ? [{ id: 'CRYPTO' as const, label: 'Crypto (USDT)', badge: 'Web3 / Global' }] : []),
+              ];
 
+              return (
+                <div className={`grid grid-cols-${Math.min(channels.length, 4)} gap-2`}>
+                  {channels.map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => setPaymentChannel(ch.id)}
+                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        paymentChannel === ch.id
+                          ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-xs'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{ch.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{ch.badge}</div>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* CHANNEL CONTENT */}
             {paymentChannel === 'BANK_TRANSFER' ? (
               <div className="space-y-4 text-xs">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="font-bold text-slate-800">STEMPACT Academy Official Account:</div>
-                  <div className="text-slate-600 font-mono">Bank: Access Bank Plc</div>
-                  <div className="text-slate-600 font-mono">Account No: 1234567890</div>
-                  <div className="text-slate-600">Account Name: STEMPACT Academy Ltd</div>
+                {/* Official Bank Account Card */}
+                <div className="p-4 bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                      STEMPACT Official Bank Account
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Primary</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-700">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Bank Name</div>
+                      <div className="font-bold text-slate-900">{paymentSettings?.bankDetails?.bankName || 'Access Bank Plc'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Account Name</div>
+                      <div className="font-semibold text-slate-900">{paymentSettings?.bankDetails?.accountName || 'STEMPACT Academy Ltd'}</div>
+                    </div>
+                  </div>
+
+                  {/* Account Number with 1-click Copy */}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Account Number</div>
+                      <div className="font-mono text-sm font-extrabold text-slate-900 tracking-wider">
+                        {paymentSettings?.bankDetails?.accountNumber || '1234567890'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const acc = paymentSettings?.bankDetails?.accountNumber || '1234567890';
+                        navigator.clipboard.writeText(acc);
+                        setCopiedBank(acc);
+                        setTimeout(() => setCopiedBank(''), 3000);
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer"
+                    >
+                      {copiedBank === (paymentSettings?.bankDetails?.accountNumber || '1234567890') ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-700">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {paymentSettings?.bankDetails?.sortCode && (
+                    <div className="text-[11px] text-slate-500">
+                      Sort Code: <span className="font-mono font-bold text-slate-700">{paymentSettings.bankDetails.sortCode}</span>
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-slate-500 bg-white/70 p-2.5 rounded-xl border border-slate-200/80 leading-relaxed">
+                    💡 <strong className="text-slate-700">Narration Instruction:</strong>{' '}
+                    {paymentSettings?.bankDetails?.instructions || 'Please input your Application Number or Full Name in transfer narration.'}
+                  </div>
+
+                  {/* Additional Bank Accounts if configured */}
+                  {Array.isArray(paymentSettings?.bankDetails?.additionalAccounts) && paymentSettings.bankDetails.additionalAccounts.length > 0 && (
+                    <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-700">Alternative Institutional Accounts:</div>
+                      {paymentSettings.bankDetails.additionalAccounts.map((acc: any, idx: number) => (
+                        <div key={idx} className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-bold text-slate-800">{acc.bankName} <span className="text-[10px] text-slate-400 font-normal">({acc.currency || 'NGN'})</span></div>
+                            <div className="font-mono text-slate-600">{acc.accountNumber} · <span className="text-[11px]">{acc.accountName}</span></div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(acc.accountNumber);
+                              setCopiedBank(acc.accountNumber);
+                              setTimeout(() => setCopiedBank(''), 3000);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer"
+                          >
+                            {copiedBank === acc.accountNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -1654,7 +1761,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. GTBank, Zenith, Access"
+                    placeholder="e.g. GTBank, Zenith, Access, Kuda"
                     value={senderBank}
                     onChange={(e) => setSenderBank(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
@@ -1662,7 +1769,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-semibold text-slate-700">Account / Reference Number</label>
+                  <label className="font-semibold text-slate-700">Sender Account / Reference / Narration</label>
                   <input
                     type="text"
                     placeholder="e.g. 0123456789 or Session ID"
@@ -1676,7 +1783,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                   <label className="font-semibold text-slate-700 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Upload Payment Receipt / Teller *</span>
+                      <span>Upload Bank Transfer Proof / Teller *</span>
                     </span>
                     {uploadingReceipt && <span className="text-[10px] text-blue-600 animate-pulse">Uploading to Cloud...</span>}
                   </label>
@@ -1696,12 +1803,8 @@ export const ApplicantDashboardPage: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-1 py-1">
-                        <p className="text-slate-600 text-xs font-medium">
-                          Click or drag receipt image / PDF here
-                        </p>
-                        <p className="text-[10px] text-slate-400">
-                          Supports PNG, JPG, WEBP, or PDF (up to 10MB)
-                        </p>
+                        <p className="text-slate-600 text-xs font-medium">Click or drag receipt image / PDF here</p>
+                        <p className="text-[10px] text-slate-400">Supports PNG, JPG, WEBP, or PDF (up to 10MB)</p>
                       </div>
                     )}
                   </div>
@@ -1714,6 +1817,111 @@ export const ApplicantDashboardPage: React.FC = () => {
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
                   {paying ? 'Submitting Transfer Proof...' : `Submit ₦${getPayableAmount().toLocaleString()} Transfer Confirmation`}
+                </button>
+              </div>
+            ) : paymentChannel === 'CRYPTO' ? (
+              <div className="space-y-4 text-xs">
+                {/* Official Crypto Deposit Card */}
+                <div className="p-4 bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50/50 rounded-2xl border border-amber-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                      <Coins className="w-4 h-4 text-amber-600" />
+                      STEMPACT Official Crypto Treasury
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-mono">
+                      {paymentSettings?.cryptoDetails?.currency || 'USDT'} · {paymentSettings?.cryptoDetails?.network || 'TRC-20'}
+                    </span>
+                  </div>
+
+                  {/* Wallet Address with 1-click Copy */}
+                  <div className="p-3 rounded-xl bg-white border border-amber-200 space-y-1.5">
+                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Deposit Wallet Address:</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-extrabold text-slate-900 break-all select-all">
+                        {paymentSettings?.cryptoDetails?.walletAddress || 'Contact Admin for TRC-20 Address'}
+                      </span>
+                      {paymentSettings?.cryptoDetails?.walletAddress && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(paymentSettings.cryptoDetails.walletAddress);
+                            setCopiedCrypto(true);
+                            setTimeout(() => setCopiedCrypto(false), 3000);
+                          }}
+                          className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition cursor-pointer"
+                        >
+                          {copiedCrypto ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-700">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-amber-900 leading-relaxed bg-white/70 p-2.5 rounded-xl border border-amber-200/60">
+                    ⚠️ <strong className="text-amber-950">Deposit Instructions:</strong>{' '}
+                    {paymentSettings?.cryptoDetails?.instructions || 'Send equivalent tuition value in USDT via TRC-20 network only. Other networks may result in permanent loss.'}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700">Sender Wallet Address / Transaction Hash (TxID) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 0x... or 32-character Transaction Hash"
+                    value={senderAccount}
+                    onChange={(e) => setSenderAccount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <UploadCloud className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Upload Transaction Screenshot / Transfer Proof *</span>
+                    </span>
+                    {uploadingReceipt && <span className="text-[10px] text-amber-600 animate-pulse">Uploading to Cloud...</span>}
+                  </label>
+
+                  <div className="border border-dashed border-slate-300 rounded-xl p-3 bg-slate-50/70 text-center hover:bg-slate-50 transition cursor-pointer relative">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={handleReceiptUpload}
+                      disabled={uploadingReceipt}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    {proofUrl ? (
+                      <div className="flex items-center justify-center gap-2 text-emerald-700 text-xs font-semibold py-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[240px]">{receiptFileName || 'Proof uploaded successfully'}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 py-1">
+                        <p className="text-slate-600 text-xs font-medium">Click or drag transaction receipt screenshot / PDF</p>
+                        <p className="text-[10px] text-slate-400">Supports PNG, JPG, WEBP, PDF (up to 10MB)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={paying || uploadingReceipt}
+                  onClick={handleBankTransferSubmit}
+                  className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {paying ? 'Submitting Crypto Deposit...' : `Submit ₦${getPayableAmount().toLocaleString()} Crypto Confirmation`}
                 </button>
               </div>
             ) : (

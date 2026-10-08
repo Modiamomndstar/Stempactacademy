@@ -192,7 +192,7 @@ export const flutterwaveWebhook = async (req: Request, res: Response): Promise<v
  */
 export const submitBankTransfer = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { invoiceId, amount, senderBank, senderAccount, proofUrl, payerName, payerEmail } = req.body;
+    const { invoiceId, amount, senderBank, senderAccount, proofUrl, payerName, payerEmail, channel } = req.body;
 
     if (!invoiceId || !amount || !senderBank) {
       res.status(400).json({ message: 'invoiceId, amount, and senderBank are required' });
@@ -210,10 +210,14 @@ export const submitBankTransfer = async (req: AuthRequest, res: Response): Promi
       proofUrl: proofUrl || '/uploads/sample_teller.jpg',
       payerName: name,
       payerEmail: email,
+      channel: channel || 'BANK_TRANSFER',
     });
 
+    const isCrypto = channel === 'CRYPTO';
     res.status(201).json({
-      message: 'Bank transfer submitted successfully! Our Finance Team will verify and issue your receipt within 24 hours.',
+      message: isCrypto
+        ? 'Crypto payment proof submitted successfully! Our Finance Team will verify the transaction on-chain within 24 hours.'
+        : 'Bank transfer submitted successfully! Our Finance Team will verify and issue your receipt within 24 hours.',
       payment,
     });
   } catch (error: any) {

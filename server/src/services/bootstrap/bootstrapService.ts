@@ -351,6 +351,43 @@ export class BootstrapService {
        ON CONFLICT ("id") DO NOTHING;`
     );
 
+    // 13. Phase 12 Payment Gateway & Marketing Follow-Up Columns
+    await runSql('Application.marketingStatus column', `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "marketingStatus" TEXT DEFAULT 'NEW_LEAD';`);
+    await runSql('Application.marketingNotes column', `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "marketingNotes" TEXT;`);
+    await runSql('Application.lastContactedAt column', `ALTER TABLE "Application" ADD COLUMN IF NOT EXISTS "lastContactedAt" TIMESTAMP(3);`);
+    await runSql('Application.marketingStatus index', `CREATE INDEX IF NOT EXISTS "Application_marketingStatus_idx" ON "Application"("marketingStatus");`);
+
+    await runSql('InstitutionalSettings.paystackEnabled', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "paystackEnabled" BOOLEAN NOT NULL DEFAULT true;`);
+    await runSql('InstitutionalSettings.flutterwaveEnabled', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "flutterwaveEnabled" BOOLEAN NOT NULL DEFAULT false;`);
+    await runSql('InstitutionalSettings.stripeEnabled', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "stripeEnabled" BOOLEAN NOT NULL DEFAULT false;`);
+    await runSql('InstitutionalSettings.bankTransferEnabled', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankTransferEnabled" BOOLEAN NOT NULL DEFAULT true;`);
+    await runSql('InstitutionalSettings.cryptoTransferEnabled', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "cryptoTransferEnabled" BOOLEAN NOT NULL DEFAULT false;`);
+    await runSql('InstitutionalSettings.bankName', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankName" TEXT NOT NULL DEFAULT 'Access Bank Plc';`);
+    await runSql('InstitutionalSettings.bankAccountNumber', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankAccountNumber" TEXT NOT NULL DEFAULT '1234567890';`);
+    await runSql('InstitutionalSettings.bankAccountName', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankAccountName" TEXT NOT NULL DEFAULT 'STEMPACT Academy Ltd';`);
+    await runSql('InstitutionalSettings.bankSortCode', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankSortCode" TEXT;`);
+    await runSql('InstitutionalSettings.bankTransferInstructions', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "bankTransferInstructions" TEXT DEFAULT 'Include your Application Reference Number or Full Name in the transfer narration.';`);
+    await runSql('InstitutionalSettings.cryptoCurrency', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "cryptoCurrency" TEXT DEFAULT 'USDT (TRC-20)';`);
+    await runSql('InstitutionalSettings.cryptoNetwork', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "cryptoNetwork" TEXT DEFAULT 'TRON (TRC20)';`);
+    await runSql('InstitutionalSettings.cryptoWalletAddress', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "cryptoWalletAddress" TEXT DEFAULT '';`);
+    await runSql('InstitutionalSettings.cryptoInstructions', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "cryptoInstructions" TEXT DEFAULT 'Please send exact USDT equivalent to this wallet. After payment, paste the Transaction Hash (TxID) and upload screenshot proof.';`);
+    await runSql('InstitutionalSettings.customPaymentMethodsJson', `ALTER TABLE "InstitutionalSettings" ADD COLUMN IF NOT EXISTS "customPaymentMethodsJson" TEXT DEFAULT '[]';`);
+
+    await runSql(
+      'LeadFollowUp table',
+      `CREATE TABLE IF NOT EXISTS "LeadFollowUp" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "applicationId" TEXT NOT NULL,
+        "recordedById" TEXT NOT NULL,
+        "contactChannel" TEXT NOT NULL DEFAULT 'PHONE_CALL',
+        "contactTarget" TEXT NOT NULL DEFAULT 'APPLICANT',
+        "outcome" TEXT NOT NULL DEFAULT 'CONNECTED_INTERESTED',
+        "notes" TEXT NOT NULL,
+        "nextFollowUpDate" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );`
+    );
+
     return { success: true, results };
   }
 

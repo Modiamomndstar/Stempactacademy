@@ -13,9 +13,11 @@ import { AcademicOperationsManager } from '../../components/admin/AcademicOperat
 import { CertificateManager } from '../../components/admin/CertificateManager';
 import { AIAdminManager } from '../../components/admin/AIAdminManager';
 import { NotificationDeliveriesManager } from '../../components/admin/NotificationDeliveriesManager';
+import { MarketingLeadsManager } from '../../components/admin/MarketingLeadsManager';
 import {
   TrendingUp,
   Users,
+  PhoneCall,
   BookOpen,
   DollarSign,
   ShieldCheck,
@@ -260,6 +262,12 @@ export const AdminDashboardPage: React.FC = () => {
         visible: isSuperAdmin || isAcademicAdmin || isAdmissionsAdmin || isCoordinator,
       },
       {
+        id: 'marketing',
+        name: `Applicant Leads & CRM`,
+        icon: PhoneCall,
+        visible: isSuperAdmin || isMarketingManager || isAdmissionsAdmin,
+      },
+      {
         id: 'instructors',
         name: `Faculty & Mentors (${instructors.length})`,
         icon: GraduationCap,
@@ -311,6 +319,7 @@ export const AdminDashboardPage: React.FC = () => {
     if (['academics', 'programs', 'cohorts', 'calendar', 'sessions', 'centers'].includes(rawUrlTab)) return 'academics';
     if (['finance', 'invoices', 'transfers'].includes(rawUrlTab)) return 'finance';
     if (['faculty', 'instructors'].includes(rawUrlTab)) return 'instructors';
+    if (['marketing', 'leads', 'crm'].includes(rawUrlTab)) return 'marketing';
     const match = availableTabs.find((t) => t.id === rawUrlTab);
     return match ? match.id : 'analytics';
   }, [rawUrlTab, availableTabs]);
@@ -632,6 +641,21 @@ export const AdminDashboardPage: React.FC = () => {
             </button>
           ),
         };
+      case 'marketing':
+        return {
+          title: 'Applicant Leads & Marketing CRM',
+          subtitle: 'Direct telephone calls, WhatsApp chat links, follow-up logs, and conversion tracking.',
+          badge: <Badge variant="blue">{applications.length} Active Leads</Badge>,
+          actions: (
+            <button
+              onClick={() => loadAllData()}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Refresh</span>
+            </button>
+          ),
+        };
       case 'instructors':
         return {
           title: 'Faculty & Mentors',
@@ -923,6 +947,14 @@ export const AdminDashboardPage: React.FC = () => {
             deliveries={notificationDeliveries}
             onRefresh={loadAllData}
             currentUser={user}
+          />
+        )}
+
+        {/* TAB: MARKETING LEADS & ADMISSIONS CRM */}
+        {activeTab === 'marketing' && (
+          <MarketingLeadsManager
+            currentUser={user}
+            onRefresh={loadAllData}
           />
         )}
 

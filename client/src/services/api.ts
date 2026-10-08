@@ -227,6 +227,7 @@ export const api = {
   submitBankTransfer: (data: {
     invoiceId: string;
     amount: number;
+    channel?: string;
     senderBank: string;
     senderAccount?: string;
     proofUrl?: string;
@@ -287,9 +288,38 @@ export const api = {
   updateInstitutionalSettings: (data: any) =>
     apiRequest('/settings/institution', { method: 'PUT', body: JSON.stringify(data) }),
 
+  // Dynamic Payment Gateways & Manual Accounts
+  getPublicPaymentSettings: () => apiRequest('/payments/settings'),
+  getAdminPaymentSettings: () => apiRequest('/admin/payment-settings'),
+  updatePaymentSettings: (data: any) =>
+    apiRequest('/admin/payment-settings', { method: 'PUT', body: JSON.stringify(data) }),
+
   // Multi-Level Program Curriculum Matrix
   getProgramCurriculumMatrix: (programId: string) =>
     apiRequest(`/programs/${programId}/curriculum-matrix`),
+
+  // Marketing & Admissions Leads CRM
+  getMarketingLeads: (params?: { search?: string; programId?: string; marketingStatus?: string; funnelStage?: string; isMinor?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return apiRequest(`/marketing/leads${q ? `?${q}` : ''}`);
+  },
+  recordLeadFollowUp: (data: {
+    applicationId: string;
+    contactChannel?: string;
+    contactTarget?: string;
+    outcome?: string;
+    notes: string;
+    nextFollowUpDate?: string;
+    newMarketingStatus?: string;
+  }) => apiRequest('/marketing/follow-up', { method: 'POST', body: JSON.stringify(data) }),
+  updateLeadMarketingStatus: (id: string, data: { marketingStatus?: string; marketingNotes?: string }) =>
+    apiRequest(`/marketing/leads/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  sendLeadFollowUpEmail: (data: {
+    applicationId: string;
+    recipientTarget?: 'APPLICANT' | 'PARENT';
+    subject: string;
+    message: string;
+  }) => apiRequest('/marketing/send-email', { method: 'POST', body: JSON.stringify(data) }),
 
   // CMS
   getCMSContent: () => apiRequest('/cms/content'),

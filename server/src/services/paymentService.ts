@@ -631,6 +631,7 @@ export class PaymentService {
     proofUrl: string;
     payerName: string;
     payerEmail: string;
+    channel?: string;
   }) {
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.invoiceId },
@@ -640,7 +641,9 @@ export class PaymentService {
       throw new Error('Invoice not found');
     }
 
-    const reference = identifierService.generatePaymentReference('BNK');
+    const channel = params.channel === 'CRYPTO' ? 'CRYPTO' : (params.channel || 'BANK_TRANSFER');
+    const prefix = channel === 'CRYPTO' ? 'CRP' : 'BNK';
+    const reference = identifierService.generatePaymentReference(prefix);
 
     const payment = await prisma.payment.create({
       data: {
@@ -648,7 +651,7 @@ export class PaymentService {
         paymentReference: reference,
         amount: params.amount,
         currency: 'NGN',
-        channel: 'BANK_TRANSFER',
+        channel,
         status: PaymentStatus.PENDING,
         proofUrl: params.proofUrl,
         senderBank: params.senderBank,
@@ -656,6 +659,7 @@ export class PaymentService {
         metadata: JSON.stringify({
           payerName: params.payerName,
           payerEmail: params.payerEmail,
+          channel,
           submittedAt: new Date().toISOString(),
         }),
       },

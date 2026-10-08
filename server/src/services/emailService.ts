@@ -411,6 +411,32 @@ class EmailService {
 
     return this.send({ to: params.to, subject, html: this.wrapTemplate(heading, body) });
   }
+
+  /**
+   * Direct manual follow-up email from Admissions & Marketing team
+   */
+  public async sendDirectFollowUpEmail(params: {
+    to: string;
+    recipientName: string;
+    subject: string;
+    message: string;
+    ctaUrl?: string;
+    ctaText?: string;
+  }): Promise<EmailDispatchResult> {
+    const heading = 'Admissions & Enrollment Communication';
+    const body = `
+      <p>Dear <strong>${params.recipientName}</strong>,</p>
+      <div style="font-size: 14px; line-height: 1.6; color: #334155; margin: 16px 0;">
+        ${params.message.replace(/\n/g, '<br/>')}
+      </div>
+      ${params.ctaUrl ? `
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${params.ctaUrl}" class="btn">${params.ctaText || 'Access Admissions Portal &rarr;'}</a>
+        </div>
+      ` : ''}
+    `;
+    return this.send({ to: params.to, subject: params.subject, html: this.wrapTemplate(heading, body) });
+  }
 }
 
 export const emailService = new EmailService();

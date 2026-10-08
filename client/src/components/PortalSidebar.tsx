@@ -28,6 +28,7 @@ import {
   Lightbulb,
   Briefcase,
   Megaphone,
+  PhoneCall,
 } from 'lucide-react';
 
 export interface PortalSidebarProps {
@@ -248,8 +249,9 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         ],
       },
       {
-        title: 'COMMUNICATIONS',
+        title: 'MARKETING & OUTREACH',
         items: [
+          { key: 'marketing', label: 'Applicant Leads & CRM', icon: PhoneCall, route: '/portal/admin' },
           { key: 'cms', label: 'School Bulletins', icon: Megaphone, route: '/portal/admin' },
           { key: 'deliveries', label: 'Notification Outbox', icon: Send, route: '/portal/admin' },
         ],

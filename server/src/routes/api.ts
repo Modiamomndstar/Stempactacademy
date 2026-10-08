@@ -34,6 +34,7 @@ import * as centerController from '../controllers/centerController.js';
 import * as progressionController from '../controllers/progressionController.js';
 import * as uploadController from '../controllers/uploadController.js';
 import * as financeController from '../controllers/financeController.js';
+import * as marketingController from '../controllers/marketingController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -176,12 +177,21 @@ router.post('/finance/invoices/custom', authenticate, authorize(Role.SUPER_ADMIN
 router.get('/finance/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.getFinancialOverview);
 router.post('/finance/invoices/:id/reminder', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.sendPaymentReminder);
 
-// 13c. Institutional Signatory Settings
+// 13c. Institutional Signatory Settings & Payment Gateways
 router.get('/settings/institution', financeController.getInstitutionalSettings);
 router.put('/settings/institution', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), financeController.updateInstitutionalSettings);
+router.get('/payments/settings', financeController.getPublicPaymentSettings);
+router.get('/admin/payment-settings', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.getAdminPaymentSettings);
+router.put('/admin/payment-settings', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.updatePaymentSettings);
 
 // 13d. Multi-Level Program Curriculum Matrix
 router.get('/programs/:id/curriculum-matrix', financeController.getProgramCurriculumMatrix);
+
+// 13e. Marketing & Admissions Leads CRM
+router.get('/marketing/leads', authenticate, authorize(Role.SUPER_ADMIN, Role.MARKETING_MANAGER, Role.ADMISSIONS_ADMIN), marketingController.getMarketingLeads);
+router.post('/marketing/follow-up', authenticate, authorize(Role.SUPER_ADMIN, Role.MARKETING_MANAGER, Role.ADMISSIONS_ADMIN), marketingController.recordLeadFollowUp);
+router.patch('/marketing/leads/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.MARKETING_MANAGER, Role.ADMISSIONS_ADMIN), marketingController.updateLeadMarketingStatus);
+router.post('/marketing/send-email', authenticate, authorize(Role.SUPER_ADMIN, Role.MARKETING_MANAGER, Role.ADMISSIONS_ADMIN), marketingController.sendLeadFollowUpEmail);
 
 // 14. CMS & Public Feeds
 router.get('/cms/content', cmsController.getCMSContent);

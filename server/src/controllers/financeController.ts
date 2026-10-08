@@ -732,3 +732,226 @@ export const getProgramCurriculumMatrix = async (req: Request, res: Response): P
     res.status(500).json({ message: 'Failed to load curriculum matrix' });
   }
 };
+
+// ===========================================================================
+// 7. DYNAMIC PAYMENT GATEWAYS & TRANSFER METHODS CONFIGURATION
+// ===========================================================================
+
+/**
+ * Public payment options & active channels (accessible by applicants & students)
+ * Evaluates active gateway flags against backend environment key presence
+ */
+export const getPublicPaymentSettings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    let settings = await prisma.institutionalSettings.findUnique({
+      where: { id: 'default-institution-settings' },
+    });
+
+    if (!settings) {
+      settings = await prisma.institutionalSettings.create({
+        data: {
+          id: 'default-institution-settings',
+          institutionName: 'STEMPACT Academy',
+          paystackEnabled: true,
+          flutterwaveEnabled: false,
+          bankTransferEnabled: true,
+          cryptoTransferEnabled: false,
+        },
+      });
+    }
+
+    const paystackEnvConfigured = Boolean(
+      process.env.PAYSTACK_SECRET_KEY &&
+      process.env.PAYSTACK_SECRET_KEY.trim() !== '' &&
+      !process.env.PAYSTACK_SECRET_KEY.startsWith('placeholder')
+    );
+
+    const flutterwaveEnvConfigured = Boolean(
+      process.env.FLUTTERWAVE_SECRET_KEY &&
+      process.env.FLUTTERWAVE_SECRET_KEY.trim() !== '' &&
+      !process.env.FLUTTERWAVE_SECRET_KEY.startsWith('placeholder')
+    );
+
+    const stripeEnvConfigured = Boolean(
+      process.env.STRIPE_SECRET_KEY &&
+      process.env.STRIPE_SECRET_KEY.trim() !== '' &&
+      !process.env.STRIPE_SECRET_KEY.startsWith('placeholder')
+    );
+
+    let customMethods: any[] = [];
+    try {
+      if (settings.customPaymentMethodsJson) {
+        customMethods = JSON.parse(settings.customPaymentMethodsJson);
+      }
+    } catch {
+      customMethods = [];
+    }
+
+    const activeCustomMethods = Array.isArray(customMethods)
+      ? customMethods.filter((m: any) => m && m.isActive !== false)
+      : [];
+
+    res.status(200).json({
+      paystack: Boolean(settings.paystackEnabled && paystackEnvConfigured),
+      flutterwave: Boolean(settings.flutterwaveEnabled && flutterwaveEnvConfigured),
+      stripe: Boolean(settings.stripeEnabled && stripeEnvConfigured),
+      bankTransfer: Boolean(settings.bankTransferEnabled),
+      cryptoTransfer: Boolean(settings.cryptoTransferEnabled && settings.cryptoWalletAddress?.trim()),
+      bankDetails: {
+        bankName: settings.bankName || 'Access Bank Plc',
+        bankAccountNumber: settings.bankAccountNumber || '1234567890',
+        bankAccountName: settings.bankAccountName || 'STEMPACT Academy Ltd',
+        bankSortCode: settings.bankSortCode || null,
+        bankTransferInstructions:
+          settings.bankTransferInstructions ||
+          'Please include your Application Reference Number or Full Name in the transfer narration.',
+      },
+      cryptoDetails: settings.cryptoTransferEnabled
+        ? {
+            cryptoCurrency: settings.cryptoCurrency || 'USDT (TRC-20)',
+            cryptoNetwork: settings.cryptoNetwork || 'TRON (TRC20)',
+            cryptoWalletAddress: settings.cryptoWalletAddress || '',
+            cryptoInstructions:
+              settings.cryptoInstructions ||
+              'Please send exact USDT equivalent to this wallet and upload the transaction hash and payment screenshot.',
+          }
+        : null,
+      customMethods: activeCustomMethods,
+    });
+  } catch (error: any) {
+    console.error('getPublicPaymentSettings error:', error);
+    res.status(500).json({ message: 'Failed to load payment options' });
+  }
+};
+
+/**
+ * Admin view of payment gateway status, env presence, and transfer accounts
+ */
+export const getAdminPaymentSettings = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    let settings = await prisma.institutionalSettings.findUnique({
+      where: { id: 'default-institution-settings' },
+    });
+
+    if (!settings) {
+      settings = await prisma.institutionalSettings.create({
+        data: {
+          id: 'default-institution-settings',
+          institutionName: 'STEMPACT Academy',
+          paystackEnabled: true,
+          flutterwaveEnabled: false,
+          bankTransferEnabled: true,
+          cryptoTransferEnabled: false,
+        },
+      });
+    }
+
+    const paystackEnvConfigured = Boolean(
+      process.env.PAYSTACK_SECRET_KEY &&
+      process.env.PAYSTACK_SECRET_KEY.trim() !== '' &&
+      !process.env.PAYSTACK_SECRET_KEY.startsWith('placeholder')
+    );
+
+    const flutterwaveEnvConfigured = Boolean(
+      process.env.FLUTTERWAVE_SECRET_KEY &&
+      process.env.FLUTTERWAVE_SECRET_KEY.trim() !== '' &&
+      !process.env.FLUTTERWAVE_SECRET_KEY.startsWith('placeholder')
+    );
+
+    const stripeEnvConfigured = Boolean(
+      process.env.STRIPE_SECRET_KEY &&
+      process.env.STRIPE_SECRET_KEY.trim() !== '' &&
+      !process.env.STRIPE_SECRET_KEY.startsWith('placeholder')
+    );
+
+    res.status(200).json({
+      settings,
+      envStatus: {
+        paystackConfigured: paystackEnvConfigured,
+        flutterwaveConfigured: flutterwaveEnvConfigured,
+        stripeConfigured: stripeEnvConfigured,
+      },
+    });
+  } catch (error: any) {
+    console.error('getAdminPaymentSettings error:', error);
+    res.status(500).json({ message: 'Failed to fetch admin payment settings' });
+  }
+};
+
+/**
+ * Update payment settings (Super Admin & Finance Admin)
+ */
+export const updatePaymentSettings = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      paystackEnabled,
+      flutterwaveEnabled,
+      stripeEnabled,
+      bankTransferEnabled,
+      cryptoTransferEnabled,
+      bankName,
+      bankAccountNumber,
+      bankAccountName,
+      bankSortCode,
+      bankTransferInstructions,
+      cryptoCurrency,
+      cryptoNetwork,
+      cryptoWalletAddress,
+      cryptoInstructions,
+      customPaymentMethodsJson,
+    } = req.body;
+
+    const updated = await prisma.institutionalSettings.upsert({
+      where: { id: 'default-institution-settings' },
+      update: {
+        ...(paystackEnabled !== undefined && { paystackEnabled: Boolean(paystackEnabled) }),
+        ...(flutterwaveEnabled !== undefined && { flutterwaveEnabled: Boolean(flutterwaveEnabled) }),
+        ...(stripeEnabled !== undefined && { stripeEnabled: Boolean(stripeEnabled) }),
+        ...(bankTransferEnabled !== undefined && { bankTransferEnabled: Boolean(bankTransferEnabled) }),
+        ...(cryptoTransferEnabled !== undefined && { cryptoTransferEnabled: Boolean(cryptoTransferEnabled) }),
+        ...(bankName && { bankName }),
+        ...(bankAccountNumber && { bankAccountNumber }),
+        ...(bankAccountName && { bankAccountName }),
+        ...(bankSortCode !== undefined && { bankSortCode }),
+        ...(bankTransferInstructions !== undefined && { bankTransferInstructions }),
+        ...(cryptoCurrency !== undefined && { cryptoCurrency }),
+        ...(cryptoNetwork !== undefined && { cryptoNetwork }),
+        ...(cryptoWalletAddress !== undefined && { cryptoWalletAddress }),
+        ...(cryptoInstructions !== undefined && { cryptoInstructions }),
+        ...(customPaymentMethodsJson !== undefined && {
+          customPaymentMethodsJson: typeof customPaymentMethodsJson === 'string'
+            ? customPaymentMethodsJson
+            : JSON.stringify(customPaymentMethodsJson),
+        }),
+      },
+      create: {
+        id: 'default-institution-settings',
+        institutionName: 'STEMPACT Academy',
+        paystackEnabled: paystackEnabled !== undefined ? Boolean(paystackEnabled) : true,
+        flutterwaveEnabled: flutterwaveEnabled !== undefined ? Boolean(flutterwaveEnabled) : false,
+        bankTransferEnabled: bankTransferEnabled !== undefined ? Boolean(bankTransferEnabled) : true,
+        cryptoTransferEnabled: cryptoTransferEnabled !== undefined ? Boolean(cryptoTransferEnabled) : false,
+        bankName: bankName || 'Access Bank Plc',
+        bankAccountNumber: bankAccountNumber || '1234567890',
+        bankAccountName: bankAccountName || 'STEMPACT Academy Ltd',
+        bankSortCode,
+        bankTransferInstructions,
+        cryptoCurrency: cryptoCurrency || 'USDT (TRC-20)',
+        cryptoNetwork: cryptoNetwork || 'TRON (TRC20)',
+        cryptoWalletAddress: cryptoWalletAddress || '',
+        cryptoInstructions,
+        customPaymentMethodsJson: typeof customPaymentMethodsJson === 'string'
+          ? customPaymentMethodsJson
+          : JSON.stringify(customPaymentMethodsJson || []),
+      },
+    });
+
+    res.status(200).json({
+      message: 'Payment gateways and account details updated successfully!',
+      settings: updated,
+    });
+  } catch (error: any) {
+    console.error('updatePaymentSettings error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update payment settings' });
+  }
+};
