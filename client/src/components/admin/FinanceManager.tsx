@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Card, Badge } from '../UIElements';
+import { CreateCouponModal } from './CreateCouponModal';
+import { CustomInvoiceModal } from './CustomInvoiceModal';
+import { SignatoriesModal } from './SignatoriesModal';
+import { LearnerPaymentHistoryModal } from './LearnerPaymentHistoryModal';
 import {
   CreditCard,
   Building,
@@ -17,6 +21,15 @@ import {
   AlertTriangle,
   Gift,
   HelpCircle,
+  Tag,
+  Percent,
+  Receipt,
+  Send,
+  Eye,
+  Mail,
+  Award,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 
 interface FinanceManagerProps {
@@ -34,13 +47,32 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   onDataRefresh,
   isFinanceOrSuperAdmin,
 }) => {
-  const [subTab, setSubTab] = useState<'transfers' | 'invoices' | 'clearance'>('transfers');
+  const [subTab, setSubTab] = useState<'transfers' | 'ledger' | 'coupons' | 'invoices' | 'clearance' | 'signatories'>('transfers');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   const [processing, setProcessing] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
+
+  // Ledger & Financial Overview State
+  const [financialOverview, setFinancialOverview] = useState<any>(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerStatusFilter, setLedgerStatusFilter] = useState('ALL');
+
+  // Coupons State
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+
+  // Modal Visibility States
+  const [showCreateCouponModal, setShowCreateCouponModal] = useState(false);
+  const [showCustomInvoiceModal, setShowCustomInvoiceModal] = useState(false);
+  const [showSignatoriesModal, setShowSignatoriesModal] = useState(false);
+  const [selectedLearnerRecord, setSelectedLearnerRecord] = useState<any | null>(null);
+
+  // Reminder Dispatch State
+  const [sendingReminderInvoiceId, setSendingReminderInvoiceId] = useState<string | null>(null);
 
   // Rejection modal
   const [rejectingTransferId, setRejectingTransferId] = useState<string | null>(null);
@@ -200,6 +232,70 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     }
   };
 
+  // 7. Load Financial Ledger Overview
+  const loadFinancialOverview = async () => {
+    setLoadingOverview(true);
+    try {
+      const res = await api.getFinancialOverview({
+        search: ledgerSearch || undefined,
+        status: ledgerStatusFilter !== 'ALL' ? ledgerStatusFilter : undefined,
+      });
+      setFinancialOverview(res);
+    } catch (err: any) {
+      console.warn('Financial overview fetch error:', err);
+    } finally {
+      setLoadingOverview(false);
+    }
+  };
+
+  // 8. Load Active Coupons
+  const loadCoupons = async () => {
+    setLoadingCoupons(true);
+    try {
+      const res = await api.getCoupons();
+      setCoupons(res.coupons || []);
+    } catch (err: any) {
+      console.warn('Coupons fetch error:', err);
+    } finally {
+      setLoadingCoupons(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'ledger') {
+      loadFinancialOverview();
+    } else if (subTab === 'coupons') {
+      loadCoupons();
+    }
+  }, [subTab, ledgerStatusFilter]);
+
+  // 9. Send Tuition Payment Reminder
+  const handleSendReminder = async (invoiceId: string, customNote?: string) => {
+    setSendingReminderInvoiceId(invoiceId);
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const res = await api.sendPaymentReminder(invoiceId, customNote);
+      setActionSuccess(res.message || 'Tuition payment reminder dispatched successfully!');
+      await loadFinancialOverview();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to dispatch payment reminder.');
+    } finally {
+      setSendingReminderInvoiceId(null);
+    }
+  };
+
+  // 10. Toggle Coupon Active State
+  const handleToggleCoupon = async (couponId: string) => {
+    try {
+      await api.toggleCoupon(couponId);
+      setActionSuccess('Coupon status updated.');
+      await loadCoupons();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to toggle coupon status.');
+    }
+  };
+
   const filteredInvoices = invoices.filter((inv) => {
     if (statusFilter && inv.status !== statusFilter) return false;
     if (search) {
@@ -248,10 +344,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
       {/* Subtab Navigation & Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setSubTab('transfers')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
               subTab === 'transfers'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -260,8 +356,30 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             Bank Transfer Approvals ({pendingTransfers.length})
           </button>
           <button
+            onClick={() => setSubTab('ledger')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'ledger'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Learner Ledger & Reminders</span>
+          </button>
+          <button
+            onClick={() => setSubTab('coupons')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'coupons'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Coupons & Waivers ({coupons.length})</span>
+          </button>
+          <button
             onClick={() => setSubTab('invoices')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
               subTab === 'invoices'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -271,38 +389,63 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           </button>
           <button
             onClick={() => setSubTab('clearance')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
               subTab === 'clearance'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            Clearance & Waivers
+            Clearance
+          </button>
+          <button
+            onClick={() => setSubTab('signatories')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'signatories'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Signatories & Seal</span>
           </button>
         </div>
 
         {isFinanceOrSuperAdmin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowCustomInvoiceModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              <span>+ Issue Custom Invoice</span>
+            </button>
+            <button
+              onClick={() => setShowCreateCouponModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>+ Create Coupon</span>
+            </button>
             <button
               onClick={() => setShowWaiverModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Grant Waiver</span>
             </button>
             <button
               onClick={() => setShowArrangementModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <CreditCard className="w-3.5 h-3.5" />
               <span>Approve Arrangement</span>
             </button>
             <button
               onClick={() => setShowAdjustmentModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Gift className="w-3.5 h-3.5" />
-              <span>Financial Adjustment</span>
+              <span>Adjustment</span>
             </button>
           </div>
         )}
@@ -565,6 +708,364 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               </div>
             )}
           </Card>
+        </div>
+      )}
+
+      {/* SUBTAB 4: STUDENT LEDGER & PAYMENT REMINDERS */}
+      {subTab === 'ledger' && (
+        <div className="space-y-6">
+          {/* Header & Metrics Strip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <span>Authoritative Learner Billing & Payment Ledger</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Track full payment records, outstanding receivables, and dispatch tuition reminders.
+              </p>
+            </div>
+            <button
+              onClick={loadFinancialOverview}
+              disabled={loadingOverview}
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingOverview ? 'animate-spin' : ''}`} />
+              <span>Refresh Ledger</span>
+            </button>
+          </div>
+
+          {financialOverview?.metrics && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Billed</span>
+                <span className="text-lg font-black text-slate-900 font-mono">
+                  ₦{Number(financialOverview.metrics.totalBilled || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                <span className="text-[10px] text-emerald-700 uppercase font-bold block">Total Collected</span>
+                <span className="text-lg font-black text-emerald-800 font-mono">
+                  ₦{Number(financialOverview.metrics.totalCollected || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                <span className="text-[10px] text-amber-700 uppercase font-bold block">Outstanding Balance</span>
+                <span className="text-lg font-black text-amber-900 font-mono">
+                  ₦{Number(financialOverview.metrics.totalOutstanding || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                <span className="text-[10px] text-blue-700 uppercase font-bold block">Payment Breakdown</span>
+                <div className="text-xs font-bold text-blue-900 flex items-center gap-2 mt-1">
+                  <span className="text-emerald-700">{financialOverview.metrics.fullyPaidCount} Paid</span> •{' '}
+                  <span className="text-amber-700">{financialOverview.metrics.partialCount} Part</span> •{' '}
+                  <span className="text-rose-700">{financialOverview.metrics.unpaidCount} Due</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search learner name, email, phone, or invoice ref..."
+                value={ledgerSearch}
+                onChange={(e) => setLedgerSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadFinancialOverview()}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {['ALL', 'PAID', 'PARTIALLY_PAID', 'UNPAID'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setLedgerStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    ledgerStatusFilter === st
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {st.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ledger Records Table */}
+          {loadingOverview ? (
+            <div className="py-16 text-center text-xs text-slate-400">Loading learner ledger records...</div>
+          ) : !financialOverview?.records?.length ? (
+            <div className="p-12 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              No billing ledger records matching the selected filter.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-[10px] text-slate-500 uppercase font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">Learner & Contact</th>
+                    <th className="p-3.5">Program / Cohort</th>
+                    <th className="p-3.5">Invoice Ref</th>
+                    <th className="p-3.5">Billed</th>
+                    <th className="p-3.5">Paid</th>
+                    <th className="p-3.5">Balance</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {financialOverview.records.map((rec: any) => (
+                    <tr key={rec.id} className="hover:bg-slate-50/70 transition">
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-900">{rec.learnerName}</div>
+                        <div className="text-[10px] text-slate-400">{rec.learnerEmail}</div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="font-semibold text-slate-800 line-clamp-1">{rec.programTitle}</div>
+                        {rec.selectedPlanType && (
+                          <span className="text-[9px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+                            {rec.selectedPlanType}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-mono text-[11px] font-bold text-slate-700">
+                        {rec.invoiceNumber}
+                      </td>
+                      <td className="p-3.5 font-mono font-bold text-slate-900">
+                        ₦{Number(rec.totalAmount).toLocaleString()}
+                      </td>
+                      <td className="p-3.5 font-mono font-semibold text-emerald-700">
+                        ₦{Number(rec.amountPaid).toLocaleString()}
+                      </td>
+                      <td className="p-3.5 font-mono font-bold text-amber-700">
+                        ₦{Number(rec.balance).toLocaleString()}
+                      </td>
+                      <td className="p-3.5">
+                        <Badge variant={rec.status === 'PAID' ? 'green' : rec.status === 'PARTIALLY_PAID' ? 'amber' : 'red'}>
+                          {rec.status}
+                        </Badge>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedLearnerRecord(rec)}
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                            title="View Complete Billing History"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {rec.balance > 0 && (
+                            <button
+                              type="button"
+                              disabled={sendingReminderInvoiceId === rec.id}
+                              onClick={() => handleSendReminder(rec.id)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              title="Send Reminder Email & Portal Alert"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>{sendingReminderInvoiceId === rec.id ? 'Sending...' : 'Remind'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUBTAB 5: PROMO COUPONS & WAIVER CODES */}
+      {subTab === 'coupons' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Tag className="w-5 h-5 text-purple-600" />
+                <span>Promo Discount Coupons & Fee Waiver Codes</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Generate and distribute marketing discount codes and tuition reduction coupons.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowCreateCouponModal(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Generate New Coupon</span>
+            </button>
+          </div>
+
+          {loadingCoupons ? (
+            <div className="py-16 text-center text-xs text-slate-400">Loading coupons...</div>
+          ) : coupons.length === 0 ? (
+            <div className="p-12 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3">
+              <Tag className="w-8 h-8 text-slate-300 mx-auto" />
+              <p>No coupon or waiver codes generated yet.</p>
+              <button
+                onClick={() => setShowCreateCouponModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Create First Coupon
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {coupons.map((cpn: any) => (
+                <div
+                  key={cpn.id}
+                  className={`p-5 rounded-2xl border transition space-y-3 ${
+                    cpn.isActive
+                      ? 'bg-white border-slate-200 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-mono font-black text-base text-slate-900 tracking-wider">
+                        {cpn.code}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{cpn.description || 'General promotion'}</p>
+                    </div>
+                    <Badge variant={cpn.isActive ? 'green' : 'slate'}>
+                      {cpn.isActive ? 'ACTIVE' : 'INACTIVE'}
+                    </Badge>
+                  </div>
+
+                  <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
+                    <span className="text-xs text-purple-900 font-semibold">Discount:</span>
+                    <strong className="text-sm font-mono text-purple-700 font-bold">
+                      {cpn.discountType === 'PERCENTAGE'
+                        ? `${cpn.discountValue}% OFF`
+                        : `₦${Number(cpn.discountValue).toLocaleString()} OFF`}
+                    </strong>
+                  </div>
+
+                  <div className="space-y-1 text-[11px] text-slate-500">
+                    <div className="flex justify-between">
+                      <span>Redeemed Count:</span>
+                      <strong className="text-slate-800">{cpn.usedCount} {cpn.maxUses ? `/ ${cpn.maxUses} uses` : 'times'}</strong>
+                    </div>
+                    {cpn.expiresAt && (
+                      <div className="flex justify-between">
+                        <span>Expires On:</span>
+                        <span className="text-slate-800 font-medium">
+                          {new Date(cpn.expiresAt).toLocaleDateString('en-GB')}
+                        </span>
+                      </div>
+                    )}
+                    {cpn.program && (
+                      <div className="flex justify-between">
+                        <span>Program Scope:</span>
+                        <span className="font-semibold text-slate-800 truncate max-w-[150px]">{cpn.program.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCoupon(cpn.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        cpn.isActive
+                          ? 'border border-slate-200 text-slate-600 hover:bg-slate-100'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      }`}
+                    >
+                      {cpn.isActive ? 'Deactivate' : 'Activate Code'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUBTAB 6: INSTITUTIONAL SIGNATORIES & SEALS */}
+      {subTab === 'signatories' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-600" />
+                <span>Institutional Signatories & Official Document Seals</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Super Admin and Academic Admin settings for legal signatures appearing on admission offers and graduation credentials.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSignatoriesModal(true)}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer shrink-0"
+            >
+              <Award className="w-4 h-4 text-amber-400" />
+              <span>Edit Institutional Signatories</span>
+            </button>
+          </div>
+
+          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 space-y-6 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-slate-900">Official Document Verification Preview</h4>
+                <p className="text-xs text-slate-500">
+                  These authoritative names and digital stamps appear at the footer of all provisional admissions letters and verified credentials.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+              {/* Dean Signature */}
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Academic Dean / Provost</span>
+                <div className="font-serif italic text-base text-slate-900 font-bold">
+                  Dr. Kehinde Adeleke
+                </div>
+                <div className="text-[11px] font-bold text-slate-700">Dean of Academic Affairs & Faculty</div>
+                <div className="text-[10px] text-slate-400">STEMPACT Academy Directorate</div>
+              </div>
+
+              {/* Official Seal */}
+              <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center space-y-2">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Institutional Seal</span>
+                <div className="w-16 h-16 rounded-full border-2 border-dashed border-amber-600/70 bg-amber-50 p-1 flex items-center justify-center">
+                  <Award className="w-6 h-6 text-amber-700" />
+                </div>
+                <div className="text-[10px] font-bold text-amber-900">STEMPACT OS OFFICIAL SEAL</div>
+              </div>
+
+              {/* Registrar */}
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Registrar & Records</span>
+                <div className="font-serif italic text-base text-slate-900 font-bold">
+                  Office of the Registrar
+                </div>
+                <div className="text-[11px] font-bold text-slate-700">Registrar & Student Records</div>
+                <div className="text-[10px] text-slate-400">Accredited Academic Registry</div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowSignatoriesModal(true)}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                Customize Names, Titles & Upload Signatures
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -871,6 +1372,46 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* CREATE COUPON MODAL */}
+      <CreateCouponModal
+        isOpen={showCreateCouponModal}
+        onClose={() => setShowCreateCouponModal(false)}
+        onSaved={async () => {
+          setShowCreateCouponModal(false);
+          await loadCoupons();
+          await onDataRefresh();
+        }}
+      />
+
+      {/* CUSTOM INVOICE MODAL */}
+      <CustomInvoiceModal
+        isOpen={showCustomInvoiceModal}
+        onClose={() => setShowCustomInvoiceModal(false)}
+        onSaved={async () => {
+          setShowCustomInvoiceModal(false);
+          await loadFinancialOverview();
+          await onDataRefresh();
+        }}
+      />
+
+      {/* INSTITUTIONAL SIGNATORIES MODAL */}
+      <SignatoriesModal
+        isOpen={showSignatoriesModal}
+        onClose={() => setShowSignatoriesModal(false)}
+        onSaved={async () => {
+          setShowSignatoriesModal(false);
+          await onDataRefresh();
+        }}
+      />
+
+      {/* LEARNER PAYMENT HISTORY MODAL */}
+      <LearnerPaymentHistoryModal
+        isOpen={!!selectedLearnerRecord}
+        record={selectedLearnerRecord}
+        onClose={() => setSelectedLearnerRecord(null)}
+        onSendReminder={(invoiceId) => handleSendReminder(invoiceId)}
+      />
     </div>
   );
 };

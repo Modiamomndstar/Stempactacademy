@@ -39,6 +39,7 @@ import { AcademicCalendarManager } from './AcademicCalendarManager';
 import { SchoolModal } from './SchoolModal';
 import { ProgramModal } from './ProgramModal';
 import { CenterModal } from './CenterModal';
+import { CurriculumMatrixExplorer } from './CurriculumMatrixExplorer';
 
 interface AcademicOperationsManagerProps {
   schools?: any[];
@@ -50,7 +51,7 @@ interface AcademicOperationsManagerProps {
   onOpenCohortAnalysis: (cohortId: string) => void;
   onOpenAIArchitect: (progId?: string) => void;
   isAcademicOrSuperAdmin: boolean;
-  initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers';
+  initialSubTab?: 'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers' | 'matrix';
 }
 
 export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps> = ({
@@ -65,7 +66,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   isAcademicOrSuperAdmin,
   initialSubTab = 'schools',
 }) => {
-  const [subTab, setSubTab] = useState<'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers'>(initialSubTab);
+  const [subTab, setSubTab] = useState<'calendar' | 'schools' | 'programs' | 'cohorts' | 'centers' | 'matrix'>(initialSubTab);
 
   React.useEffect(() => {
     if (initialSubTab) {
@@ -415,6 +416,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
           >
             <Building2 className="w-3.5 h-3.5" />
             <span>Learning Centers ({centers.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSubTab('matrix');
+              setSelectedSchool(null);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === 'matrix'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Curriculum Matrix by Level</span>
           </button>
         </div>
 
@@ -1711,6 +1727,15 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             </div>
           )}
         </div>
+      )}
+
+      {/* CURRICULUM MATRIX BY LEVEL */}
+      {subTab === 'matrix' && (
+        <CurriculumMatrixExplorer
+          schools={effectiveSchools}
+          programs={programs}
+          onOpenCurriculumArchitect={(prog) => onOpenAIArchitect(prog?.id)}
+        />
       )}
 
       {/* Program Detail Console Modal */}

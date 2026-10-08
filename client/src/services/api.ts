@@ -259,6 +259,37 @@ export const api = {
     reason: string;
     sponsorDetails?: any;
   }) => apiRequest('/payments/adjustments', { method: 'POST', body: JSON.stringify(data) }),
+  applyCoupon: (data: { invoiceId: string; code: string }) =>
+    apiRequest('/payments/apply-coupon', { method: 'POST', body: JSON.stringify(data) }),
+  selectInstallmentPlan: (data: { invoiceId: string; planType: string }) =>
+    apiRequest('/payments/select-plan', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Financial Operations, Coupons, Custom Invoices & Reminders
+  getCoupons: (params?: { activeOnly?: string; programId?: string; cohortId?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return apiRequest(`/finance/coupons${q ? `?${q}` : ''}`);
+  },
+  createCoupon: (data: any) =>
+    apiRequest('/finance/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  toggleCoupon: (id: string) =>
+    apiRequest(`/finance/coupons/${id}/toggle`, { method: 'PATCH' }),
+  createCustomInvoice: (data: any) =>
+    apiRequest('/finance/invoices/custom', { method: 'POST', body: JSON.stringify(data) }),
+  getFinancialOverview: (params?: { search?: string; status?: string; cohortId?: string }) => {
+    const q = new URLSearchParams(params as any).toString();
+    return apiRequest(`/finance/overview${q ? `?${q}` : ''}`);
+  },
+  sendPaymentReminder: (invoiceId: string, customNote?: string) =>
+    apiRequest(`/finance/invoices/${invoiceId}/reminder`, { method: 'POST', body: JSON.stringify({ customNote }) }),
+
+  // Institutional Signatory Settings
+  getInstitutionalSettings: () => apiRequest('/settings/institution'),
+  updateInstitutionalSettings: (data: any) =>
+    apiRequest('/settings/institution', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Multi-Level Program Curriculum Matrix
+  getProgramCurriculumMatrix: (programId: string) =>
+    apiRequest(`/programs/${programId}/curriculum-matrix`),
 
   // CMS
   getCMSContent: () => apiRequest('/cms/content'),

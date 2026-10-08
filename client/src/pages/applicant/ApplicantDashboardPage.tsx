@@ -30,6 +30,8 @@ import {
   MapPin,
   Building2,
   GraduationCap,
+  Tag,
+  Percent,
 } from 'lucide-react';
 
 export const ApplicantDashboardPage: React.FC = () => {
@@ -83,6 +85,21 @@ export const ApplicantDashboardPage: React.FC = () => {
   // Enrolling state
   const [enrolling, setEnrolling] = useState<boolean>(false);
 
+  // Institutional Signatories State
+  const [institutionalSettings, setInstitutionalSettings] = useState<any>(null);
+
+  // Coupon / Waiver Code State
+  const [couponCodeInput, setCouponCodeInput] = useState<string>('');
+  const [applyingCoupon, setApplyingCoupon] = useState<boolean>(false);
+  const [couponSuccessMsg, setCouponSuccessMsg] = useState<string>('');
+  const [couponErrorMsg, setCouponErrorMsg] = useState<string>('');
+
+  // Payment Options & Installment Plan State
+  const [selectedPlanType, setSelectedPlanType] = useState<string>('FULL');
+  const [savingPlan, setSavingPlan] = useState<boolean>(false);
+  const [paymentModeChoice, setPaymentModeChoice] = useState<'MINIMUM_INSTALLMENT' | 'FULL_BALANCE' | 'CUSTOM'>('MINIMUM_INSTALLMENT');
+  const [customPayAmount, setCustomPayAmount] = useState<string>('');
+
   // In-App Notifications State
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -95,6 +112,10 @@ export const ApplicantDashboardPage: React.FC = () => {
       const data = await api.getApplicantDashboard();
       setDashboardData(data);
 
+      if (data.invoice?.selectedPlanType) {
+        setSelectedPlanType(data.invoice.selectedPlanType);
+      }
+
       if (data.admission?.id) {
         try {
           const clr = await api.getFinancialClearance(data.admission.id);
@@ -102,6 +123,14 @@ export const ApplicantDashboardPage: React.FC = () => {
         } catch (cErr) {
           console.warn('Financial clearance check:', cErr);
         }
+      }
+
+      // Load institutional settings (signatories, seal)
+      try {
+        const settingsRes = await api.getInstitutionalSettings();
+        setInstitutionalSettings(settingsRes);
+      } catch (sErr) {
+        console.warn('Institutional settings fetch:', sErr);
       }
 
       // Load applicant notifications
@@ -194,6 +223,88 @@ export const ApplicantDashboardPage: React.FC = () => {
     }
   };
 
+  // Determine amount payable based on plan choice & user selection
+  const getPayableAmount = (): number => {
+    const inv = dashboardData?.invoice;
+    if (!inv) return 0;
+    const balance = Number(inv.balance !== undefined ? inv.balance : inv.totalAmount || 0);
+    if (balance <= 0) return 0;
+
+    if (paymentModeChoice === 'FULL_BALANCE') {
+      return balance;
+    }
+    if (paymentModeChoice === 'CUSTOM') {
+      const customVal = Number(customPayAmount);
+      if (customVal && customVal > 0) {
+        return Math.min(balance, Math.max(1000, customVal));
+      }
+    }
+
+    // Default: Minimum / next installment
+    let schedule: any = null;
+    if (inv.installmentScheduleJson) {
+      try {
+        schedule = typeof inv.installmentScheduleJson === 'string'
+          ? JSON.parse(inv.installmentScheduleJson)
+          : inv.installmentScheduleJson;
+      } catch (e) {}
+    }
+
+    if (schedule?.milestones?.length) {
+      const pendingMilestone = schedule.milestones.find((m: any) => m.status !== 'PAID');
+      if (pendingMilestone) {
+        return Math.min(balance, Number(pendingMilestone.amount));
+      }
+    }
+
+    if (selectedPlanType === 'INSTALLMENT_50_50') {
+      return Math.min(balance, Math.round(balance * 0.5));
+    }
+    if (selectedPlanType === 'INSTALLMENT_40_30_30') {
+      return Math.min(balance, Math.round(balance * 0.4));
+    }
+
+    return balance;
+  };
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dashboardData?.invoice?.id || !couponCodeInput.trim()) return;
+    setApplyingCoupon(true);
+    setCouponErrorMsg('');
+    setCouponSuccessMsg('');
+    try {
+      const res = await api.applyCoupon({
+        invoiceId: dashboardData.invoice.id,
+        code: couponCodeInput.trim().toUpperCase(),
+      });
+      setCouponSuccessMsg(res.message || 'Coupon code applied successfully! Balance updated.');
+      setCouponCodeInput('');
+      await loadApplicantData();
+    } catch (err: any) {
+      setCouponErrorMsg(err.message || 'Failed to apply coupon.');
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleSelectPlan = async (planType: string) => {
+    if (!dashboardData?.invoice?.id) return;
+    setSavingPlan(true);
+    setSelectedPlanType(planType);
+    try {
+      await api.selectInstallmentPlan({
+        invoiceId: dashboardData.invoice.id,
+        planType,
+      });
+      await loadApplicantData();
+    } catch (err: any) {
+      console.warn('Installment plan selection error:', err);
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -214,11 +325,12 @@ export const ApplicantDashboardPage: React.FC = () => {
       alert('Please specify your sending bank name.');
       return;
     }
+    const payableAmount = getPayableAmount();
     setPaying(true);
     try {
       await api.submitBankTransfer({
         invoiceId: dashboardData.invoice.id,
-        amount: dashboardData.invoice.balance || dashboardData.invoice.totalAmount,
+        amount: payableAmount,
         senderBank,
         senderAccount: senderAccount || '0123456789',
         proofUrl: proofUrl || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80',
@@ -237,11 +349,12 @@ export const ApplicantDashboardPage: React.FC = () => {
 
   const handleOnlinePayment = async () => {
     if (!dashboardData?.invoice?.id) return;
+    const payableAmount = getPayableAmount();
     setPaying(true);
     try {
       const res = await api.initializePayment({
         invoiceId: dashboardData.invoice.id,
-        amount: dashboardData.invoice.balance || dashboardData.invoice.totalAmount,
+        amount: payableAmount,
         channel: paymentChannel,
         callbackUrl: `${window.location.origin}/portal/applicant?payment=pending`,
       });
@@ -1109,6 +1222,17 @@ export const ApplicantDashboardPage: React.FC = () => {
                         </strong>
                       </div>
                     )}
+                    {(invoice.couponCode || (invoice.discountAmount && invoice.discountAmount > 0)) && (
+                      <div className="flex justify-between py-2 border-b border-slate-100 text-emerald-700 font-semibold bg-emerald-50/50 px-3 rounded-lg">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Discount / Fee Waiver Applied ({invoice.couponCode || 'COUPON'}):</span>
+                        </span>
+                        <strong className="font-mono">
+                          -₦{Number(invoice.discountAmount || 0).toLocaleString()}
+                        </strong>
+                      </div>
+                    )}
                     <div className="flex justify-between py-2 border-b border-slate-100 text-slate-600">
                       <span>Total Invoice Amount:</span>
                       <strong className="text-slate-900 font-mono">
@@ -1129,6 +1253,179 @@ export const ApplicantDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Coupon & Tuition Waiver Input Box */}
+                  {invoice.balance > 0 && (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Tuition Discount or Fee Waiver Code</span>
+                        </label>
+                        {invoice.couponCode && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                            Active: {invoice.couponCode}
+                          </span>
+                        )}
+                      </div>
+
+                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. EARLYBIRD2026, WAIVER50"
+                          value={couponCodeInput}
+                          onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                          className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono uppercase bg-white focus:ring-2 focus:ring-indigo-300"
+                        />
+                        <button
+                          type="submit"
+                          disabled={applyingCoupon || !couponCodeInput.trim()}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
+                        >
+                          {applyingCoupon ? 'Applying...' : 'Apply Code'}
+                        </button>
+                      </form>
+
+                      {couponSuccessMsg && (
+                        <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{couponSuccessMsg}</span>
+                        </p>
+                      )}
+                      {couponErrorMsg && (
+                        <p className="text-[11px] font-semibold text-rose-600 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>{couponErrorMsg}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Flexible Payment Plan Selector */}
+                  {invoice.balance > 0 && (() => {
+                    let schedule: any = null;
+                    if (invoice.installmentScheduleJson) {
+                      try {
+                        schedule = typeof invoice.installmentScheduleJson === 'string'
+                          ? JSON.parse(invoice.installmentScheduleJson)
+                          : invoice.installmentScheduleJson;
+                      } catch (e) {}
+                    }
+                    const activePlan = invoice.selectedPlanType || selectedPlanType || 'FULL';
+                    const totalInv = Number(invoice.totalAmount || 0);
+
+                    return (
+                      <div className="space-y-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Select Your Desired Payment Plan</span>
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Choose single full settlement or staged cohort installments.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          {/* Option 1: Full Payment */}
+                          <div
+                            onClick={() => handleSelectPlan('FULL')}
+                            className={`p-3 rounded-xl border-2 transition cursor-pointer text-left ${
+                              activePlan === 'FULL'
+                                ? 'border-blue-600 bg-blue-50/60 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900">Full Payment</span>
+                              {activePlan === 'FULL' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">100% upfront settlement</p>
+                            <div className="text-xs font-bold text-blue-700 font-mono mt-2">
+                              ₦{totalInv.toLocaleString()}
+                            </div>
+                          </div>
+
+                          {/* Option 2: 2 Installments (50/50) */}
+                          <div
+                            onClick={() => handleSelectPlan('INSTALLMENT_50_50')}
+                            className={`p-3 rounded-xl border-2 transition cursor-pointer text-left ${
+                              activePlan === 'INSTALLMENT_50_50'
+                                ? 'border-indigo-600 bg-indigo-50/60 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900">2 Installments</span>
+                              {activePlan === 'INSTALLMENT_50_50' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">50% now • 50% midterm</p>
+                            <div className="text-xs font-bold text-indigo-700 font-mono mt-2">
+                              ₦{Math.round(totalInv * 0.5).toLocaleString()} <span className="text-[10px] font-normal text-slate-500">/ part</span>
+                            </div>
+                          </div>
+
+                          {/* Option 3: 3 Installments (40/30/30) */}
+                          <div
+                            onClick={() => handleSelectPlan('INSTALLMENT_40_30_30')}
+                            className={`p-3 rounded-xl border-2 transition cursor-pointer text-left ${
+                              activePlan === 'INSTALLMENT_40_30_30'
+                                ? 'border-purple-600 bg-purple-50/60 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900">3 Installments</span>
+                              {activePlan === 'INSTALLMENT_40_30_30' && <Check className="w-3.5 h-3.5 text-purple-600" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">40% now • 30% • 30%</p>
+                            <div className="text-xs font-bold text-purple-700 font-mono mt-2">
+                              ₦{Math.round(totalInv * 0.4).toLocaleString()} <span className="text-[10px] font-normal text-slate-500">1st part</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Milestone Schedule Breakdown */}
+                        {schedule?.milestones?.length > 0 && (
+                          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                              Installment Milestone Breakdown:
+                            </span>
+                            <div className="space-y-1.5">
+                              {schedule.milestones.map((m: any, idx: number) => {
+                                const isPaid = m.status === 'PAID';
+                                return (
+                                  <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-lg bg-white border border-slate-200">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                        isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                                      }`}>
+                                        {idx + 1}
+                                      </span>
+                                      <div>
+                                        <div className="font-semibold text-slate-800">{m.title}</div>
+                                        <div className="text-[10px] text-slate-400">
+                                          {m.percentage}% of total {m.dueDate ? `• Due by ${new Date(m.dueDate).toLocaleDateString('en-GB')}` : ''}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-mono font-bold text-slate-900">₦{Number(m.amount).toLocaleString()}</div>
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                        isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                      }`}>
+                                        {isPaid ? 'PAID' : 'DUE / PENDING'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {invoice.balance > 0 ? (
                     <button
                       type="button"
@@ -1136,7 +1433,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                       className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-rose-600 hover:from-blue-700 hover:to-rose-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>Make Tuition Payment / Submit Bank Slip</span>
+                      <span>Proceed to Payment Checkout / Submit Bank Slip</span>
                     </button>
                   ) : (
                     <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2">
@@ -1233,6 +1530,77 @@ export const ApplicantDashboardPage: React.FC = () => {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Payment Amount Choice (Installment vs Full vs Custom) */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700">Payment Amount:</span>
+                <span className="font-mono font-extrabold text-blue-700 text-sm">
+                  ₦{getPayableAmount().toLocaleString()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModeChoice('MINIMUM_INSTALLMENT')}
+                  className={`p-2 rounded-lg border text-center transition cursor-pointer ${
+                    paymentModeChoice === 'MINIMUM_INSTALLMENT'
+                      ? 'border-blue-600 bg-blue-100/60 text-blue-900 font-bold shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-[10px] text-slate-500">Plan Stage</div>
+                  <div className="font-mono font-bold text-[11px]">Installment</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentModeChoice('FULL_BALANCE')}
+                  className={`p-2 rounded-lg border text-center transition cursor-pointer ${
+                    paymentModeChoice === 'FULL_BALANCE'
+                      ? 'border-blue-600 bg-blue-100/60 text-blue-900 font-bold shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-[10px] text-slate-500">Full Outstanding</div>
+                  <div className="font-mono font-bold text-[11px]">Balance</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentModeChoice('CUSTOM')}
+                  className={`p-2 rounded-lg border text-center transition cursor-pointer ${
+                    paymentModeChoice === 'CUSTOM'
+                      ? 'border-blue-600 bg-blue-100/60 text-blue-900 font-bold shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-[10px] text-slate-500">Other Amount</div>
+                  <div className="font-mono font-bold text-[11px]">Custom</div>
+                </button>
+              </div>
+
+              {paymentModeChoice === 'CUSTOM' && (
+                <div className="pt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-slate-500 font-bold">₦</span>
+                    <input
+                      type="number"
+                      min="1000"
+                      max={invoice?.balance || invoice?.totalAmount || 500000}
+                      placeholder="e.g. 25000"
+                      value={customPayAmount}
+                      onChange={(e) => setCustomPayAmount(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:ring-2 focus:ring-blue-300"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Minimum deposit: ₦1,000. Balance cap: ₦{Number(invoice?.balance !== undefined ? invoice.balance : invoice?.totalAmount || 0).toLocaleString()}.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Payment Method Selector */}
@@ -1345,15 +1713,15 @@ export const ApplicantDashboardPage: React.FC = () => {
                   onClick={handleBankTransferSubmit}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  {paying ? 'Submitting Transfer Proof...' : 'Submit Transfer Confirmation'}
+                  {paying ? 'Submitting Transfer Proof...' : `Submit ₦${getPayableAmount().toLocaleString()} Transfer Confirmation`}
                 </button>
               </div>
             ) : (
               <div className="space-y-4 text-xs">
                 <p className="text-slate-600 leading-relaxed">
-                  You will be securely routed to {paymentChannel} to complete your tuition deposit of{' '}
+                  You will be securely routed to {paymentChannel} to complete your tuition payment of{' '}
                   <strong className="text-slate-900 font-mono">
-                    ₦{Number(invoice?.balance || invoice?.totalAmount || 0).toLocaleString()}
+                    ₦{getPayableAmount().toLocaleString()}
                   </strong>.
                 </p>
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px] leading-relaxed">
@@ -1365,7 +1733,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                   onClick={handleOnlinePayment}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  {paying ? 'Initializing Gateway...' : `Proceed to ${paymentChannel} Checkout`}
+                  {paying ? 'Initializing Gateway...' : `Proceed to ${paymentChannel} (₦${getPayableAmount().toLocaleString()})`}
                 </button>
               </div>
             )}
@@ -1783,31 +2151,63 @@ export const ApplicantDashboardPage: React.FC = () => {
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
                         {/* Dean Signature */}
                         <div className="space-y-1">
-                          <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
-                            Dr. Kehinde Adeleke
-                          </div>
+                          {institutionalSettings?.deanSignatureUrl ? (
+                            <img
+                              src={institutionalSettings.deanSignatureUrl}
+                              alt="Dean Signature"
+                              className="h-10 object-contain mx-auto sm:mx-0 mb-1"
+                            />
+                          ) : (
+                            <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
+                              {institutionalSettings?.deanName || 'Dr. Kehinde Adeleke'}
+                            </div>
+                          )}
                           <div className="w-40 h-0.5 bg-slate-300"></div>
-                          <div className="text-[10px] font-bold uppercase text-slate-700">Dean of Academic Affairs & Faculty</div>
-                          <div className="text-[9px] text-slate-400">STEMPACT Academy Directorate</div>
+                          <div className="text-[10px] font-bold uppercase text-slate-700">
+                            {institutionalSettings?.deanTitle || 'Dean of Academic Affairs & Faculty'}
+                          </div>
+                          <div className="text-[9px] text-slate-400">
+                            {institutionalSettings?.directorateLabel || 'STEMPACT Academy Directorate'}
+                          </div>
                         </div>
 
                         {/* Official Embossed Seal Badge */}
                         <div className="w-20 h-20 rounded-full border-2 border-dashed border-amber-600/70 bg-amber-50/60 p-1 flex items-center justify-center text-center shadow-xs">
-                          <div className="w-full h-full rounded-full border border-amber-600/80 flex flex-col items-center justify-center p-1">
-                            <Award className="w-5 h-5 text-amber-700" />
-                            <span className="text-[7px] font-black uppercase tracking-tighter text-amber-900 leading-tight">STEMPACT</span>
-                            <span className="text-[6px] font-bold text-amber-800 leading-tight">OFFICIAL SEAL</span>
-                          </div>
+                          {institutionalSettings?.officialSealUrl ? (
+                            <img
+                              src={institutionalSettings.officialSealUrl}
+                              alt="Official Seal"
+                              className="w-full h-full object-contain rounded-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-full border border-amber-600/80 flex flex-col items-center justify-center p-1">
+                              <Award className="w-5 h-5 text-amber-700" />
+                              <span className="text-[7px] font-black uppercase tracking-tighter text-amber-900 leading-tight">STEMPACT</span>
+                              <span className="text-[6px] font-bold text-amber-800 leading-tight">OFFICIAL SEAL</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Registrar Signature */}
                         <div className="space-y-1 text-center sm:text-right">
-                          <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
-                            Office of the Registrar
-                          </div>
+                          {institutionalSettings?.registrarSignatureUrl ? (
+                            <img
+                              src={institutionalSettings.registrarSignatureUrl}
+                              alt="Registrar Signature"
+                              className="h-10 object-contain mx-auto sm:ml-auto mb-1"
+                            />
+                          ) : (
+                            <div className="font-serif italic text-base text-slate-800 font-bold tracking-wider">
+                              {institutionalSettings?.registrarName || 'Office of the Registrar'}
+                            </div>
+                          )}
                           <div className="w-40 h-0.5 bg-slate-300 ml-auto"></div>
-                          <div className="text-[10px] font-bold uppercase text-slate-700">Registrar & Student Records</div>
-                          <div className="text-[9px] text-slate-400">Accredited Academic Registry</div>
+                          <div className="text-[10px] font-bold uppercase text-slate-700">
+                            {institutionalSettings?.registrarTitle || 'Registrar & Student Records'}
+                          </div>
+                          <div className="text-[9px] text-slate-400">
+                            {institutionalSettings?.registryLabel || 'Accredited Academic Registry'}
+                          </div>
                         </div>
                       </div>
 

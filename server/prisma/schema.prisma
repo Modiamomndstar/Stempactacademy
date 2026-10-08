@@ -152,6 +152,11 @@ enum CertificateType {
   DIPLOMA
 }
 
+enum CouponType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
 enum AdmissionStatus {
   PENDING
   OFFERED
@@ -206,6 +211,7 @@ model User {
   financialClearancesApproved FinancialClearance[]     @relation("FinancialClearanceApprovedBy")
   notificationPreference     NotificationPreference?
   notificationDeliveries     NotificationDelivery[]
+  couponsCreated             Coupon[]
 }
 
 model School {
@@ -267,6 +273,7 @@ model Program {
   admissions           Admission[]
   enrollments          StudentCohortEnrollment[]
   progressionRules     ProgressionEligibility[]
+  coupons              Coupon[]
 }
 
 model Course {
@@ -426,6 +433,7 @@ model Cohort {
   placementDecisions    PlacementDecision[]
   invoices              Invoice[]
   completedProgressions ProgressionEligibility[] @relation("CompletedCohortProgressions")
+  coupons               Coupon[]
 
   @@index([programId])
   @@index([programVersionId])
@@ -1024,6 +1032,11 @@ model Invoice {
   scholarshipAmount   Float           @default(0) // Scholarship award applied
   sponsorAmount       Float           @default(0) // Third-party sponsor coverage applied
   adjustmentsJson     String?         // Structured audit breakdown of adjustments
+  couponId            String?
+  coupon              Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode          String?
+  selectedPlanType    String?         @default("FULL") // FULL, INSTALLMENTS_2, INSTALLMENTS_3
+  installmentScheduleJson String?     // JSON array of milestone breakdown
   payerType           String?         @default("STUDENT") // STUDENT, PARENT, SPONSOR, ORGANIZATION
   payerName           String?
   payerEmail          String?
@@ -1037,6 +1050,9 @@ model Invoice {
   payments            Payment[]
   financialClearances FinancialClearance[]
   createdAt           DateTime        @default(now())
+
+  @@index([couponId])
+  @@index([couponCode])
 
   @@index([studentId])
   @@index([applicationId])
@@ -1782,5 +1798,60 @@ model EventOutbox {
 
   @@index([status, nextAttemptAt])
   @@index([aggregateType, aggregateId])
+}
+
+model Coupon {
+  id              String      @id @default(uuid())
+  code            String      @unique // e.g. "TECHSUMMIT25"
+  description     String
+  discountType    CouponType  @default(PERCENTAGE)
+  discountValue   Float       // e.g. 20 for 20% or 15000 for NGN 15,000
+  maxDiscount     Float?      // optional cap for percentage discounts
+  minInvoiceTotal Float?      // minimum eligible invoice total
+  maxUses         Int?        // total allowed uses across all users
+  usedCount       Int         @default(0)
+  expiresAt       DateTime?
+  programId       String?     // null if applies to all programs
+  program         Program?    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  cohortId        String?     // null if applies to all cohorts
+  cohort          Cohort?     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  isActive        Boolean     @default(true)
+  createdById     String?
+  createdBy       User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  invoices        Invoice[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model InstitutionalSettings {
+  id                          String   @id @default("default-institution-settings")
+  institutionName             String   @default("STEMPACT Academy")
+  institutionMotto            String   @default("Premier STEM, Vocational & Emerging Technology Academy")
+  campusAddress               String   @default("Campus & Hubs: Ile-Ife Main Innovation Hub • Training Center Network • Virtual Global Campus")
+  logoUrl                     String?
+  sealBadgeUrl                String?
+
+  // Primary Signatory (Dean of Academic Affairs / Provost)
+  primarySignatoryName        String   @default("Dr. Kehinde Adeleke")
+  primarySignatoryTitle       String   @default("Dean of Academic Affairs & Faculty")
+  primarySignatoryRole        String   @default("STEMPACT Academy Directorate")
+  primarySignatorySignature   String?
+
+  // Secondary Signatory (Registrar / Admissions Directorate)
+  secondarySignatoryName      String   @default("Office of the Registrar")
+  secondarySignatoryTitle     String   @default("Registrar & Student Records")
+  secondarySignatoryRole      String   @default("Accredited Academic Registry")
+  secondarySignatorySignature String?
+
+  // Endorsement Partner (Accreditation / Quality Assurance)
+  endorsingPartnerName        String?  @default("National Technology Innovation Consortium")
+  endorsingPartnerTitle       String?  @default("Accreditation & Quality Assurance Council")
+  endorsingPartnerLogo        String?
+
+  updatedAt                   DateTime @updatedAt
+  createdAt                   DateTime @default(now())
 }
 

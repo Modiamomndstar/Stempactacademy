@@ -33,6 +33,7 @@ import * as academicSessionController from '../controllers/academicSessionContro
 import * as centerController from '../controllers/centerController.js';
 import * as progressionController from '../controllers/progressionController.js';
 import * as uploadController from '../controllers/uploadController.js';
+import * as financeController from '../controllers/financeController.js';
 import { BootstrapService } from '../services/bootstrap/bootstrapService.js';
 
 const router = Router();
@@ -164,6 +165,23 @@ router.post('/payments/waivers', authenticate, authorize(Role.SUPER_ADMIN, Role.
 router.get('/payments/clearance/:admissionId', authenticate, paymentController.getFinancialClearance);
 router.post('/payments/arrangements', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.approvePaymentArrangement);
 router.post('/payments/adjustments', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), paymentController.applyFinancialAdjustment);
+router.post('/payments/apply-coupon', authenticate, financeController.applyCoupon);
+router.post('/payments/select-plan', authenticate, financeController.selectInstallmentPlan);
+
+// 13b. Financial Operations, Coupons, Custom Invoices & Reminders
+router.post('/finance/coupons', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.createCoupon);
+router.get('/finance/coupons', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.getCoupons);
+router.patch('/finance/coupons/:id/toggle', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.toggleCoupon);
+router.post('/finance/invoices/custom', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.createCustomInvoice);
+router.get('/finance/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.getFinancialOverview);
+router.post('/finance/invoices/:id/reminder', authenticate, authorize(Role.SUPER_ADMIN, Role.FINANCE_ADMIN), financeController.sendPaymentReminder);
+
+// 13c. Institutional Signatory Settings
+router.get('/settings/institution', financeController.getInstitutionalSettings);
+router.put('/settings/institution', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), financeController.updateInstitutionalSettings);
+
+// 13d. Multi-Level Program Curriculum Matrix
+router.get('/programs/:id/curriculum-matrix', financeController.getProgramCurriculumMatrix);
 
 // 14. CMS & Public Feeds
 router.get('/cms/content', cmsController.getCMSContent);
