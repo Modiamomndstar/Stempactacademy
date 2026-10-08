@@ -226,6 +226,11 @@ const AppShell: React.FC = () => {
         }
       />
 
+      {/* Marketing & Content Redirect Aliases */}
+      <Route path="/portal/marketing" element={<Navigate to="/portal/admin?tab=marketing" replace />} />
+      <Route path="/portal/content" element={<Navigate to="/portal/admin?tab=cms" replace />} />
+      <Route path="/marketing" element={<Navigate to="/portal/admin?tab=marketing" replace />} />
+
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

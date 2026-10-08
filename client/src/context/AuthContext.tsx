@@ -111,13 +111,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         portalRoute = '/portal/counselor';
         break;
       case 'CONTENT_MANAGER':
-        portalRoute = '/portal/content';
+        portalRoute = '/portal/admin?tab=cms';
         break;
       case 'INNOVATION_MANAGER':
         portalRoute = '/portal/innovation';
         break;
       case 'MARKETING_MANAGER':
-        portalRoute = '/portal/marketing';
+        portalRoute = '/portal/admin?tab=marketing';
         break;
       case 'PARTNER':
         portalRoute = '/portal/partner';

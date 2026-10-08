@@ -203,12 +203,12 @@ router.post('/cms/events', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEM
 router.post('/cms/blog', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.MARKETING_MANAGER), cmsController.createBlogPost);
 
 // 15. Admin Analytics
-router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminStatsController.getAdminStats);
+router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminStatsController.getAdminStats);
 
 // 15b. Learners & Community Directory (360° Profile Hub & Analytics)
-router.get('/admin/directory/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminDirectoryController.getDirectoryStats);
+router.get('/admin/directory/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getDirectoryStats);
 router.get('/admin/directory/users', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getDirectoryUsers);
-router.get('/admin/directory/users/:id/profile360', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN), adminDirectoryController.getUserProfile360);
+router.get('/admin/directory/users/:id/profile360', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getUserProfile360);
 
 // 16. Admin & Staff Management
 router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);

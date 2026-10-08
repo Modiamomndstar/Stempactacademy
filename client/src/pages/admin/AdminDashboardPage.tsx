@@ -369,7 +369,7 @@ export const AdminDashboardPage: React.FC = () => {
         id: 'deliveries',
         name: `Communications Outbox (${notificationDeliveries.length})`,
         icon: Send,
-        visible: isSuperAdmin || isAcademicAdmin || isAdmissionsAdmin || isCoordinator,
+        visible: isSuperAdmin || isAcademicAdmin || isAdmissionsAdmin || isCoordinator || isMarketingManager,
       },
       {
         id: 'marketing',

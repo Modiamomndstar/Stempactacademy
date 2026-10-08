@@ -97,6 +97,8 @@ export const LoginPage: React.FC = () => {
         case 'ACADEMIC_ADMIN':
         case 'FINANCE_ADMIN':
         case 'ADMISSIONS_ADMIN':
+        case 'CONTENT_MANAGER':
+        case 'MARKETING_MANAGER':
           navigate('/portal/admin');
           break;
         default:
