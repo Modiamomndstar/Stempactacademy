@@ -28,6 +28,8 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
     ]);
 
     // 2. Activity & Login Frequency Metrics from AuditLogs
+    // Note: To avoid PostgreSQL 42P10 "SELECT DISTINCT ON expressions must match initial ORDER BY expressions"
+    // error on Render, we select userId directly and compute unique counts in-memory.
     const [
       dailyLoginsRaw,
       weeklyLoginsRaw,
@@ -38,29 +40,33 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
       prisma.auditLog.findMany({
         where: { action: 'USER_LOGIN', createdAt: { gte: oneDayAgo } },
         select: { userId: true },
-        distinct: ['userId'],
       }),
       prisma.auditLog.findMany({
         where: { action: 'USER_LOGIN', createdAt: { gte: oneWeekAgo } },
         select: { userId: true },
-        distinct: ['userId'],
       }),
       prisma.auditLog.findMany({
         where: { action: 'USER_LOGIN', createdAt: { gte: oneMonthAgo } },
         select: { userId: true },
-        distinct: ['userId'],
       }),
       prisma.auditLog.findMany({
         where: { action: 'USER_LOGIN', createdAt: { gte: oneYearAgo } },
         select: { userId: true },
-        distinct: ['userId'],
       }),
       prisma.auditLog.findMany({
         where: { action: 'USER_LOGIN', createdAt: { gte: thirtyMinutesAgo } },
         select: { userId: true },
-        distinct: ['userId'],
       }),
     ]);
+
+    const countUniqueUsers = (logs: { userId: string | null }[]) =>
+      new Set(logs.map((l) => l.userId).filter(Boolean)).size;
+
+    const dailyLoginsCount = countUniqueUsers(dailyLoginsRaw);
+    const weeklyLoginsCount = countUniqueUsers(weeklyLoginsRaw);
+    const monthlyLoginsCount = countUniqueUsers(monthlyLoginsRaw);
+    const yearlyLoginsCount = countUniqueUsers(yearlyLoginsRaw);
+    const currentlyOnlineCount = countUniqueUsers(currentlyOnlineRaw);
 
     // 3. Cohort Enrollment Distribution
     const activeCohortStatuses: any = ['OPEN', 'ALMOST_FULL', 'IN_PROGRESS'];
@@ -70,6 +76,7 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
       activeCohorts,
       studentsInActiveCohortsCount,
       studentsInPastCohortsCount,
+      pastCohortsCount,
     ] = await Promise.all([
       prisma.cohort.findMany({
         where: { status: { in: activeCohortStatuses } },
@@ -99,6 +106,9 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
           cohort: { status: { in: pastCohortStatuses } },
         },
       }),
+      prisma.cohort.count({
+        where: { status: { in: pastCohortStatuses } },
+      }),
     ]);
 
     // 4. Financial Statistics for Active Cohort Students
@@ -116,12 +126,12 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
       let cohortOutstanding = 0;
 
       cohort.studentProfiles.forEach((student: any) => {
-        const totalBilled = student.invoices.reduce((sum: number, inv: any) => sum + inv.totalAmount, 0);
-        const totalPaid = student.invoices.reduce((sum: number, inv: any) => sum + inv.amountPaid, 0);
-        const balance = totalBilled > 0 ? totalBilled - totalPaid : cohort.trainingFee;
+        const totalBilled = (student.invoices || []).reduce((sum: number, inv: any) => sum + (inv.totalAmount || 0), 0);
+        const totalPaid = (student.invoices || []).reduce((sum: number, inv: any) => sum + (inv.amountPaid || 0), 0);
+        const balance = totalBilled > 0 ? Math.max(0, totalBilled - totalPaid) : (cohort.trainingFee || 0);
 
         cohortCollected += totalPaid;
-        cohortOutstanding += Math.max(0, balance);
+        cohortOutstanding += balance;
 
         if (totalBilled > 0 && totalPaid >= totalBilled) {
           cohortPaid++;
@@ -164,6 +174,13 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
     });
 
     res.status(200).json({
+      summary: {
+        totalUsers,
+        totalStudents,
+        totalApplicants,
+        totalParents,
+        totalInstructors,
+      },
       overview: {
         totalUsers,
         totalStudents,
@@ -171,20 +188,40 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
         totalParents,
         totalInstructors,
       },
+      loginMetrics: {
+        daily: dailyLoginsCount,
+        weekly: weeklyLoginsCount,
+        monthly: monthlyLoginsCount,
+        yearly: yearlyLoginsCount,
+        currentlyOnline: currentlyOnlineCount,
+      },
       logins: {
-        daily: dailyLoginsRaw.length,
-        weekly: weeklyLoginsRaw.length,
-        monthly: monthlyLoginsRaw.length,
-        yearly: yearlyLoginsRaw.length,
-        currentlyOnline: currentlyOnlineRaw.length,
+        daily: dailyLoginsCount,
+        weekly: weeklyLoginsCount,
+        monthly: monthlyLoginsCount,
+        yearly: yearlyLoginsCount,
+        currentlyOnline: currentlyOnlineCount,
+      },
+      cohortEnrollment: {
+        activeStudents: studentsInActiveCohortsCount,
+        pastStudents: studentsInPastCohortsCount,
+        totalEnrolled: studentsInActiveCohortsCount + studentsInPastCohortsCount,
+        activeCohortsCount: activeCohorts.length,
+        pastCohortsCount,
       },
       cohortDistribution: {
         studentsInActiveCohorts: studentsInActiveCohortsCount,
         studentsInPastCohorts: studentsInPastCohortsCount,
         totalEnrolledAllTime: studentsInActiveCohortsCount + studentsInPastCohortsCount,
         activeCohortsCount: activeCohorts.length,
+        pastCohortsCount,
       },
       paymentBreakdown: {
+        fullyPaid: fullyPaidActiveStudents,
+        partiallyPaid: partiallyPaidActiveStudents,
+        unpaid: unpaidActiveStudents,
+        totalCollected: activeTuitionCollected,
+        totalOutstanding: activeTuitionOutstanding,
         fullyPaidActiveStudents,
         partiallyPaidActiveStudents,
         unpaidActiveStudents,
@@ -194,6 +231,13 @@ export const getDirectoryStats = async (req: AuthRequest, res: Response): Promis
         allTimePaid: invoiceAgg._sum.amountPaid || 0,
         allTimeBalance: invoiceAgg._sum.balance || 0,
       },
+      activeCohorts: cohortSummaries.map((c: any) => ({
+        id: c.cohortId,
+        name: c.cohortName,
+        cohortCode: c.cohortCode,
+        programName: c.programName,
+        enrolledCount: c.totalEnrolled,
+      })),
       cohortSummaries,
     });
   } catch (error: any) {
@@ -605,19 +649,19 @@ export const getUserProfile360 = async (req: AuthRequest, res: Response): Promis
       };
 
       // Financial Ledger
-      const totalBilled = sp.invoices?.reduce((acc: number, inv: any) => acc + inv.totalAmount, 0) || 0;
-      const totalPaid = sp.invoices?.reduce((acc: number, inv: any) => acc + inv.amountPaid, 0) || 0;
+      const totalBilled = sp.invoices?.reduce((acc: number, inv: any) => acc + (inv.totalAmount || 0), 0) || 0;
+      const totalPaid = sp.invoices?.reduce((acc: number, inv: any) => acc + (inv.amountPaid || 0), 0) || 0;
       const balance = Math.max(0, totalBilled - totalPaid);
 
       financialSummary = {
-        totalBilled,
+        totalInvoiced: totalBilled,
         totalPaid,
-        balance,
-        status:
+        balanceDue: balance,
+        paymentStatus:
           totalBilled === 0
             ? 'NO_INVOICE'
             : totalPaid >= totalBilled
-            ? 'FULLY_CLEARED'
+            ? 'FULLY_PAID'
             : totalPaid > 0
             ? 'PARTIALLY_PAID'
             : 'UNPAID',
@@ -626,7 +670,76 @@ export const getUserProfile360 = async (req: AuthRequest, res: Response): Promis
       };
     }
 
-    res.status(200).json({
+    // Extract guardian
+    let guardian: any = null;
+    if (user.studentProfile?.guardianRelations?.length) {
+      const gr = user.studentProfile.guardianRelations[0];
+      guardian = {
+        name: `${gr.parent?.user?.firstName || ''} ${gr.parent?.user?.lastName || ''}`.trim() || 'Parent',
+        phone: gr.parent?.user?.phone || null,
+        email: gr.parent?.user?.email || null,
+        relationship: gr.relationType || gr.parent?.relationship || 'Guardian',
+      };
+    } else if (user.applications?.[0]?.parentDetails) {
+      try {
+        const pd = typeof user.applications[0].parentDetails === 'string'
+          ? JSON.parse(user.applications[0].parentDetails)
+          : user.applications[0].parentDetails;
+        guardian = {
+          name: pd.name || `${pd.firstName || ''} ${pd.lastName || ''}`.trim(),
+          phone: pd.phone,
+          email: pd.email,
+          relationship: pd.relationship || 'Parent',
+        };
+      } catch (e) {}
+    }
+
+    // Extract payments across invoices
+    const allInvoices = user.studentProfile?.invoices || [];
+    const allPayments: any[] = [];
+    allInvoices.forEach((inv: any) => {
+      (inv.payments || []).forEach((pmt: any) => {
+        allPayments.push({
+          id: pmt.id,
+          reference: pmt.paymentReference || pmt.id,
+          amount: pmt.amount,
+          channel: pmt.channel,
+          paidAt: pmt.paidAt,
+          receiptUrl: pmt.receiptUrl || pmt.proofUrl,
+        });
+      });
+    });
+
+    // Extract attendance metrics
+    const attList = user.studentProfile?.attendances || [];
+    const presentCount = attList.filter((a: any) => a.status === 'PRESENT').length;
+    const lateCount = attList.filter((a: any) => a.status === 'LATE').length;
+    const absentCount = attList.filter((a: any) => a.status === 'ABSENT').length;
+    const totalAtt = attList.length;
+    const attendanceRate = totalAtt > 0 ? Math.round(((presentCount + lateCount * 0.5) / totalAtt) * 100) : 100;
+
+    // Extract lesson progress
+    const lpList = user.studentProfile?.lessonProgress || [];
+    const completedLessons = lpList.filter((lp: any) => lp.status === 'COMPLETED').length;
+    const inProgressLessons = lpList.filter((lp: any) => lp.status === 'IN_PROGRESS').length;
+    const totalMinutes = lpList.reduce((acc: number, lp: any) => acc + (lp.timeSpentMinutes || 0), 0);
+
+    // Extract enrollments
+    const enrollmentsList = (user.studentProfile?.enrollments && user.studentProfile.enrollments.length > 0)
+      ? user.studentProfile.enrollments
+      : user.studentProfile?.cohort
+      ? [{
+          id: 'primary-cohort',
+          cohort: user.studentProfile.cohort,
+          status: 'ACTIVE',
+          createdAt: user.studentProfile.enrollmentDate,
+        }]
+      : [];
+
+    // Extract projects
+    const projectsList = (user.studentProfile?.projectMembers || []).map((pm: any) => pm.project).filter(Boolean);
+
+    const fullProfile = {
       user: {
         id: user.id,
         firstName: user.firstName,
@@ -639,8 +752,61 @@ export const getUserProfile360 = async (req: AuthRequest, res: Response): Promis
         isActive: user.isActive,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        loginHistory: user.auditLogs?.map((l: any) => l.createdAt) || [],
       },
+      studentProfile: user.studentProfile
+        ? {
+            id: user.studentProfile.id,
+            studentId: user.studentProfile.studentIdNumber,
+            studentIdNumber: user.studentProfile.studentIdNumber,
+            currentLevel: user.studentProfile.currentLevel,
+            attendanceRate: user.studentProfile.attendanceRate,
+            completionRate: user.studentProfile.completionRate,
+            cohort: user.studentProfile.cohort,
+            dob: user.applications?.[0]?.dateOfBirth || null,
+            gender: user.applications?.[0]?.gender || null,
+            address: user.applications?.[0]?.address || null,
+          }
+        : null,
+      parentProfile: user.parentProfile,
+      guardian,
+      enrollments: enrollmentsList,
+      financialSummary: financialSummary || {
+        totalInvoiced: 0,
+        totalPaid: 0,
+        balanceDue: 0,
+        paymentStatus: 'UNPAID',
+      },
+      invoices: allInvoices.map((inv: any) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        description: inv.title || 'Tuition Invoice',
+        amount: inv.totalAmount,
+        dueDate: inv.dueDate,
+        status: inv.status,
+      })),
+      payments: allPayments,
+      clearances: user.studentProfile?.financialClearances || [],
+      assignmentSubmissions: user.studentProfile?.submissions || [],
+      projects: projectsList,
+      certificates: user.studentProfile?.certificates || [],
+      attendance: {
+        present: presentCount,
+        late: lateCount,
+        absent: absentCount,
+        total: totalAtt,
+        rate: attendanceRate,
+      },
+      lessonProgress: {
+        completedCount: completedLessons,
+        inProgressCount: inProgressLessons,
+        totalMinutesSpent: totalMinutes,
+      },
+      recentActivity: user.auditLogs || [],
+    };
+
+    res.status(200).json({
+      profile: fullProfile,
+      user: fullProfile.user,
       academicSummary,
       financialSummary,
       applications: user.applications || [],

@@ -54,7 +54,7 @@ export const Learner360Modal: React.FC<Learner360ModalProps> = ({ userId, onClos
       try {
         const res = await api.getUserProfile360(userId);
         if (isMounted) {
-          setProfile(res.profile);
+          setProfile(res?.profile || res);
         }
       } catch (err) {
         console.error('Failed to load user 360 profile:', err);

@@ -39,6 +39,11 @@ import {
   Search,
   Filter,
   History,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  Activity,
+  CreditCard,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -168,6 +173,79 @@ export const AdminDashboardPage: React.FC = () => {
     });
     return Array.from(map.values());
   }, [invoices, certificates]);
+
+  // Executive Institutional Intelligence Computations
+  const executiveMetrics = useMemo(() => {
+    // 1. Capacity & Pacing
+    const totalCapacity = cohorts.reduce((acc, c) => acc + (c.maxCapacity || 25), 0);
+    const totalEnrolled = cohorts.reduce((acc, c) => acc + (c.currentEnrollment || c.studentProfiles?.length || 0), 0);
+    const capacityFillRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
+
+    // 2. Admissions Funnel
+    const totalApps = applications.length;
+    const stageSubmitted = applications.filter((a) => a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length;
+    const stageTesting = applications.filter((a) => a.status === 'ASSESSMENT_COMPLETED' || a.status === 'PENDING_PLACEMENT').length;
+    const stagePlaced = applications.filter((a) => a.status === 'PLACED' || a.status === 'ADMISSION_OFFERED').length;
+    const stageAdmitted = applications.filter((a) => a.status === 'ADMITTED' || a.status === 'ACCEPTED').length;
+    const stageEnrolled = applications.filter((a) => a.status === 'ENROLLED' || a.status === 'ACTIVE').length;
+
+    // 3. Financial Telemetry
+    const totalBilled = invoices.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0);
+    const totalPaid = invoices.reduce((acc, inv) => acc + (inv.amountPaid || 0), 0);
+    const totalOutstanding = Math.max(0, totalBilled - totalPaid);
+    const revenueCollectionRate = totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 0;
+    const pendingTransfers = bankTransfers.filter((b) => b.status === 'PENDING' || !b.verifiedAt);
+    const pendingTransferAmount = pendingTransfers.reduce((acc, b) => acc + (b.amount || 0), 0);
+
+    // 4. Faculty & Operations
+    const totalFaculty = instructors.length;
+    const activeCohortsCount = cohorts.filter((c) => ['OPEN', 'ALMOST_FULL', 'IN_PROGRESS'].includes(c.status)).length;
+    const facultyRatio = totalFaculty > 0 ? (totalEnrolled / totalFaculty).toFixed(1) : '—';
+
+    // 5. Schools Matrix Aggregation
+    const schoolsMatrix = schools.map((s) => {
+      const schoolPrograms = programs.filter((p) => p.schoolId === s.id || p.school?.id === s.id);
+      const schoolCohorts = cohorts.filter((c) => schoolPrograms.some((sp) => sp.id === c.programId));
+      const schoolEnrolled = schoolCohorts.reduce((acc, c) => acc + (c.currentEnrollment || c.studentProfiles?.length || 0), 0);
+      return {
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        color: s.color || '#2563eb',
+        programsCount: schoolPrograms.length,
+        cohortsCount: schoolCohorts.length,
+        enrolledCount: schoolEnrolled,
+      };
+    });
+
+    return {
+      totalCapacity,
+      totalEnrolled,
+      capacityFillRate,
+      funnel: {
+        total: totalApps,
+        submitted: stageSubmitted,
+        testing: stageTesting,
+        placed: stagePlaced,
+        admitted: stageAdmitted,
+        enrolled: stageEnrolled,
+      },
+      finance: {
+        totalBilled,
+        totalPaid,
+        totalOutstanding,
+        revenueCollectionRate,
+        pendingTransfersCount: pendingTransfers.length,
+        pendingTransferAmount,
+      },
+      faculty: {
+        totalFaculty,
+        activeCohortsCount,
+        facultyRatio,
+      },
+      schoolsMatrix,
+    };
+  }, [cohorts, applications, invoices, bankTransfers, instructors, schools, programs]);
 
   const loadAllData = async () => {
     try {
@@ -827,96 +905,424 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 1: EXECUTIVE ANALYTICS */}
         {activeTab === 'analytics' && stats && (
           <div className="space-y-8 animate-fadeIn">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Total Applicants</span>
-                <div className="text-3xl font-black text-white mt-1">{stats?.metrics?.totalApplicants || 0}</div>
-                <div className="text-[11px] text-brand-400 font-semibold mt-1">
-                  {stats?.metrics?.newApplicants || 0} New Pending
+            {/* Top KPI Command Center */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Total Applicants & Funnel Intake */}
+              <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+                <div className="flex items-center justify-between text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Total Inquiries & Apps</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-black text-slate-900 mt-2">
+                  {stats?.metrics?.totalApplicants || applications.length || 0}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-slate-500">Pipeline In-Flow</span>
+                  <span className="font-bold text-blue-600">
+                    {stats?.metrics?.newApplicants || executiveMetrics.funnel.submitted} pending review
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Admitted Learners</span>
-                <div className="text-3xl font-black text-emerald-400 mt-1">{stats?.metrics?.admittedStudents || 0}</div>
-                <div className="text-[11px] text-slate-400 font-semibold mt-1">
-                  {stats?.metrics?.conversionRate || 0}% Conversion Rate
+              {/* Card 2: Active Learners & Capacity */}
+              <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600" />
+                <div className="flex items-center justify-between text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Enrolled Learners</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-3xl font-black text-slate-900 mt-2">
+                  {executiveMetrics.totalEnrolled || stats?.metrics?.admittedStudents || 0}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-slate-500">Cohort Fill Rate</span>
+                  <span className="font-bold text-emerald-600">
+                    {executiveMetrics.capacityFillRate}% of {executiveMetrics.totalCapacity} capacity
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Total Revenue Collected</span>
-                <div className="text-3xl font-black text-white mt-1">
-                  ₦{(stats?.metrics?.totalRevenue || 0).toLocaleString()}
+              {/* Card 3: Financial Realization & Revenue */}
+              <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
+                <div className="flex items-center justify-between text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Tuition Realization</span>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-[11px] text-amber-400 font-semibold mt-1">
-                  ₦{(stats?.metrics?.outstandingInvoices || stats?.metrics?.outstandingBalance || 0).toLocaleString()} Outstanding
+                <div className="text-3xl font-black text-slate-900 mt-2">
+                  ₦{((executiveMetrics.finance.totalPaid || stats?.metrics?.totalRevenue || 0)).toLocaleString()}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-slate-500">Collection Realized</span>
+                  <span className="font-bold text-indigo-600">
+                    {executiveMetrics.finance.revenueCollectionRate}% (₦{((executiveMetrics.finance.totalOutstanding || stats?.metrics?.outstandingInvoices || 0)).toLocaleString()} pending)
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Active Cohorts</span>
-                <div className="text-3xl font-black text-white mt-1">
-                  {stats?.metrics?.activeCohorts || stats?.metrics?.cohortsCount || 0}
+              {/* Card 4: Academic Cohorts & Faculty */}
+              <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-rose-600" />
+                <div className="flex items-center justify-between text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Active Cohorts & Faculty</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Activity className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="text-[11px] text-purple-400 font-semibold mt-1">
-                  {stats?.metrics?.totalPrograms || stats?.metrics?.programsCount || 0} Academic Tracks
+                <div className="text-3xl font-black text-slate-900 mt-2">
+                  {executiveMetrics.faculty.activeCohortsCount || stats?.metrics?.activeCohorts || 0}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+                  <span className="text-slate-500">Faculty Ratio</span>
+                  <span className="font-bold text-amber-700">
+                    {instructors.length} Instructors ({executiveMetrics.faculty.facultyRatio} : 1)
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-                <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-brand-400" />
-                  <span>Pipeline Distribution by Status</span>
-                </h3>
-                <div className="space-y-3">
-                  {(stats?.applicationsByStatus || []).length > 0 ? (
-                    (stats.applicationsByStatus || []).map((item: any) => (
-                      <div key={item.status} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold text-slate-300">
-                          <span>{item.status?.replace(/_/g, ' ') || 'Pending'}</span>
-                          <span>{item._count || 0} applicants</span>
+            {/* Executive Rapid-Action Triage Desk */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md border border-slate-800">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      <span>Executive Rapid-Action Triage Desk</span>
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                        Live Attention Required
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Cross-departmental checkpoints requiring senior administrator clearance and operational triage.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleTabChange('directory')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>360° Directory</span>
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('academics')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Cohorts</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+                {/* Triage 1: Bank Transfers */}
+                <div
+                  onClick={() => handleTabChange('finance')}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/50 hover:bg-white/10 transition cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300">Pending Bank Transfers</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      {executiveMetrics.finance.pendingTransfersCount} Awaiting
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-white mt-2">
+                    ₦{executiveMetrics.finance.pendingTransferAmount.toLocaleString()}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 group-hover:text-amber-300 transition">
+                    <span>Audit and verify receipts in Finance</span>
+                    <ArrowRight className="w-3 h-3 transition transform group-hover:translate-x-1" />
+                  </p>
+                </div>
+
+                {/* Triage 2: Placements */}
+                <div
+                  onClick={() => handleTabChange('admissions')}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-blue-400/50 hover:bg-white/10 transition cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300">Awaiting Cohort Placement</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-400/20 text-blue-300 border border-blue-400/30">
+                      {executiveMetrics.funnel.testing + executiveMetrics.funnel.submitted} Pending
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-white mt-2">
+                    {pendingPlacements.length || executiveMetrics.funnel.testing} Applicants
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 group-hover:text-blue-300 transition">
+                    <span>Evaluate & issue admission offers</span>
+                    <ArrowRight className="w-3 h-3 transition transform group-hover:translate-x-1" />
+                  </p>
+                </div>
+
+                {/* Triage 3: Admitted Awaiting Clearance */}
+                <div
+                  onClick={() => handleTabChange('directory')}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-emerald-400/50 hover:bg-white/10 transition cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300">Admitted (Pending Tuition)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                      {executiveMetrics.funnel.admitted} Learners
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-white mt-2">
+                    {Math.round(((executiveMetrics.funnel.enrolled) / (executiveMetrics.funnel.total || 1)) * 100)}% Conversion
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 group-hover:text-emerald-300 transition">
+                    <span>Track payment reminders & follow-up</span>
+                    <ArrowRight className="w-3 h-3 transition transform group-hover:translate-x-1" />
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 5-Stage Institutional Admissions Intake Funnel */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                    <span>5-Stage Institutional Admissions & Intake Funnel</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Live end-to-end applicant progression through the recruitment, evaluation, and matriculation pipeline.
+                  </p>
+                </div>
+                <div className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg self-start sm:self-auto">
+                  Total Funnel Volume: <strong className="text-slate-900">{applications.length}</strong>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+                {[
+                  {
+                    stage: 'Stage 1',
+                    name: 'Submitted / Review',
+                    count: executiveMetrics.funnel.submitted,
+                    color: 'bg-blue-500',
+                    border: 'border-blue-200',
+                    bg: 'bg-blue-50/60',
+                    text: 'text-blue-900',
+                  },
+                  {
+                    stage: 'Stage 2',
+                    name: 'Assessment & Test',
+                    count: executiveMetrics.funnel.testing,
+                    color: 'bg-amber-500',
+                    border: 'border-amber-200',
+                    bg: 'bg-amber-50/60',
+                    text: 'text-amber-900',
+                  },
+                  {
+                    stage: 'Stage 3',
+                    name: 'Placement Approved',
+                    count: executiveMetrics.funnel.placed,
+                    color: 'bg-purple-500',
+                    border: 'border-purple-200',
+                    bg: 'bg-purple-50/60',
+                    text: 'text-purple-900',
+                  },
+                  {
+                    stage: 'Stage 4',
+                    name: 'Officially Admitted',
+                    count: executiveMetrics.funnel.admitted,
+                    color: 'bg-indigo-500',
+                    border: 'border-indigo-200',
+                    bg: 'bg-indigo-50/60',
+                    text: 'text-indigo-900',
+                  },
+                  {
+                    stage: 'Stage 5',
+                    name: 'Enrolled & Cleared',
+                    count: executiveMetrics.funnel.enrolled,
+                    color: 'bg-emerald-500',
+                    border: 'border-emerald-200',
+                    bg: 'bg-emerald-50/60',
+                    text: 'text-emerald-900',
+                  },
+                ].map((step, idx) => {
+                  const pct = applications.length > 0 ? Math.round((step.count / applications.length) * 100) : 0;
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-xl border ${step.border} ${step.bg} space-y-2 flex flex-col justify-between`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          <span>{step.stage}</span>
+                          <span>{pct}%</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-brand-500 rounded-full"
-                            style={{
-                              width: `${((item._count || 0) / (stats?.metrics?.totalApplicants || 1)) * 100}%`,
-                            }}
-                          ></div>
+                        <div className={`text-xs font-black ${step.text} mt-1 leading-snug`}>{step.name}</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-black text-slate-900 mt-2">{step.count}</div>
+                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mt-2">
+                          <div className={`h-full ${step.color} rounded-full`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Operational Matrix & System Governance Stream */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Cross-School Operational Matrix */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <Building className="w-4 h-4 text-indigo-600" />
+                    <span>Cross-School Operational Matrix</span>
+                  </h3>
+                  <button
+                    onClick={() => handleTabChange('academics')}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Manage Schools</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {executiveMetrics.schoolsMatrix.length > 0 ? (
+                    executiveMetrics.schoolsMatrix.map((school) => (
+                      <div
+                        key={school.id}
+                        className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: school.color }}
+                            />
+                            <span className="font-bold text-slate-900 text-xs">{school.name}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
+                              {school.code}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 pl-4.5">
+                            {school.programsCount} Programs • {school.cohortsCount} Active Cohorts
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-base font-bold text-slate-900">{school.enrolledCount}</div>
+                          <div className="text-[10px] text-slate-500">Learners Enrolled</div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-500 py-4 text-center">No application records found.</div>
+                    <div className="p-6 text-center text-xs text-slate-400">No schools configured.</div>
                   )}
+                </div>
+
+                {/* Top Programs */}
+                <div className="pt-2 border-t border-slate-100">
+                  <h4 className="font-bold text-xs text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                    <span>High-Demand Programs</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {(stats?.popularPrograms || stats?.programsWithEnrolledCount || []).slice(0, 4).map((p: any) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs"
+                      >
+                        <div>
+                          <div className="font-bold text-slate-900">{p.name}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {p.code} • {p.duration || (p.durationWeeks ? `${p.durationWeeks} Weeks` : '12 Weeks')}
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-100 text-blue-700">
+                          {p.applicantCount || p._count?.applications || 0} Learners
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-                <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-emerald-400" />
-                  <span>Top Enrolled Academic Programs</span>
-                </h3>
-                <div className="space-y-3 text-xs">
-                  {(stats?.popularPrograms || stats?.programsWithEnrolledCount || []).slice(0, 5).map((p: any) => (
+              {/* Right Column: Governance Stream & Institutional Audit Logs */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-rose-600" />
+                    <span>System Governance & Audit Stream</span>
+                  </h3>
+                  <button
+                    onClick={() => handleTabChange('audit')}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Full Audit Trail</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  Real-time security telemetry recording administrator actions, credential changes, and financial validations.
+                </p>
+
+                <div className="space-y-3">
+                  {auditLogs.slice(0, 5).map((log: any) => (
                     <div
-                      key={p.id}
-                      className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/60 border border-white/5"
+                      key={log.id}
+                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs"
                     >
-                      <div>
-                        <div className="font-bold text-white">{p.name}</div>
-                        <div className="text-[10px] text-slate-400">
-                          {p.code} • {p.duration || (p.durationWeeks ? `${p.durationWeeks} Weeks` : '12 Weeks')}
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-[11px] text-slate-800">
+                          {log.action}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} •{' '}
+                          {new Date(log.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">
-                        {p.applicantCount || p._count?.applications || 0} Enrolled
-                      </span>
+                      <p className="text-[11px] text-slate-600 leading-relaxed truncate">
+                        {log.details || 'System event recorded in ledger'}
+                      </p>
+                      <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-500">
+                        <span className="font-semibold text-slate-700">
+                          {log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System Agent'}
+                        </span>
+                        {log.user?.role && (
+                          <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-medium">
+                            {log.user.role.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
+
+                  {auditLogs.length === 0 && (
+                    <div className="p-8 text-center text-xs text-slate-400">
+                      No system events recorded yet.
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-xs">
+                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    <span>Institutional Security Standard</span>
+                  </div>
+                  <p className="text-[11px] text-blue-700 leading-relaxed">
+                    All administrative activities, invoice generation, score modifications, and user state transitions are immutably logged with role accountability.
+                  </p>
                 </div>
               </div>
             </div>
