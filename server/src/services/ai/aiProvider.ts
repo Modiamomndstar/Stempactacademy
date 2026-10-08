@@ -355,7 +355,7 @@ export function repairStructuredFields(obj: any, prompt: string): any {
           for (let mIdx = 0; mIdx < c.modules.length; mIdx++) {
             const m = c.modules[mIdx];
             const refMod = fallbackCourses[0]?.modules[mIdx % fallbackCourses[0].modules.length] || fallbackMod;
-            m.durationHours = m.durationHours || 12;
+            m.durationHours = m.durationHours || 6;
             m.assessmentQuiz = m.assessmentQuiz || refMod?.assessmentQuiz;
             m.assignmentTitle = m.assignmentTitle || refMod?.assignmentTitle;
 
@@ -1052,7 +1052,7 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
     prerequisites: level === 'LEVEL_1_FOUNDATION' ? 'Foundational computer literacy.' : 'Completion of Level 1 Foundation or equivalent technical experience.',
     level,
     duration: `${durationWeeks} Weeks`,
-    contactHours: durationWeeks * 12,
+    contactHours: durationWeeks * 6,
     theoryPracticalRatio: '30:70',
     tools: ['Industry Standard Tools', 'Cloud Environments', 'Production Toolchains'],
     learningOutcomes: [

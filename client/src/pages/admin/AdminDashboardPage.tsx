@@ -840,7 +840,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <div>
                         <div className="font-bold text-white">{p.name}</div>
                         <div className="text-[10px] text-slate-400">
-                          {p.code} • {p.durationWeeks || 12} Weeks
+                          {p.code} • {p.duration || (p.durationWeeks ? `${p.durationWeeks} Weeks` : '12 Weeks')}
                         </div>
                       </div>
                       <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">

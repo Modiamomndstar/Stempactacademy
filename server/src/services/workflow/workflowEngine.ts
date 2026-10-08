@@ -70,7 +70,7 @@ export class WorkflowEngine {
       : (rawData.prerequisites || 'Basic computing literacy');
     const durationWeeks = Number(rawData.durationWeeks) || (parseInt(String(rawData.duration || '').replace(/\D/g, '')) || 3);
     const duration = `${durationWeeks} Weeks`;
-    const contactHours = typeof rawData.contactHours === 'number' ? rawData.contactHours : (durationWeeks * 12);
+    const contactHours = typeof rawData.contactHours === 'number' ? rawData.contactHours : (durationWeeks * 6);
     const tools = Array.isArray(rawData.tools)
       ? rawData.tools.join(', ')
       : (rawData.tools || 'Modern Engineering Tools');

@@ -625,7 +625,13 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                                 {p.code}
                               </span>
                               <span className="text-xs text-slate-500 font-medium">
-                                {p.durationWeeks || 12} Weeks • {p.award || 'Professional Certificate'}
+                                {p.duration
+                                  ? (p.duration.toLowerCase().includes('week') || p.duration.toLowerCase().includes('month')
+                                      ? p.duration
+                                      : `${p.duration} Weeks`)
+                                  : (p.durationWeeks ? `${p.durationWeeks} Weeks` : '12 Weeks')}
+                                {' • '}
+                                {p.certification || p.award || 'Professional Certificate'}
                               </span>
                             </div>
                             <h4 className="text-base font-bold text-slate-900">{p.name}</h4>

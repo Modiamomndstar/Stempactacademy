@@ -55,7 +55,14 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
       if (prog) {
         setDomain(prog.name || '');
         if (prog.level) setAcademicLevel(prog.level as AcademicLevel);
-        if (prog.durationWeeks) setDurationWeeks(Number(prog.durationWeeks));
+        if (prog.duration || prog.durationWeeks) {
+          const parsed = prog.duration
+            ? parseInt(String(prog.duration).replace(/\D/g, ''), 10)
+            : Number(prog.durationWeeks);
+          if (parsed && !isNaN(parsed)) {
+            setDurationWeeks(parsed);
+          }
+        }
         if (prog.targetLearner) setTargetAudience(prog.targetLearner);
         if (prog.tools || prog.competencies) setKeywords(prog.tools || prog.competencies || '');
         if (prog.description) setSpecialInstructions(prog.description);
@@ -231,6 +238,9 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
                     onChange={(e) => setDurationWeeks(Number(e.target.value))}
                     className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+                    Calculates to {durationWeeks * 6} Total Contact Hours ({durationWeeks} weekly modules × 6 hrs/week).
+                  </p>
                 </div>
 
                 {/* Target Audience */}
