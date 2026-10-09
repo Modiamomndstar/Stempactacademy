@@ -42,6 +42,7 @@ import {
   ChevronDown,
   Check,
   Plus,
+  Maximize2,
 } from 'lucide-react';
 import { StudentCopilotModal } from '../../components/StudentCopilotModal';
 import { getVideoPlayerInfo } from '../../components/admin/ProgramDetailModal';
@@ -68,6 +69,7 @@ export const StudentDashboardPage: React.FC = () => {
   const [selectedModuleTitle, setSelectedModuleTitle] = useState<string>('');
   const [completingLesson, setCompletingLesson] = useState<boolean>(false);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [showLessonModal, setShowLessonModal] = useState<boolean>(false);
 
   // Assignment Work Submission Modal State
   const [selectedAssignment, setSelectedAssignment] = useState<any | null>(null);
@@ -1215,6 +1217,17 @@ export const StudentDashboardPage: React.FC = () => {
                             <span>Next</span>
                             <ChevronRight className="w-4 h-4" />
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowLessonModal(true)}
+                            title="Expand to Fullscreen Theater View"
+                            aria-label="Theater Mode"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5 text-blue-300" />
+                            <span className="hidden sm:inline">Theater</span>
+                          </button>
                         </div>
                       </div>
 
@@ -2097,14 +2110,18 @@ export const StudentDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* FOCUSED LESSON PLAYER MODAL */}
-      {selectedLesson && (
+      {/* FOCUSED LESSON PLAYER MODAL (THEATER / POPUP MODE) */}
+      {showLessonModal && selectedLesson && (
         <div
           role="dialog"
           aria-modal="true"
+          onClick={() => setShowLessonModal(false)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150 overflow-y-auto"
         >
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-6 my-8 max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b pb-4">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 font-mono">
@@ -2114,7 +2131,7 @@ export const StudentDashboardPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedLesson(null)}
+                onClick={() => setShowLessonModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2214,7 +2231,7 @@ export const StudentDashboardPage: React.FC = () => {
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setSelectedLesson(null)}
+                onClick={() => setShowLessonModal(false)}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
               >
                 Close Player
