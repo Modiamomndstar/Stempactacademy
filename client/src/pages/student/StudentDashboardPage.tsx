@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -38,6 +38,10 @@ import {
   Coins,
   Copy,
   UploadCloud,
+  Search,
+  ChevronDown,
+  Check,
+  Plus,
 } from 'lucide-react';
 import { StudentCopilotModal } from '../../components/StudentCopilotModal';
 import { getVideoPlayerInfo } from '../../components/admin/ProgramDetailModal';
@@ -99,6 +103,25 @@ export const StudentDashboardPage: React.FC = () => {
   const [loadingProgression, setLoadingProgression] = useState(false);
   const [claimingProgression, setClaimingProgression] = useState(false);
   const [progressionCohortId, setProgressionCohortId] = useState('');
+
+  // Project Video Evidence & New Capstone Submission State
+  const [projectVideoUrl, setProjectVideoUrl] = useState<string>('');
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState<boolean>(false);
+  const [newProjectForm, setNewProjectForm] = useState({
+    title: '',
+    category: 'Software Engineering',
+    description: '',
+    youtubeVideoUrl: '',
+    liveDemoUrl: '',
+    githubUrl: '',
+    skills: '',
+    tools: '',
+  });
+  const [creatingProject, setCreatingProject] = useState<boolean>(false);
+
+  // UoPeople-inspired Dual-Pane Curriculum Studio State
+  const [curriculumSearch, setCurriculumSearch] = useState<string>('');
+  const [expandedUnitIds, setExpandedUnitIds] = useState<Set<string>>(new Set());
 
   // Synchronize Tab with URL
   const handleTabChange = (tabId: string) => {
@@ -287,9 +310,10 @@ export const StudentDashboardPage: React.FC = () => {
     try {
       await api.updateProjectEvidence(selectedProjectForEvidence.id, {
         githubUrl: projectGithubUrl,
-        liveDemoUrl: projectLiveUrl,
+        liveDemoUrl: projectLiveUrl || projectVideoUrl,
+        thumbnail: projectVideoUrl || undefined,
       });
-      setActionSuccess('Project evidence and repositories updated successfully!');
+      setActionSuccess('Project evidence, YouTube demo, and repositories updated successfully!');
       setSelectedProjectForEvidence(null);
       // Reload dashboard projects
       const res = await api.getStudentDashboard();
@@ -298,6 +322,47 @@ export const StudentDashboardPage: React.FC = () => {
       setActionError(err.message || 'Failed to update project evidence.');
     } finally {
       setSavingEvidence(false);
+    }
+  };
+
+  // Submit New Capstone Project
+  const handleCreateProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectForm.title.trim() || !newProjectForm.description.trim()) {
+      setActionError('Project title and description are required.');
+      return;
+    }
+    setCreatingProject(true);
+    setActionError('');
+    try {
+      await api.createProject({
+        title: newProjectForm.title.trim(),
+        category: newProjectForm.category,
+        description: newProjectForm.description.trim(),
+        githubUrl: newProjectForm.githubUrl.trim() || undefined,
+        liveDemoUrl: newProjectForm.liveDemoUrl.trim() || newProjectForm.youtubeVideoUrl.trim() || undefined,
+        thumbnail: newProjectForm.youtubeVideoUrl.trim() || undefined,
+        skills: newProjectForm.skills.trim() || undefined,
+        tools: newProjectForm.tools.trim() || undefined,
+      });
+      setActionSuccess('Capstone project submitted to showcase portfolio! View it live on the Projects page.');
+      setShowCreateProjectModal(false);
+      setNewProjectForm({
+        title: '',
+        category: 'Software Engineering',
+        description: '',
+        youtubeVideoUrl: '',
+        liveDemoUrl: '',
+        githubUrl: '',
+        skills: '',
+        tools: '',
+      });
+      const res = await api.getStudentDashboard();
+      setData(res.dashboard);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to submit capstone project.');
+    } finally {
+      setCreatingProject(false);
     }
   };
 
@@ -400,6 +465,55 @@ export const StudentDashboardPage: React.FC = () => {
   } = data;
 
   const coursesList = curriculumData?.courses || data.curriculum?.courses || [];
+
+  // Flattened lesson list for sequential UoPeople-style navigation
+  const flatLessonsList = useMemo(() => {
+    const list: any[] = [];
+    coursesList.forEach((course: any) => {
+      (course.modules || []).forEach((mod: any, mIdx: number) => {
+        (mod.lessons || []).forEach((les: any, lIdx: number) => {
+          list.push({
+            ...les,
+            courseTitle: course.title,
+            courseCode: course.code,
+            moduleTitle: mod.title,
+            moduleId: mod.id || `mod-${mIdx}`,
+            unitNumber: mIdx + 1,
+            lessonNumber: lIdx + 1,
+          });
+        });
+      });
+    });
+    return list;
+  }, [coursesList]);
+
+  // Current lesson sequential indices
+  const currentLessonIndex = useMemo(() => {
+    if (!selectedLesson) return -1;
+    return flatLessonsList.findIndex((l: any) => l.id === selectedLesson.id);
+  }, [selectedLesson, flatLessonsList]);
+
+  const prevLesson = currentLessonIndex > 0 ? flatLessonsList[currentLessonIndex - 1] : null;
+  const nextLesson =
+    currentLessonIndex >= 0 && currentLessonIndex < flatLessonsList.length - 1
+      ? flatLessonsList[currentLessonIndex + 1]
+      : null;
+
+  // Auto-select first lesson when curriculum loads if none selected
+  useEffect(() => {
+    if (activeTab === 'curriculum' && !selectedLesson && flatLessonsList.length > 0) {
+      const firstUncompleted = flatLessonsList.find(
+        (l: any) => !completedLessonIds.has(l.id) && l.progress?.status !== 'COMPLETED'
+      );
+      const target = firstUncompleted || flatLessonsList[0];
+      setSelectedLesson(target);
+      setSelectedCourseTitle(target.courseTitle);
+      setSelectedModuleTitle(target.moduleTitle);
+      if (target.moduleId) {
+        setExpandedUnitIds((prev) => new Set([...prev, target.moduleId]));
+      }
+    }
+  }, [activeTab, flatLessonsList, selectedLesson, completedLessonIds]);
 
   const getPageHeaderConfig = () => {
     switch (activeTab) {
@@ -813,97 +927,432 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: ACTIVE RELATIONAL CURRICULUM & FOCUSED LESSON PLAYER */}
+        {/* TAB 2: ACTIVE RELATIONAL CURRICULUM — UOPEOPLE DUAL-PANE LEARNING STUDIO */}
         {activeTab === 'curriculum' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Curriculum & Coursework</h2>
+                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <span>Interactive Learning Studio</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                    Dual-Pane Classroom
+                  </span>
+                </h2>
                 <p className="text-xs text-slate-500">
-                  Version-anchored academic syllabus. Click any lesson to launch the focused lesson player.
+                  Unit-based curriculum pacing with sequential navigation, embedded video lectures, and practical activities.
                 </p>
               </div>
-              <div className="text-xs font-mono text-slate-500">
-                Curriculum Version: <strong>{data?.curriculum?.versionNumber || 1}</strong>
+
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-semibold text-slate-600 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                  Progress: <strong className="text-blue-600">{completedLessonIds.size}</strong> of{' '}
+                  <strong className="text-slate-900">{flatLessonsList.length}</strong> Completed (
+                  {flatLessonsList.length > 0
+                    ? Math.round((completedLessonIds.size / flatLessonsList.length) * 100)
+                    : 0}
+                  %)
+                </div>
               </div>
             </div>
 
             {loadingCurriculum ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                Loading curriculum modules and practical activities...
+              <div className="py-20 text-center text-xs text-slate-500">
+                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                Connecting to syllabus and loading multimedia lecture modules...
               </div>
             ) : coursesList.length === 0 ? (
-              <Card className="p-8 text-center text-slate-400 text-xs">
+              <Card className="p-12 text-center text-slate-400 text-xs">
                 No active courses mapped to this curriculum version yet.
               </Card>
             ) : (
-              <div className="space-y-6">
-                {coursesList.map((course: any) => (
-                  <Card key={course.id} className="p-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
-                      <div>
-                        <span className="text-xs font-mono font-bold text-blue-600">{course.code}</span>
-                        <h3 className="font-bold text-base text-slate-900">{course.title}</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* LEFT PANE: UOPEOPLE-STYLE MODULE & UNIT ACCORDION SYLLABUS TREE (35% width) */}
+                <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search units, topics, lessons..."
+                      value={curriculumSearch}
+                      onChange={(e) => setCurriculumSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500 shadow-2xs focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Modules Accordion List */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100 max-h-[720px] overflow-y-auto">
+                    {coursesList.map((course: any, cIdx: number) => {
+                      return (course.modules || []).map((mod: any, mIdx: number) => {
+                        const unitId = mod.id || `unit-${cIdx}-${mIdx}`;
+                        const isExpanded =
+                          expandedUnitIds.has(unitId) ||
+                          (curriculumSearch.trim().length > 0) ||
+                          selectedLesson?.moduleId === mod.id;
+
+                        const lessonsInMod = mod.lessons || [];
+                        const completedCount = lessonsInMod.filter(
+                          (l: any) => completedLessonIds.has(l.id) || l.progress?.status === 'COMPLETED'
+                        ).length;
+
+                        // Filter lessons by search query if present
+                        const displayedLessons = lessonsInMod.filter((l: any) => {
+                          if (!curriculumSearch.trim()) return true;
+                          const q = curriculumSearch.toLowerCase();
+                          return (
+                            l.title?.toLowerCase().includes(q) ||
+                            mod.title?.toLowerCase().includes(q) ||
+                            l.content?.toLowerCase().includes(q)
+                          );
+                        });
+
+                        if (curriculumSearch.trim() && displayedLessons.length === 0) {
+                          return null;
+                        }
+
+                        const isAllCompleted = lessonsInMod.length > 0 && completedCount === lessonsInMod.length;
+
+                        return (
+                          <div key={unitId} className="group">
+                            {/* Unit Accordion Header */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedUnitIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(unitId)) {
+                                    next.delete(unitId);
+                                  } else {
+                                    next.add(unitId);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className={`w-full p-4 text-left flex items-start justify-between gap-3 transition-colors cursor-pointer ${
+                                isExpanded ? 'bg-slate-50/80' : 'hover:bg-slate-50/50'
+                              }`}
+                            >
+                              <div className="space-y-1 min-w-0 pr-2">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                                    Unit {mIdx + 1}
+                                  </span>
+                                  {isAllCompleted ? (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Completed</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-slate-400">
+                                      {completedCount}/{lessonsInMod.length} Completed
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="font-bold text-xs text-slate-900 leading-snug truncate">
+                                  {mod.title}
+                                </h4>
+                              </div>
+
+                              <div className="text-slate-400 group-hover:text-slate-600 shrink-0 mt-1">
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </div>
+                            </button>
+
+                            {/* Unit Items (Lessons & Activities) */}
+                            {isExpanded && (
+                              <div className="bg-slate-50/40 px-2 py-1.5 space-y-1 border-t border-slate-100">
+                                {displayedLessons.map((lesson: any, lIdx: number) => {
+                                  const isSelected = selectedLesson?.id === lesson.id;
+                                  const isDone =
+                                    completedLessonIds.has(lesson.id) ||
+                                    lesson.progress?.status === 'COMPLETED';
+
+                                  return (
+                                    <button
+                                      key={lesson.id || lIdx}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedLesson(lesson);
+                                        setSelectedCourseTitle(course.title);
+                                        setSelectedModuleTitle(mod.title);
+                                      }}
+                                      className={`w-full p-3 rounded-xl text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-blue-600 text-white font-bold shadow-sm'
+                                          : 'bg-white hover:bg-slate-100/80 text-slate-700 border border-slate-200/60'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div
+                                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
+                                            isSelected
+                                              ? 'bg-white/20 text-white'
+                                              : isDone
+                                              ? 'bg-emerald-100 text-emerald-700'
+                                              : 'bg-slate-100 text-slate-500'
+                                          }`}
+                                        >
+                                          {lesson.videoUrl ? (
+                                            <Play className="w-3.5 h-3.5 fill-current" />
+                                          ) : (
+                                            <BookOpen className="w-3.5 h-3.5" />
+                                          )}
+                                        </div>
+
+                                        <div className="min-w-0">
+                                          <div
+                                            className={`text-[10px] leading-tight truncate ${
+                                              isSelected ? 'text-blue-100' : 'text-slate-400'
+                                            }`}
+                                          >
+                                            {mIdx + 1}.{lIdx + 1} • {lesson.durationMinutes || 30} mins
+                                          </div>
+                                          <div className="text-xs font-semibold truncate mt-0.5">
+                                            {lesson.title}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {isDone && (
+                                        <CheckCircle2
+                                          className={`w-4 h-4 shrink-0 ${
+                                            isSelected ? 'text-white' : 'text-emerald-600'
+                                          }`}
+                                        />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })}
+                  </div>
+                </div>
+
+                {/* RIGHT PANE: ACTIVE LESSON & READING WORKSPACE (65% width) */}
+                <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+                  {selectedLesson ? (
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+                      {/* Top Navigation & Breadcrumb Bar */}
+                      <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-4 border-b border-slate-800">
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-mono uppercase font-bold text-blue-400 tracking-wider">
+                            {selectedCourseTitle || 'Core Course'} • {selectedModuleTitle || 'Active Unit'}
+                          </span>
+                          <h3 className="text-sm sm:text-base font-black text-white truncate mt-0.5">
+                            {selectedLesson.title}
+                          </h3>
+                        </div>
+
+                        {/* Sequential Navigation Buttons */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (prevLesson) {
+                                setSelectedLesson(prevLesson);
+                                setSelectedCourseTitle(prevLesson.courseTitle);
+                                setSelectedModuleTitle(prevLesson.moduleTitle);
+                              }
+                            }}
+                            disabled={!prevLesson}
+                            aria-label="Previous lesson"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            <span className="hidden sm:inline">Previous</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (nextLesson) {
+                                if (!completedLessonIds.has(selectedLesson.id)) {
+                                  handleRecordLessonProgress(selectedLesson.id);
+                                }
+                                setSelectedLesson(nextLesson);
+                                setSelectedCourseTitle(nextLesson.courseTitle);
+                                setSelectedModuleTitle(nextLesson.moduleTitle);
+                              }
+                            }}
+                            disabled={!nextLesson}
+                            aria-label="Next lesson"
+                            className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <span>Next</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <Badge variant="blue">{course.credits || 3} Credits</Badge>
-                    </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed">{course.description}</p>
+                      {/* Main Reading / Media Content */}
+                      <div className="p-6 sm:p-8 space-y-6">
+                        {/* Video Player */}
+                        {selectedLesson.videoUrl && (() => {
+                          const playerInfo = getVideoPlayerInfo(selectedLesson.videoUrl);
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                                <div className="flex items-center gap-2">
+                                  <Play className="w-4 h-4 text-rose-600 fill-rose-600" />
+                                  <span>Video Lecture Presentation</span>
+                                </div>
+                                {selectedLesson.videoDurationMin && (
+                                  <span className="text-slate-400 font-normal">
+                                    {selectedLesson.videoDurationMin} mins
+                                  </span>
+                                )}
+                              </div>
 
-                    {/* Modules List */}
-                    <div className="space-y-3 pt-2">
-                      {(course.modules || []).map((mod: any, mIdx: number) => (
-                        <div key={mod.id || mIdx} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                Module {mIdx + 1}
-                              </span>
-                              <h4 className="font-bold text-xs text-slate-900">{mod.title}</h4>
+                              {playerInfo?.isDirectVideo ? (
+                                <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-md border border-slate-200 aspect-video">
+                                  <video
+                                    src={playerInfo.embedUrl}
+                                    controls
+                                    controlsList="nodownload"
+                                    className="w-full h-full object-contain"
+                                  >
+                                    Your browser does not support the video tag.
+                                  </video>
+                                </div>
+                              ) : playerInfo && (playerInfo.type === 'youtube' || playerInfo.type === 'gdrive' || playerInfo.type === 'vimeo') ? (
+                                <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-black aspect-video">
+                                  <iframe
+                                    src={playerInfo.embedUrl}
+                                    title={selectedLesson.title}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="absolute inset-0 w-full h-full border-0"
+                                  />
+                                </div>
+                              ) : (
+                                <a
+                                  href={selectedLesson.videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 transition"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  <span>Launch External Lecture Video Resource</span>
+                                </a>
+                              )}
+
+                              {selectedLesson.videoSummary && (
+                                <p className="text-[11px] text-slate-500 leading-relaxed p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                                  <strong className="text-slate-700">Video Abstract:</strong> {selectedLesson.videoSummary}
+                                </p>
+                              )}
                             </div>
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              {mod.durationHours || 4} Hours
-                            </span>
+                          );
+                        })()}
+
+                        {/* Lesson Meta Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 flex-wrap gap-2">
+                          <div className="space-y-1">
+                            <h2 className="text-xl font-black text-slate-900">{selectedLesson.title}</h2>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                              <span>Estimated time: <strong>{selectedLesson.durationMinutes || 45} mins</strong></span>
+                              <span>•</span>
+                              <span>Milestone: <strong>{selectedLesson.order || 1}</strong></span>
+                            </div>
                           </div>
 
-                          {/* Lessons inside Module */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                            {(mod.lessons || []).map((lesson: any, lIdx: number) => {
-                              const isCompleted = completedLessonIds.has(lesson.id) || lesson.progress?.status === 'COMPLETED';
-                              return (
-                                <button
-                                  key={lesson.id || lIdx}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedLesson(lesson);
-                                    setSelectedCourseTitle(course.title);
-                                    setSelectedModuleTitle(mod.title);
-                                  }}
-                                  className="p-3 rounded-lg bg-white border border-slate-200 hover:border-blue-500 hover:shadow-xs transition-all text-left flex items-center justify-between group cursor-pointer"
-                                >
-                                  <div className="space-y-0.5 pr-2">
-                                    <span className="text-[10px] text-slate-400 font-bold block">
-                                      Lesson {lIdx + 1} • {lesson.durationMinutes || 45} mins
-                                    </span>
-                                    <span className="text-xs font-semibold text-slate-800 group-hover:text-blue-600">
-                                      {lesson.title}
-                                    </span>
-                                  </div>
-                                  {isCompleted ? (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                  ) : (
-                                    <Play className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                                  )}
-                                </button>
-                              );
-                            })}
+                          <div>
+                            {completedLessonIds.has(selectedLesson.id) || selectedLesson.progress?.status === 'COMPLETED' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Lesson Completed</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                                <Clock className="w-4 h-4" />
+                                <span>In Progress</span>
+                              </span>
+                            )}
                           </div>
                         </div>
-                      ))}
+
+                        {/* Lesson Content / Reading Text */}
+                        <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                          {selectedLesson.content ? (
+                            <div className="prose prose-sm max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed">
+                              {selectedLesson.content}
+                            </div>
+                          ) : (
+                            <p className="text-slate-500 italic">
+                              Review the lecture video and practice the hands-on lab exercises provided in this milestone.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Objectives Box */}
+                        {selectedLesson.objectives && (
+                          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-blue-900 space-y-2">
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Learning Competencies & Mastery Outcomes</span>
+                            </h4>
+                            <p className="text-xs leading-relaxed text-blue-800">
+                              {selectedLesson.objectives}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action Footer Bar */}
+                        <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <button
+                            type="button"
+                            onClick={() => handleRecordLessonProgress(selectedLesson.id)}
+                            disabled={completingLesson || completedLessonIds.has(selectedLesson.id)}
+                            className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-default"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>
+                              {completedLessonIds.has(selectedLesson.id)
+                                ? 'Marked as Complete ✓'
+                                : completingLesson
+                                ? 'Saving Progress...'
+                                : 'Mark Lesson as Complete'}
+                            </span>
+                          </button>
+
+                          {nextLesson && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!completedLessonIds.has(selectedLesson.id)) {
+                                  handleRecordLessonProgress(selectedLesson.id);
+                                }
+                                setSelectedLesson(nextLesson);
+                                setSelectedCourseTitle(nextLesson.courseTitle);
+                                setSelectedModuleTitle(nextLesson.moduleTitle);
+                              }}
+                              className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                            >
+                              <span>Next Lesson ({nextLesson.title.slice(0, 24)}...)</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </Card>
-                ))}
+                  ) : (
+                    <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-12 text-center space-y-3">
+                      <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+                      <h3 className="font-bold text-slate-800 text-base">Select a Unit or Lesson to Begin</h3>
+                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                        Click any unit item in the syllabus tree on the left to load the instructional reading, video lecture, and practical tasks.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -993,9 +1442,17 @@ export const StudentDashboardPage: React.FC = () => {
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Practical Projects & Portfolio</h2>
                 <p className="text-xs text-slate-500">
-                  Industry-grade capstone challenges. Submit GitHub repositories and live deployments for evaluation.
+                  Industry-grade capstone challenges. Submit YouTube recordings, GitHub repositories, and live deployments to showcase your work publicly.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateProjectModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Submit Capstone Project
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1021,7 +1478,7 @@ export const StudentDashboardPage: React.FC = () => {
                       <div><strong>Skills:</strong> {proj.skills || 'Full-Stack Development'}</div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-3">
                         {proj.githubUrl && (
                           <a
@@ -1045,6 +1502,17 @@ export const StudentDashboardPage: React.FC = () => {
                             <span>Live Demo</span>
                           </a>
                         )}
+                        {(proj.videoUrl || (proj.thumbnail && proj.thumbnail.includes('youtu')) || (proj.liveDemoUrl && proj.liveDemoUrl.includes('youtu'))) && (
+                          <a
+                            href={proj.videoUrl || (proj.thumbnail && proj.thumbnail.includes('youtu') ? proj.thumbnail : proj.liveDemoUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-semibold"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-rose-600" />
+                            <span>Video Demo</span>
+                          </a>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -1052,6 +1520,7 @@ export const StudentDashboardPage: React.FC = () => {
                           setSelectedProjectForEvidence(proj);
                           setProjectGithubUrl(proj.githubUrl || '');
                           setProjectLiveUrl(proj.liveDemoUrl || '');
+                          setProjectVideoUrl(proj.videoUrl || (proj.thumbnail && proj.thumbnail.includes('youtu') ? proj.thumbnail : ''));
                         }}
                         className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
                       >
@@ -1068,8 +1537,16 @@ export const StudentDashboardPage: React.FC = () => {
                 ))
               ) : (
                 <div className="col-span-full">
-                  <Card className="p-8 text-center text-slate-400 text-xs">
-                    No active practical projects registered yet. Projects will populate as curriculum milestones advance.
+                  <Card className="p-8 text-center text-slate-400 text-xs space-y-3">
+                    <p>No active practical projects registered yet. Submit your capstone project or complete course milestones.</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateProjectModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Submit First Capstone Project
+                    </button>
                   </Card>
                 </div>
               )}
@@ -1766,6 +2243,18 @@ export const StudentDashboardPage: React.FC = () => {
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">YouTube Video Presentation / Demo URL</label>
+                <input
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                  value={projectVideoUrl}
+                  onChange={(e) => setProjectVideoUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+                <p className="text-[10px] text-slate-400">Add a YouTube walkthrough video to feature in the interactive project showcase player.</p>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -1780,6 +2269,148 @@ export const StudentDashboardPage: React.FC = () => {
                   className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   {savingEvidence ? 'Saving...' : 'Save Evidence'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE CAPSTONE PROJECT MODAL */}
+      {showCreateProjectModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-150 overflow-y-auto"
+        >
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">Portfolio & Capstone</span>
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">Submit Capstone Project</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateProjectModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProjectSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Project Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. AI-Powered Crop Disease Diagnostic Web Platform"
+                  value={newProjectForm.title}
+                  onChange={(e) => setNewProjectForm({ ...newProjectForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Category / Domain *</label>
+                <select
+                  value={newProjectForm.category}
+                  onChange={(e) => setNewProjectForm({ ...newProjectForm, category: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                >
+                  <option value="Software Engineering">Software Engineering & AI</option>
+                  <option value="Robotics & IoT">Robotics & IoT</option>
+                  <option value="Renewable Energy">Renewable Energy & CleanTech</option>
+                  <option value="Creative Tech">Creative Tech & Game Dev</option>
+                  <option value="FinTech">FinTech & Blockchain</option>
+                  <option value="Cybersecurity">Cybersecurity & Cloud</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Project Description *</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Explain what problem this project solves, architecture, and key innovations..."
+                  value={newProjectForm.description}
+                  onChange={(e) => setNewProjectForm({ ...newProjectForm, description: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">YouTube Video Presentation / Demo URL</label>
+                <input
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                  value={newProjectForm.youtubeVideoUrl}
+                  onChange={(e) => setNewProjectForm({ ...newProjectForm, youtubeVideoUrl: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+                <p className="text-[10px] text-slate-400">Embeds an interactive video player on the public showcase!</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Live Demo / Deployment URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://my-app.vercel.app"
+                    value={newProjectForm.liveDemoUrl}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, liveDemoUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">GitHub Repository URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://github.com/..."
+                    value={newProjectForm.githubUrl}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, githubUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Tools / Stack</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Next.js, Python, OpenCV, Tailwind"
+                    value={newProjectForm.tools}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, tools: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Skills Acquired</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Computer Vision, Full-Stack, CI/CD"
+                    value={newProjectForm.skills}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, skills: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateProjectModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingProject}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {creatingProject ? 'Submitting...' : 'Publish to Showcase'}
                 </button>
               </div>
             </form>

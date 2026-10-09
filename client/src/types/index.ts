@@ -459,8 +459,14 @@ export interface Project {
   thumbnail?: string;
   githubUrl?: string;
   liveDemoUrl?: string;
+  videoUrl?: string;
   score?: number;
   feedback?: string;
+  status?: string;
+  cohortId?: string;
+  programId?: string;
+  cohort?: any;
+  program?: any;
   isFeaturedPublic: boolean;
   members?: { role: string; student: { user: User } }[];
 }
