@@ -11,7 +11,12 @@ import {
   Eye,
   Send,
   MessageSquare,
+  Megaphone,
+  Plus,
+  X,
+  Sparkles,
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface NotificationDeliveriesManagerProps {
   deliveries: any[];
@@ -27,6 +32,46 @@ export const NotificationDeliveriesManager: React.FC<NotificationDeliveriesManag
   const [channelFilter, setChannelFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedDelivery, setSelectedDelivery] = useState<any | null>(null);
+
+  // Broadcast Announcement State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementContent, setAnnouncementContent] = useState('');
+  const [announcementAudience, setAnnouncementAudience] = useState('ALL');
+  const [announcementPriority, setAnnouncementPriority] = useState('NORMAL');
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastSuccess, setBroadcastSuccess] = useState('');
+  const [broadcastError, setBroadcastError] = useState('');
+
+  const handleBroadcastAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!announcementTitle.trim() || !announcementContent.trim()) {
+      setBroadcastError('Title and content are required.');
+      return;
+    }
+    setBroadcasting(true);
+    setBroadcastError('');
+    try {
+      await api.createAnnouncement({
+        title: announcementTitle.trim(),
+        content: announcementContent.trim(),
+        targetAudience: announcementAudience,
+        priority: announcementPriority,
+      });
+      setBroadcastSuccess('Announcement broadcasted successfully to all student and cohort ledgers.');
+      setAnnouncementTitle('');
+      setAnnouncementContent('');
+      setTimeout(() => {
+        setShowBroadcastModal(false);
+        setBroadcastSuccess('');
+      }, 1500);
+      onRefresh();
+    } catch (err: any) {
+      setBroadcastError(err.message || 'Failed to broadcast announcement.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   const filteredDeliveries = deliveries.filter((item) => {
     const matchesSearch =
@@ -61,9 +106,16 @@ export const NotificationDeliveriesManager: React.FC<NotificationDeliveriesManag
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setShowBroadcastModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+          >
+            <Megaphone className="w-4 h-4" />
+            Broadcast Notice
+          </button>
+          <button
             onClick={onRefresh}
             title="Refresh Deliveries"
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh Outbox
@@ -341,6 +393,123 @@ export const NotificationDeliveriesManager: React.FC<NotificationDeliveriesManag
                 Close Record
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Broadcast Announcement Modal */}
+      {showBroadcastModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 text-white shadow-2xl space-y-5 animate-in fade-in">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Broadcast Announcement</h3>
+                  <p className="text-xs text-slate-400">Post a live notice visible to students, faculty, or all portals</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {broadcastSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs font-medium flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span>{broadcastSuccess}</span>
+              </div>
+            )}
+
+            {broadcastError && (
+              <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs font-medium">
+                {broadcastError}
+              </div>
+            )}
+
+            <form onSubmit={handleBroadcastAnnouncement} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Notice Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Mandatory Lab Orientation & Timetable Schedule"
+                  value={announcementTitle}
+                  onChange={(e) => setAnnouncementTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Target Audience</label>
+                  <select
+                    value={announcementAudience}
+                    onChange={(e) => setAnnouncementAudience(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="ALL">All Academy (Students & Faculty)</option>
+                    <option value="STUDENTS">Enrolled Students Only</option>
+                    <option value="INSTRUCTORS">Faculty Instructors Only</option>
+                    <option value="APPLICANTS">Candidates & Applicants Only</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Priority Level</label>
+                  <select
+                    value={announcementPriority}
+                    onChange={(e) => setAnnouncementPriority(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="NORMAL">Normal Notice</option>
+                    <option value="HIGH">High Priority (Urgent Badge)</option>
+                    <option value="CRITICAL">Critical Alert</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Broadcast Content *</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Provide comprehensive details, Zoom meeting links, lab address, dates, or guidelines..."
+                  value={announcementContent}
+                  onChange={(e) => setAnnouncementContent(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-800 text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={broadcasting}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                >
+                  {broadcasting ? (
+                    'Broadcasting...'
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Broadcast Live</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

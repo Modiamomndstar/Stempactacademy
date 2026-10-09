@@ -292,9 +292,10 @@ export class AcademicDeliveryService {
       (a) => a.status === AttendanceStatus.PRESENT || a.status === AttendanceStatus.LATE
     ).length;
 
+    const totalSessionsHeld = cohortSessions.length;
     const attendanceRate = totalScopedAttendances > 0
       ? Math.round((attendedSessions / totalScopedAttendances) * 100)
-      : 100;
+      : (totalSessionsHeld > 0 ? 0 : 100);
 
     // 2. Calculate Syllabus / Lesson Progress
     let allLessons: any[] = [];
@@ -312,7 +313,7 @@ export class AcademicDeliveryService {
     const completedLessons = student.lessonProgress.length;
     const syllabusProgressPercentage = totalLessons > 0
       ? Math.min(100, Math.round((completedLessons / totalLessons) * 100))
-      : (completedLessons > 0 ? 100 : 0);
+      : 0;
 
     // 3. Calculate Assignments Progress & Average Grade scoped to active cohort
     const cohortAssignments = await prisma.assignment.findMany({
@@ -339,16 +340,16 @@ export class AcademicDeliveryService {
     // 5. Authentic Overall Completion Rate Calculation (derived metric)
     let calculatedCompletionRate = 0;
     if (totalLessons > 0 || totalAssignments > 0) {
-      const lessonComponent = totalLessons > 0 ? (completedLessons / totalLessons) * 40 : 40;
+      const lessonComponent = totalLessons > 0 ? (completedLessons / totalLessons) * 40 : 0;
       const assignmentComponent = totalAssignments > 0
         ? (completedAssignments / totalAssignments) * 30
-        : (completedAssignments > 0 ? 30 : 0);
-      const attendanceComponent = (attendanceRate / 100) * 20;
-      const compComponent = totalCompetencies > 0 ? (achievedCompetencies / totalCompetencies) * 10 : 10;
+        : 0;
+      const attendanceComponent = totalScopedAttendances > 0 ? (attendanceRate / 100) * 20 : 0;
+      const compComponent = totalCompetencies > 0 ? (achievedCompetencies / totalCompetencies) * 10 : 0;
 
       calculatedCompletionRate = Math.min(100, Math.round(lessonComponent + assignmentComponent + attendanceComponent + compComponent));
     } else {
-      calculatedCompletionRate = attendanceRate;
+      calculatedCompletionRate = 0;
     }
 
     // Synchronize derived cache to StudentProfile for fast lookup

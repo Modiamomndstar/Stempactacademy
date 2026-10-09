@@ -1,4 +1,4 @@
-import { AdmissionStatus, ApplicationStatus, Role, InvoiceStatus } from '@prisma/client';
+import { AdmissionStatus, ApplicationStatus, Role, InvoiceStatus, EnrollmentStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { identifierService } from './identifierService.js';
 import { paymentService } from './paymentService.js';
@@ -574,6 +574,65 @@ export class AdmissionService {
             status: newStatus,
           },
         });
+      }
+
+      // 5. If candidate is already matriculated/enrolled as a student, synchronize StudentProfile and StudentCohortEnrollment
+      if (admission.application?.userId) {
+        const studentProfile = await tx.studentProfile.findFirst({
+          where: { userId: admission.application.userId },
+        });
+
+        if (studentProfile) {
+          await tx.studentProfile.update({
+            where: { id: studentProfile.id },
+            data: {
+              currentCohortId: newCohort.id,
+              currentLevel: assignedLevel,
+            },
+          });
+
+          // Mark prior enrollments as WITHDRAWN due to transfer
+          await tx.studentCohortEnrollment.updateMany({
+            where: {
+              studentId: studentProfile.id,
+              status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.ACTIVE] },
+              cohortId: { not: newCohort.id },
+            },
+            data: {
+              status: EnrollmentStatus.WITHDRAWN,
+              withdrawalReason: `Transferred to cohort ${newCohort.name} (${newCohort.cohortCode}) by administration`,
+            },
+          });
+
+          // Establish or activate target cohort enrollment
+          await tx.studentCohortEnrollment.upsert({
+            where: {
+              studentId_cohortId: {
+                studentId: studentProfile.id,
+                cohortId: newCohort.id,
+              },
+            },
+            create: {
+              studentId: studentProfile.id,
+              cohortId: newCohort.id,
+              admissionId: admission.id,
+              applicationId: admission.applicationId,
+              programId: newProgram.id,
+              programVersionId: newCohort.programVersionId,
+              curriculumVersionId: newCohort.curriculumVersionId,
+              academicSessionId: newCohort.academicSessionId,
+              status: EnrollmentStatus.ACTIVE,
+              enrolledById: staffUser.id,
+            },
+            update: {
+              programId: newProgram.id,
+              programVersionId: newCohort.programVersionId,
+              curriculumVersionId: newCohort.curriculumVersionId,
+              academicSessionId: newCohort.academicSessionId,
+              status: EnrollmentStatus.ACTIVE,
+            },
+          });
+        }
       }
 
       return updatedAdmission;

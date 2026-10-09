@@ -272,7 +272,7 @@ export const StudentDashboardPage: React.FC = () => {
         setLoadingProgression(true);
         try {
           const res = await api.getAcademicJourney();
-          setProgressionData(res);
+          setProgressionData(res?.journey || res || null);
         } catch (err: any) {
           console.error('Failed to load progression journey:', err);
         } finally {
@@ -545,7 +545,11 @@ export const StudentDashboardPage: React.FC = () => {
         return {
           title: 'Timetable & Attendance Register',
           subtitle: 'Verified cohort session attendance log and participation compliance record.',
-          badge: <Badge variant="green">{metrics?.attendanceRate || 100}% Attendance</Badge>,
+          badge: (
+            <Badge variant={metrics?.totalClasses === 0 ? 'blue' : 'green'}>
+              {metrics?.totalClasses === 0 ? 'Pending Session Start' : `${metrics?.attendanceRate || 0}% Attendance`}
+            </Badge>
+          ),
         };
       case 'finance':
         return {
@@ -559,6 +563,18 @@ export const StudentDashboardPage: React.FC = () => {
           title: 'Completion Readiness & Certificates',
           subtitle: 'Graduation criteria checklist and cryptographically verifiable academic certificates.',
           badge: <Badge variant="purple">{certificates?.length || 0} Issued</Badge>,
+        };
+      case 'progression':
+        return {
+          title: 'Academic Progression Journey',
+          subtitle: 'Track your level completions, progression eligibility, and enroll in next-level cohorts when ready.',
+          badge: <Badge variant="blue">{profile.currentLevel || 'Level Progression'}</Badge>,
+        };
+      case 'notifications':
+        return {
+          title: 'Notifications & Announcements',
+          subtitle: 'Official institutional updates, faculty communications, schedule changes, and cohort alerts.',
+          badge: <Badge variant="blue">{announcements?.length || 0} Notices</Badge>,
         };
       case 'overview':
       default:
@@ -675,13 +691,16 @@ export const StudentDashboardPage: React.FC = () => {
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-2xl font-black text-slate-900">
-                {metrics?.progressPercentage || 0}%
+                {metrics?.totalLessonsCount === 0 ? 0 : (metrics?.syllabusProgressPercentage ?? metrics?.progressPercentage ?? 0)}%
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${metrics?.progressPercentage || 0}%` }}
+                  style={{ width: `${metrics?.totalLessonsCount === 0 ? 0 : (metrics?.syllabusProgressPercentage ?? metrics?.progressPercentage ?? 0)}%` }}
                 ></div>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                {metrics?.totalLessonsCount === 0 ? 'Curriculum Pending Setup' : `${metrics?.completedLessonsCount || 0} of ${metrics?.totalLessonsCount || 0} Units`}
               </div>
             </Card>
 
@@ -691,13 +710,20 @@ export const StudentDashboardPage: React.FC = () => {
                 <Calendar className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-black text-slate-900">
-                {metrics?.attendanceRate || 100}%
+                {metrics?.totalClasses === 0 ? (
+                  <span className="text-base text-slate-500 font-bold">Pending Start</span>
+                ) : (
+                  `${metrics?.attendanceRate ?? 0}%`
+                )}
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${metrics?.attendanceRate || 100}%` }}
+                  style={{ width: `${metrics?.totalClasses === 0 ? 0 : (metrics?.attendanceRate ?? 0)}%` }}
                 ></div>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                {metrics?.totalClasses === 0 ? 'No Sessions Held Yet' : `${metrics?.attendedClasses || 0} of ${metrics?.totalClasses || 0} Attended`}
               </div>
             </Card>
 
@@ -1745,7 +1771,9 @@ export const StudentDashboardPage: React.FC = () => {
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 uppercase font-bold">Attendance Rate</span>
-                <div className="text-xl font-black text-emerald-600">{metrics?.attendanceRate || 100}%</div>
+                <div className="text-xl font-black text-emerald-600">
+                  {metrics?.totalClasses === 0 ? 'Pending Start' : `${metrics?.attendanceRate || 0}%`}
+                </div>
               </div>
             </div>
 
@@ -1835,12 +1863,14 @@ export const StudentDashboardPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-slate-400 block">Paid Amount</span>
-                        <strong className="text-emerald-700 font-mono">₦{Number(inv.paidAmount || 0).toLocaleString()}</strong>
+                        <strong className="text-emerald-700 font-mono">
+                          ₦{Number(inv.amountPaid ?? inv.paidAmount ?? 0).toLocaleString()}
+                        </strong>
                       </div>
                       <div>
                         <span className="text-slate-400 block">Remaining Balance</span>
                         <strong className="text-blue-700 font-mono">
-                          ₦{Number(inv.balance !== undefined ? inv.balance : inv.totalAmount - (inv.paidAmount || 0)).toLocaleString()}
+                          ₦{Number(inv.balance !== undefined ? inv.balance : Math.max(0, inv.totalAmount - (inv.amountPaid ?? inv.paidAmount ?? 0))).toLocaleString()}
                         </strong>
                       </div>
                       <div>
@@ -1984,6 +2014,84 @@ export const StudentDashboardPage: React.FC = () => {
                   No graduation certificates issued yet. Certificates are emitted following final cohort completion and board approval.
                 </Card>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 8: ACADEMY NOTIFICATIONS & BROADCASTS */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Notifications & Announcements</h2>
+              <p className="text-xs text-slate-500">
+                Official institutional updates, faculty communications, schedule changes, and cohort alerts.
+              </p>
+            </div>
+
+            {/* Live Announcements */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                <Bell className="w-4 h-4 text-blue-600" />
+                Academy Broadcasts & Notices ({announcements?.length || 0})
+              </h3>
+
+              {announcements && announcements.length > 0 ? (
+                <div className="space-y-3">
+                  {announcements.map((item: any) => (
+                    <Card key={item.id} className="p-5 space-y-2 border-l-4 border-l-blue-600">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="blue">{item.type || 'OFFICIAL'}</Badge>
+                          <h4 className="font-bold text-sm text-slate-900">{item.title}</h4>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : ''}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+                        {item.content || item.message}
+                      </p>
+                      {item.author && (
+                        <p className="text-[10px] text-slate-400">
+                          Broadcast by: <strong className="text-slate-600">{item.author}</strong>
+                        </p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-8 text-center text-slate-400 text-xs">
+                  No broadcasts or academy notices at this time.
+                </Card>
+              )}
+            </div>
+
+            {/* Academic Status Alerts */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                Matriculation & Enrolled Ledger
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="p-4 bg-emerald-50/60 border-emerald-200 space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Financial Clearance Cleared</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700">
+                    Your cohort tuition has been verified and approved by STEMPACT Finance Administration.
+                  </p>
+                </Card>
+                <Card className="p-4 bg-blue-50/60 border-blue-200 space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    <span>Matriculated Active Learner</span>
+                  </div>
+                  <p className="text-[11px] text-blue-700">
+                    Student ID #{profile.studentIdNumber} issued. You have institutional access to campus hubs and learning systems.
+                  </p>
+                </Card>
+              </div>
             </div>
           </div>
         )}
