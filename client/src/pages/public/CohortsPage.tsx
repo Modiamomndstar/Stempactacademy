@@ -89,11 +89,10 @@ export const CohortsPage: React.FC = () => {
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Current & Upcoming Academic Cohorts
+            Academic Intakes & Open Class Sections
           </h1>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
-            All STEMPACT cohorts have capped capacity to maintain guaranteed hardware bench access and 1-on-1 instructor
-            mentorship. Check seat availability and apply before application deadlines close.
+            All STEMPACT intake cohorts and class sections feature capped capacity (20–25 learners) to ensure dedicated hardware lab access, live mentoring, and personalized career coaching.
           </p>
 
           {/* School Filter Chips */}
@@ -194,15 +193,19 @@ export const CohortsPage: React.FC = () => {
                   <div className="p-6 space-y-5">
                     {/* Top Badges */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[11px] font-mono font-bold text-slate-600 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {cohort.cohortCode}
                         </span>
-                        {cohort.academicSession?.name && (
+                        {cohort.academicSession?.code ? (
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                            {cohort.academicSession.code}
+                          </span>
+                        ) : cohort.academicSession?.name ? (
                           <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                             {cohort.academicSession.name.split(' ')[0]}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-1.5">
                         {hasDiscount && (

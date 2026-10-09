@@ -447,9 +447,9 @@ export const InstructorPortalPage: React.FC = () => {
         };
       case 'cohorts':
         return {
-          title: 'Assigned Cohorts & Student Directory',
-          subtitle: 'Oversee cohort classes, inspect academic level tiers, and manage enrolled learner rosters.',
-          badge: <Badge variant="green">{cohorts?.length || 0} Cohorts</Badge>,
+          title: 'Assigned Class Sections & Student Directory',
+          subtitle: 'Oversee your program class sections, inspect academic level tiers, and manage enrolled learner rosters.',
+          badge: <Badge variant="green">{cohorts?.length || 0} Class Sections</Badge>,
         };
       case 'cockpit':
       default:
@@ -549,9 +549,9 @@ export const InstructorPortalPage: React.FC = () => {
                   <Users className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold uppercase text-slate-400">Assigned Cohorts</span>
+                  <span className="text-[11px] font-bold uppercase text-slate-400">Assigned Class Sections</span>
                   <h3 className="text-2xl font-black text-slate-900">{cohorts.length}</h3>
-                  <p className="text-[10px] text-slate-500">Active class batches</p>
+                  <p className="text-[10px] text-slate-500">Active class sections & streams</p>
                 </div>
               </Card>
 
@@ -723,12 +723,12 @@ export const InstructorPortalPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Right Column: Teaching Cohorts Overview */}
+              {/* Right Column: Teaching Class Sections Overview */}
               <div className="lg:col-span-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-blue-600" />
-                    <span>Your Active Cohorts ({cohorts.length})</span>
+                    <span>Your Active Class Sections ({cohorts.length})</span>
                   </h3>
                   <button
                     onClick={() => handleTabChange('cohorts')}
@@ -786,7 +786,7 @@ export const InstructorPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 1b: ASSIGNED COHORTS & ROSTERS */}
+        {/* TAB 1b: ASSIGNED CLASS SECTIONS & ROSTERS */}
         {activeTab === 'cohorts' && (
           <div className="space-y-6">
             {/* Filters Bar: Level */}
@@ -812,7 +812,7 @@ export const InstructorPortalPage: React.FC = () => {
                 ))}
               </div>
               <span className="text-xs text-slate-400 font-medium">
-                Showing {cohorts.filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter).length} of {cohorts.length} cohorts
+                Showing {cohorts.filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter).length} of {cohorts.length} class sections
               </span>
             </div>
 
@@ -1072,7 +1072,7 @@ export const InstructorPortalPage: React.FC = () => {
             <form onSubmit={handleMarkAttendanceSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Select Cohort *</label>
+                  <label className="font-semibold text-slate-700">Select Class Section *</label>
                   <select
                     value={selectedCohortId}
                     onChange={(e) => setSelectedCohortId(e.target.value)}
@@ -1182,7 +1182,7 @@ export const InstructorPortalPage: React.FC = () => {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 py-3">No students currently enrolled in this cohort batch.</p>
+                  <p className="text-xs text-slate-400 py-3">No students currently enrolled in this class section.</p>
                 )}
               </div>
 
@@ -1206,7 +1206,7 @@ export const InstructorPortalPage: React.FC = () => {
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Submissions & Coursework Bench</h2>
                 <p className="text-xs text-slate-500">
-                  Publish assignments, inspect cohort submissions, and evaluate coursework with AI-assisted grading drafts.
+                  Publish assignments, inspect student submissions, and evaluate coursework with AI-assisted grading drafts.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1245,7 +1245,7 @@ export const InstructorPortalPage: React.FC = () => {
 
                 {(currentCohort.assignments || []).length === 0 ? (
                   <p className="text-xs text-slate-400 py-3 text-center">
-                    No coursework assignments published for this cohort yet. Click &quot;Create Assignment&quot; to set up your first lab or project milestone.
+                    No coursework assignments published for this class section yet. Click &quot;Create Assignment&quot; to set up your first lab or project milestone.
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
@@ -1525,7 +1525,7 @@ export const InstructorPortalPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-600">Active Cohort:</span>
+                  <span className="text-xs font-bold text-slate-600">Active Class Section:</span>
                   <select
                     value={selectedCohortId}
                     onChange={(e) => setSelectedCohortId(e.target.value)}
@@ -1714,7 +1714,7 @@ export const InstructorPortalPage: React.FC = () => {
                 <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
                 <h4 className="font-bold text-slate-700 text-sm">No Curriculum Modules Configured</h4>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  This cohort currently uses standard syllabus milestones. Course modules will appear here as they are published by the Academic Administrator.
+                  This class section currently uses standard syllabus milestones. Course modules will appear here as they are published by the Academic Administrator.
                 </p>
               </div>
             )}
@@ -1732,13 +1732,13 @@ export const InstructorPortalPage: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-600">Filter Cohort:</span>
+                <span className="text-xs font-bold text-slate-600">Filter Class Section:</span>
                 <select
                   value={selectedCohortId}
                   onChange={(e) => setSelectedCohortId(e.target.value)}
                   className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
                 >
-                  <option value="">All My Cohorts</option>
+                  <option value="">All My Class Sections</option>
                   {cohorts.map((c: any) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -1760,7 +1760,7 @@ export const InstructorPortalPage: React.FC = () => {
                     <Layers className="w-10 h-10 text-slate-300 mx-auto" />
                     <h4 className="font-bold text-slate-700 text-sm">No Capstone Projects Logged</h4>
                     <p className="text-xs text-slate-400 max-w-md mx-auto">
-                      Student teams in your assigned cohorts have not initiated capstone project submissions yet.
+                      Student teams in your assigned class sections have not initiated capstone project submissions yet.
                     </p>
                   </div>
                 );
@@ -2240,7 +2240,7 @@ export const InstructorPortalPage: React.FC = () => {
 
             <form onSubmit={handleCreateAssignment} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Target Cohort *</label>
+                <label className="font-bold text-slate-700">Target Class Section *</label>
                 <select
                   value={assignCohortId}
                   onChange={(e) => setAssignCohortId(e.target.value)}

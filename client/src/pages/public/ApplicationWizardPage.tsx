@@ -594,7 +594,7 @@ export const ApplicationWizardPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="font-semibold text-slate-700">Select Available Cohort (Optional)</label>
+                    <label className="font-semibold text-slate-700">Select Academic Intake & Class Section (Optional)</label>
                     <select
                       name="cohortId"
                       value={formData.cohortId}
@@ -612,7 +612,7 @@ export const ApplicationWizardPage: React.FC = () => {
                       }}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
                     >
-                      <option value="">-- Open Cohort (Assigned upon placement) --</option>
+                      <option value="">-- Open Intake Section (Assigned upon placement) --</option>
                       {filteredCohorts.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name} ({c.cohortCode} • Starts{' '}

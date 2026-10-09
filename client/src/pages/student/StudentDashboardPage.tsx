@@ -640,7 +640,16 @@ export const StudentDashboardPage: React.FC = () => {
                   {profile.fullName}
                 </h1>
                 <p className="text-xs text-slate-300">
-                  {program?.name || 'Academic Specialization'} • Cohort: <strong>{cohort?.cohortCode || cohort?.name}</strong> • Level: <strong>{profile.currentLevel}</strong>
+                  <span className="font-semibold text-white">{program?.name || 'Academic Specialization'}</span>
+                  {cohort?.academicSession?.code && (
+                    <> • <span className="text-amber-300 font-bold">{cohort.academicSession.code}</span></>
+                  )}
+                  {cohort?.name && (
+                    <> • Class Section: <strong className="text-white">{cohort.name}</strong></>
+                  )}
+                  {profile.currentLevel && (
+                    <> • Level: <strong>{profile.currentLevel}</strong></>
+                  )}
                   {(cohort as any)?.learningCenter && (
                     <span className="block text-[11px] text-blue-200 mt-0.5">
                       📍 Campus: <strong>{(cohort as any).learningCenter.name}</strong>
@@ -824,7 +833,7 @@ export const StudentDashboardPage: React.FC = () => {
                 <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Enrolled Academic Cohort
+                      Enrolled Academic Intake & Class Section
                     </span>
                     <h3 className="text-lg font-bold text-slate-900 mt-0.5">
                       {cohort?.name}
@@ -1013,8 +1022,8 @@ export const StudentDashboardPage: React.FC = () => {
                   <Layers className="w-3.5 h-3.5 text-indigo-300" />
                   {academicLevelLabel}
                 </span>
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-white/10 text-slate-200">
-                  Cohort: {cohort?.name} ({cohort?.cohortCode || 'STP'})
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-slate-200">
+                  Class Section: {cohort?.name} ({cohort?.cohortCode || 'STP'})
                 </span>
                 {(cohort as any)?.learningCenter && (
                   <span className="text-xs text-slate-300 flex items-center gap-1 font-semibold">

@@ -400,7 +400,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Academic Sessions & Cohorts ({cohorts.length})</span>
+            <span>Cohorts & Class Sections ({cohorts.length})</span>
           </button>
 
           <button
@@ -1235,9 +1235,9 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase tracking-wider">
                     Academic Governance
                   </span>
-                  <span className="text-xs text-slate-300">Session-Driven Cohorts & Versioning</span>
+                  <span className="text-xs text-slate-300">Academic Year (AY), Cohorts & Class Sections</span>
                 </div>
-                <h3 className="text-lg font-bold text-white">Academic Sessions Control Desk</h3>
+                <h3 className="text-lg font-bold text-white">Academic Intakes & Class Sections Control Desk</h3>
               </div>
 
               {/* Session Selector Pills */}
@@ -1250,7 +1250,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                       : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
-                  All Academic Sessions
+                  All Academic Years
                 </button>
                 {academicSessions.map((session) => (
                   <button
@@ -1277,7 +1277,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Launch Cohort in Session</span>
+                    <span>Launch Cohort Intake Batch</span>
                   </button>
                 )}
               </div>
@@ -1287,16 +1287,16 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             {activeSessionDetails && (
               <div className="pt-3 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Active Academic Session</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Active Academic Year (AY)</div>
                   <div className="font-bold text-sm text-white mt-0.5">{activeSessionDetails.name}</div>
                   <div className="text-[10px] text-slate-400 font-mono mt-0.5">{activeSessionDetails.code}</div>
                 </div>
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Cohorts Active</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Class Sections Active</div>
                   <div className="font-bold text-sm text-emerald-300 mt-0.5">
-                    {activeSessionDetails.cohortCount} Cohorts
+                    {activeSessionDetails.cohortCount} Sections
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">Under this session</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Under this academic intake</div>
                 </div>
                 <div className="bg-white/5 p-3 rounded-xl border border-white/10">
                   <div className="text-[10px] text-slate-400 uppercase font-bold">Programs Running</div>
@@ -1377,7 +1377,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search cohorts..."
+                  placeholder="Search class sections & intakes..."
                   value={cohortSearch}
                   onChange={(e) => setCohortSearch(e.target.value)}
                   className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-blue-600"
@@ -1389,7 +1389,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                 onChange={(e) => setCohortStatusFilter(e.target.value)}
                 className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
               >
-                <option value="">All Cohort Statuses</option>
+                <option value="">All Section Statuses</option>
                 <option value="OPEN">OPEN (Accepting)</option>
                 <option value="ALMOST_FULL">ALMOST FULL</option>
                 <option value="FULL">FULL</option>
@@ -1400,7 +1400,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             </div>
 
             <span className="text-xs font-mono text-slate-500 font-semibold">
-              Showing {filteredCohorts.length} cohorts
+              Showing {filteredCohorts.length} class sections
             </span>
           </div>
 

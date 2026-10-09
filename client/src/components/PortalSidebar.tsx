@@ -148,7 +148,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'TEACHING WORKSPACE',
           items: [
             { key: 'cockpit', label: 'Faculty Cockpit', icon: TrendingUp, route: '/portal/instructor' },
-            { key: 'cohorts', label: 'Assigned Cohorts', icon: Users, route: '/portal/instructor' },
+            { key: 'cohorts', label: 'Assigned Class Sections', icon: Users, route: '/portal/instructor' },
             { key: 'curriculum', label: 'Curriculum & Lessons', icon: BookOpen, route: '/portal/instructor' },
             { key: 'attendance', label: 'Mark Attendance', icon: CheckCircle2, route: '/portal/instructor' },
             { key: 'sessions', label: 'Class Timetable', icon: Calendar, route: '/portal/instructor' },
@@ -183,7 +183,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           title: 'OPERATIONS',
           items: [
             { key: 'overview', label: 'Pacing Cockpit', icon: Compass, route: '/portal/coordinator' },
-            { key: 'cohorts', label: 'Cohorts & Rosters', icon: Users, route: '/portal/coordinator' },
+            { key: 'cohorts', label: 'Class Sections & Rosters', icon: Users, route: '/portal/coordinator' },
             { key: 'sessions', label: 'Timetable & Sessions', icon: Calendar, route: '/portal/coordinator' },
             { key: 'attendance', label: 'Attendance Oversight', icon: CheckCircle2, route: '/portal/coordinator' },
           ],
@@ -239,7 +239,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         title: 'ACADEMIC OPERATIONS',
         items: [
           { key: 'academics', label: 'Schools & Programs', icon: BookOpen, route: '/portal/admin' },
-          { key: 'cohorts', label: 'Cohorts & Timetables', icon: Calendar, route: '/portal/admin' },
+          { key: 'cohorts', label: 'Intakes & Class Sections', icon: Calendar, route: '/portal/admin' },
           { key: 'admissions', label: 'Admissions Pipeline', icon: UserPlus, route: '/portal/admin' },
           { key: 'finance', label: 'Tuition & Ledger', icon: DollarSign, route: '/portal/admin' },
           { key: 'certificates', label: 'Certifications', icon: Award, route: '/portal/admin' },

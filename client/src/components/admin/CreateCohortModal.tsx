@@ -76,7 +76,8 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
   const [academicSessionId, setAcademicSessionId] = useState(
     initialAcademicSessionId || (academicSessions.find((s) => s.isCurrent)?.id || academicSessions[0]?.id || '')
   );
-  const [batchName, setBatchName] = useState('Alpha Intake 2026');
+  const [batchName, setBatchName] = useState('2026 Cohort 1');
+  const [sectionName, setSectionName] = useState('Section A');
   const [schedule, setSchedule] = useState('Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)');
   const [mode, setMode] = useState('Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)');
   const [location, setLocation] = useState('STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State');
@@ -337,9 +338,10 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
 
       for (let i = 0; i < configs.length; i++) {
         const cfg = configs[i];
-        setProgressMsg(`Creating cohort for ${cfg.programName} (${i + 1}/${configs.length})...`);
+        setProgressMsg(`Creating class section for ${cfg.programName} (${i + 1}/${configs.length})...`);
 
-        const cohortFullName = `${cfg.programName} — ${batchName.trim()}`;
+        const sectionSuffix = sectionName.trim() ? ` (${sectionName.trim()})` : '';
+        const cohortFullName = `${cfg.programName} — ${batchName.trim()}${sectionSuffix}`;
 
         await api.createCohort({
           name: cohortFullName,
@@ -367,7 +369,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
         createdCount++;
       }
 
-      setSuccess(`Successfully launched ${createdCount} program cohorts under "${batchName}"! Public registration is now open.`);
+      setSuccess(`Successfully launched ${createdCount} program class sections under "${batchName}"! Public registration is now open.`);
       await onCohortCreated();
       setTimeout(() => {
         onClose();
@@ -425,22 +427,22 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
             </div>
           )}
 
-          {/* STEP 1: ACADEMIC SESSION & BATCH TIMING */}
+          {/* STEP 1: ACADEMIC YEAR & COHORT INTAKE IDENTITY */}
           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                <span>Step 1: Academic Session & Intake Batch Identity</span>
+                <span>Step 1: Academic Year & Cohort Intake Identity</span>
               </h4>
               <Badge variant="blue">
-                {currentSession?.name || 'Selected Academic Session'}
+                {currentSession?.name || 'Selected Academic Year'}
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Target Academic Session <span className="text-rose-500">*</span>
+                  Academic Year (AY) <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={academicSessionId}
@@ -450,7 +452,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                 >
                   {academicSessions.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {s.isCurrent ? '(ACTIVE SESSION)' : ''}
+                      {s.name} {s.isCurrent ? '(ACTIVE AY)' : ''}
                     </option>
                   ))}
                 </select>
@@ -458,13 +460,27 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
 
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Cohort Intake Batch Title <span className="text-rose-500">*</span>
+                  Cohort Intake Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Alpha Intake 2026 or Spring 2027 Accelerated Batch"
+                  placeholder="e.g. 2026 Cohort 1 or 2027 Cohort 1"
                   value={batchName}
                   onChange={(e) => setBatchName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 dark:text-slate-300">
+                  Class Section / Stream Label <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Section A, Section B, or Weekend Stream"
+                  value={sectionName}
+                  onChange={(e) => setSectionName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
                   required
                 />
