@@ -113,6 +113,9 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
                 classSessions: {
                   include: { instructor: true },
                 },
+                instructors: {
+                  include: { instructor: true },
+                },
               },
             },
           },
@@ -127,9 +130,9 @@ export const gradeSubmission = async (req: AuthRequest, res: Response): Promise<
 
     const isSuperOrAcademicAdmin = ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(req.user.role as any);
     const isAssignmentAuthor = sub.assignment.instructorId === req.user.id;
-    const isCohortInstructor = sub.assignment.cohort.classSessions.some(
-      (cs) => cs.instructor?.userId === req.user?.id
-    );
+    const isCohortInstructor =
+      sub.assignment.cohort.instructors?.some((ci) => ci.instructor?.userId === req.user?.id) ||
+      sub.assignment.cohort.classSessions?.some((cs) => cs.instructor?.userId === req.user?.id);
 
     if (!isSuperOrAcademicAdmin && !isAssignmentAuthor && !isCohortInstructor) {
       res.status(403).json({

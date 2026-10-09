@@ -32,12 +32,19 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
 
     const isSuperOrAcademicAdmin = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN].includes(req.user.role as any);
     const isSessionInstructor = session.instructor?.userId === req.user.id;
-    const isCohortInstructor = await prisma.classSession.findFirst({
-      where: {
-        cohortId: session.cohortId,
-        instructor: { userId: req.user.id },
-      },
-    });
+    const isCohortInstructor =
+      (await prisma.cohortInstructor.findFirst({
+        where: {
+          cohortId: session.cohortId,
+          instructor: { userId: req.user.id },
+        },
+      })) ||
+      (await prisma.classSession.findFirst({
+        where: {
+          cohortId: session.cohortId,
+          instructor: { userId: req.user.id },
+        },
+      }));
 
     if (!isSuperOrAcademicAdmin && !isSessionInstructor && !isCohortInstructor) {
       res.status(403).json({ message: 'Access denied: You are not assigned to instruct this session or cohort.' });

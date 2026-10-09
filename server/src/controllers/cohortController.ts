@@ -228,6 +228,39 @@ export const updateCohort = async (req: Request, res: Response): Promise<void> =
       },
     });
 
+    if (Array.isArray(req.body.instructorIds)) {
+      await prisma.cohortInstructor.deleteMany({ where: { cohortId: id } });
+      for (const item of req.body.instructorIds) {
+        const rawId = typeof item === 'string' ? item : item.instructorId;
+        const role = typeof item === 'object' && item.role ? item.role : 'LEAD';
+        if (rawId) {
+          let profileId = rawId;
+          const byUser = await prisma.instructorProfile.findUnique({ where: { userId: rawId } });
+          if (byUser) {
+            profileId = byUser.id;
+          } else {
+            const byProfile = await prisma.instructorProfile.findUnique({ where: { id: rawId } });
+            if (!byProfile) continue;
+          }
+
+          await prisma.cohortInstructor.upsert({
+            where: {
+              cohortId_instructorId: {
+                cohortId: id,
+                instructorId: profileId,
+              },
+            },
+            create: {
+              cohortId: id,
+              instructorId: profileId,
+              role,
+            },
+            update: { role },
+          }).catch((err) => console.warn('Failed to update instructor for cohort:', err.message));
+        }
+      }
+    }
+
     res.status(200).json({ message: 'Cohort pricing and configuration updated successfully', cohort });
   } catch (error: any) {
     console.error('updateCohort error:', error);
@@ -335,15 +368,32 @@ export const createCohort = async (req: Request, res: Response): Promise<void> =
     // 4. Assign multiple instructors if specified
     if (Array.isArray(instructorIds) && instructorIds.length > 0) {
       for (const item of instructorIds) {
-        const insId = typeof item === 'string' ? item : item.instructorId;
+        const rawId = typeof item === 'string' ? item : item.instructorId;
         const role = typeof item === 'object' && item.role ? item.role : 'LEAD';
-        if (insId) {
-          await prisma.cohortInstructor.create({
-            data: {
+        if (rawId) {
+          // Resolve to InstructorProfile ID if passed User ID
+          let profileId = rawId;
+          const byUser = await prisma.instructorProfile.findUnique({ where: { userId: rawId } });
+          if (byUser) {
+            profileId = byUser.id;
+          } else {
+            const byProfile = await prisma.instructorProfile.findUnique({ where: { id: rawId } });
+            if (!byProfile) continue;
+          }
+
+          await prisma.cohortInstructor.upsert({
+            where: {
+              cohortId_instructorId: {
+                cohortId: cohort.id,
+                instructorId: profileId,
+              },
+            },
+            create: {
               cohortId: cohort.id,
-              instructorId: insId,
+              instructorId: profileId,
               role,
             },
+            update: { role },
           }).catch((err) => console.warn('Failed to attach instructor to cohort:', err.message));
         }
       }
