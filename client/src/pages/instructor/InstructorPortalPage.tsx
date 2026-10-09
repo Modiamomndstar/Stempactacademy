@@ -28,6 +28,11 @@ import {
   Play,
   ExternalLink,
   Eye,
+  TrendingUp,
+  ClipboardList,
+  GraduationCap,
+  Filter,
+  ArrowRight,
 } from 'lucide-react';
 import { AILessonPlanModal } from '../../components/AILessonPlanModal';
 import { AIFeedbackModal } from '../../components/AIFeedbackModal';
@@ -95,6 +100,70 @@ export const InstructorPortalPage: React.FC = () => {
 
   // Curriculum Lesson Preview State
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
+
+  // Cohort Directory Filters & Search
+  const [cohortLevelFilter, setCohortLevelFilter] = useState<string>('ALL');
+  const [rosterSearch, setRosterSearch] = useState<string>('');
+
+  // Create Assignment Modal State
+  const [showCreateAssignmentModal, setShowCreateAssignmentModal] = useState<boolean>(false);
+  const [assignCohortId, setAssignCohortId] = useState<string>('');
+  const [assignCourseId, setAssignCourseId] = useState<string>('');
+  const [assignModuleId, setAssignModuleId] = useState<string>('');
+  const [assignTitle, setAssignTitle] = useState<string>('');
+  const [assignDescription, setAssignDescription] = useState<string>('');
+  const [assignMaxPoints, setAssignMaxPoints] = useState<number>(100);
+  const [assignDueDate, setAssignDueDate] = useState<string>('');
+  const [assignAiGrading, setAssignAiGrading] = useState<boolean>(true);
+  const [creatingAssignment, setCreatingAssignment] = useState<boolean>(false);
+
+  const openCreateAssignmentForModule = (cohortId: string, courseId?: string, moduleId?: string, moduleTitle?: string) => {
+    setAssignCohortId(cohortId);
+    setAssignCourseId(courseId || '');
+    setAssignModuleId(moduleId || '');
+    setAssignTitle(moduleTitle ? `Practical Lab: ${moduleTitle}` : '');
+    setAssignDescription(moduleTitle ? `Complete the hands-on practical implementation sprint for ${moduleTitle}. Submit your project repository link and execution write-up.` : '');
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    setAssignDueDate(nextWeek.toISOString().slice(0, 10));
+    setShowCreateAssignmentModal(true);
+  };
+
+  const handleCreateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assignCohortId || !assignTitle || !assignDescription || !assignDueDate) {
+      setErrorMsg('Cohort, Title, Description, and Due Date are required.');
+      return;
+    }
+    setCreatingAssignment(true);
+    setErrorMsg('');
+    setFeedbackMsg('');
+    try {
+      await api.createAssignment({
+        cohortId: assignCohortId,
+        courseId: assignCourseId || undefined,
+        moduleId: assignModuleId || undefined,
+        title: assignTitle,
+        description: assignDescription,
+        maxPoints: Number(assignMaxPoints) || 100,
+        dueDate: new Date(assignDueDate).toISOString(),
+        aiGradingEnabled: assignAiGrading,
+        status: 'PUBLISHED',
+      });
+      setFeedbackMsg(`Assignment "${assignTitle}" published successfully! Learners can now submit deliverables.`);
+      setShowCreateAssignmentModal(false);
+      setAssignTitle('');
+      setAssignDescription('');
+      setAssignMaxPoints(100);
+      setAssignDueDate('');
+      await loadInstructorData();
+    } catch (err: any) {
+      console.error('Failed to create assignment:', err);
+      setErrorMsg(err.message || 'Failed to publish assignment.');
+    } finally {
+      setCreatingAssignment(false);
+    }
+  };
 
   // Sync Tab with URL
   const handleTabChange = (tabId: string) => {
@@ -343,6 +412,32 @@ export const InstructorPortalPage: React.FC = () => {
           title: 'Curriculum & Course Materials',
           subtitle: 'Inspect module syllabi, video lectures, lesson notes, and hands-on practicums for your classes.',
           badge: <Badge variant="blue">Curriculum Matrix</Badge>,
+          actions: (
+            <button
+              type="button"
+              onClick={() => openCreateAssignmentForModule(selectedCohortId || cohorts[0]?.id)}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Assignment</span>
+            </button>
+          ),
+        };
+      case 'grading':
+        return {
+          title: 'Submissions & Grading Queue',
+          subtitle: 'Review student coursework submissions, assign grades, and provide qualitative mentor feedback.',
+          badge: <Badge variant="blue">{pendingSubmissions?.length || 0} Pending</Badge>,
+          actions: (
+            <button
+              type="button"
+              onClick={() => openCreateAssignmentForModule(selectedCohortId || cohorts[0]?.id)}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Assignment</span>
+            </button>
+          ),
         };
       case 'projects':
         return {
@@ -351,6 +446,11 @@ export const InstructorPortalPage: React.FC = () => {
           badge: <Badge variant="purple">Capstone Studio</Badge>,
         };
       case 'cohorts':
+        return {
+          title: 'Assigned Cohorts & Student Directory',
+          subtitle: 'Oversee cohort classes, inspect academic level tiers, and manage enrolled learner rosters.',
+          badge: <Badge variant="green">{cohorts?.length || 0} Cohorts</Badge>,
+        };
       case 'cockpit':
       default:
         return null;
@@ -439,64 +539,388 @@ export const InstructorPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 1: ASSIGNED COHORTS & ROSTERS */}
-        {(activeTab === 'cohorts' || activeTab === 'cockpit') && (
+        {/* TAB 1: FACULTY COCKPIT */}
+        {activeTab === 'cockpit' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cohorts.map((c: any) => (
-                <Card key={c.id} className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-slate-500">{c.cohortCode}</span>
-                    <Badge variant="green">{c.status}</Badge>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base">{c.name}</h3>
-                  <div className="text-xs text-slate-600 space-y-1">
-                    <div><strong>Program:</strong> {c.program?.name}</div>
-                    <div><strong>Schedule:</strong> {c.schedule}</div>
-                    <div><strong>Enrolled Roster:</strong> {c.studentProfiles?.length || c.currentEnrollment || 0} students</div>
-                  </div>
+            {/* Top 4 Metric KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-slate-400">Assigned Cohorts</span>
+                  <h3 className="text-2xl font-black text-slate-900">{cohorts.length}</h3>
+                  <p className="text-[10px] text-slate-500">Active class batches</p>
+                </div>
+              </Card>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCohortId(c.id);
-                        handleTabChange('attendance');
-                      }}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
-                    >
-                      Take Attendance →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCohortId(c.id);
-                        handleTabChange('sessions');
-                      }}
-                      className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                    >
-                      Sessions ({c.classSessions?.length || 0})
-                    </button>
+              <Card className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-slate-400">Enrolled Learners</span>
+                  <h3 className="text-2xl font-black text-slate-900">
+                    {cohorts.reduce((acc: number, c: any) => acc + (c.studentProfiles?.length || c.enrollments?.length || 0), 0)}
+                  </h3>
+                  <p className="text-[10px] text-emerald-600 font-semibold">Under your mentorship</p>
+                </div>
+              </Card>
+
+              <Card className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <ClipboardList className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase text-slate-400">Pending Grading</span>
+                  <h3 className="text-2xl font-black text-slate-900">{pendingSubmissions?.length || 0}</h3>
+                  <button
+                    onClick={() => handleTabChange('grading')}
+                    className="text-[10px] text-amber-700 font-bold hover:underline cursor-pointer"
+                  >
+                    Open Grading Queue →
+                  </button>
+                </div>
+              </Card>
+
+              <Card className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-slate-400">Class Timetable</span>
+                  <h3 className="text-2xl font-black text-slate-900">{recentSessions?.length || 0}</h3>
+                  <p className="text-[10px] text-slate-500">Scheduled sessions</p>
+                </div>
+              </Card>
+            </div>
+
+            {/* Next Scheduled Session / Class Launchpad */}
+            {(() => {
+              const nextSession = recentSessions && recentSessions.length > 0 ? recentSessions[0] : null;
+              return (
+                <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                          Next Classroom Session
+                        </span>
+                        {nextSession?.status && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                            {nextSession.status}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-black text-white">
+                        {nextSession?.title || 'No upcoming lecture sessions scheduled'}
+                      </h3>
+                      <p className="text-xs text-slate-300">
+                        {nextSession
+                          ? `${nextSession.cohort?.name || 'Class Cohort'} • Topic: ${nextSession.topic || 'Practical Lab'} • ${nextSession.date ? new Date(nextSession.date).toLocaleDateString('en-GB') : ''} (${nextSession.startTime} - ${nextSession.endTime})`
+                          : 'Schedule your upcoming class sessions or laboratory practicals to track attendance.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {nextSession ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCohortId(nextSession.cohortId);
+                              setSessionTitle(nextSession.title);
+                              setSessionTopic(nextSession.topic);
+                              handleTabChange('attendance');
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                            <span>Take Attendance</span>
+                          </button>
+                          {nextSession.meetingUrl && (
+                            <a
+                              href={nextSession.meetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition flex items-center gap-1.5"
+                            >
+                              <Video className="w-4 h-4" />
+                              <span>Join Link</span>
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowNewSessionModal(true)}
+                          className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Schedule Session</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </Card>
-              ))}
+                </div>
+              );
+            })()}
+
+            {/* Quick Actions & Recent Submissions Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Pending Grading Queue */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-amber-600" />
+                    <span>Grading Queue Awaiting Evaluation ({pendingSubmissions?.length || 0})</span>
+                  </h3>
+                  <button
+                    onClick={() => handleTabChange('grading')}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                  >
+                    View All →
+                  </button>
+                </div>
+
+                {pendingSubmissions && pendingSubmissions.length > 0 ? (
+                  <div className="space-y-3">
+                    {pendingSubmissions.slice(0, 4).map((sub: any) => (
+                      <Card key={sub.id} className="p-4 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {sub.student?.studentIdNumber} • {sub.assignment?.title}
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-900 truncate">
+                            {sub.student?.user?.firstName} {sub.student?.user?.lastName}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                            "{sub.content}"
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubmissionId(sub.id);
+                            setGradeInput(sub.assignment?.maxPoints ? Math.round(sub.assignment.maxPoints * 0.9) : 90);
+                            setFeedbackInput('Well implemented. Demonstrates clear engineering understanding.');
+                            handleTabChange('grading');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shrink-0 transition cursor-pointer"
+                        >
+                          Grade
+                        </button>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-8 text-center text-xs text-slate-400 space-y-1">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-1" />
+                    <p className="font-bold text-slate-700">All Student Submissions Graded</p>
+                    <p>No coursework currently waiting in your queue.</p>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column: Teaching Cohorts Overview */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>Your Active Cohorts ({cohorts.length})</span>
+                  </h3>
+                  <button
+                    onClick={() => handleTabChange('cohorts')}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                  >
+                    Directory →
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {cohorts.map((c: any) => (
+                    <Card key={c.id} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {c.cohortCode}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                            {c.levelCode?.replace(/_/g, ' ') || c.level || 'Foundation'}
+                          </span>
+                        </div>
+                        <Badge variant="green">{c.status}</Badge>
+                      </div>
+
+                      <h4 className="text-xs font-black text-slate-900">{c.name}</h4>
+                      <div className="text-[11px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-100">
+                        <span>{c.studentProfiles?.length || 0} Students Enrolled</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedCohortId(c.id);
+                              handleTabChange('curriculum');
+                            }}
+                            className="text-blue-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Curriculum
+                          </button>
+                          <span>•</span>
+                          <button
+                            onClick={() => {
+                              setSelectedCohortId(c.id);
+                              handleTabChange('cohorts');
+                            }}
+                            className="text-slate-700 font-bold hover:underline cursor-pointer"
+                          >
+                            Roster
+                          </button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 1b: ASSIGNED COHORTS & ROSTERS */}
+        {activeTab === 'cohorts' && (
+          <div className="space-y-6">
+            {/* Filters Bar: Level */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                  <Filter className="w-3.5 h-3.5" />
+                  Filter Level:
+                </span>
+                {['ALL', 'LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_MASTERY'].map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => setCohortLevelFilter(lvl)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      cohortLevelFilter === lvl
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {lvl === 'ALL' ? 'All Levels' : lvl.replace(/LEVEL_\d_/, '').charAt(0) + lvl.replace(/LEVEL_\d_/, '').slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-slate-400 font-medium">
+                Showing {cohorts.filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter).length} of {cohorts.length} cohorts
+              </span>
+            </div>
+
+            {/* Cohorts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {cohorts
+                .filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter)
+                .map((c: any) => {
+                  const isSelected = selectedCohortId === c.id;
+                  return (
+                    <Card
+                      key={c.id}
+                      className={`p-6 space-y-4 transition-all cursor-pointer border-2 ${
+                        isSelected ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'hover:border-slate-300'
+                      }`}
+                      onClick={() => setSelectedCohortId(c.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {c.cohortCode}
+                          </span>
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                            {c.levelCode?.replace(/_/g, ' ') || c.level || 'Level 1 Foundation'}
+                          </span>
+                        </div>
+                        <Badge variant="green">{c.status}</Badge>
+                      </div>
+
+                      <h3 className="font-black text-slate-900 text-base">{c.name}</h3>
+
+                      <div className="text-xs text-slate-600 space-y-1.5">
+                        <div><strong>Program:</strong> {c.program?.name}</div>
+                        <div><strong>Schedule:</strong> {c.schedule}</div>
+                        {c.learningCenter && (
+                          <div className="flex items-center gap-1 text-slate-700">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                            <span>Campus: <strong>{c.learningCenter.name}</strong></span>
+                          </div>
+                        )}
+                        <div>
+                          <strong>Enrolled Roster:</strong> {c.studentProfiles?.length || c.currentEnrollment || 0} students
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCohortId(c.id);
+                            handleTabChange('attendance');
+                          }}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                        >
+                          Take Attendance →
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCohortId(c.id);
+                            handleTabChange('curriculum');
+                          }}
+                          className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                        >
+                          Curriculum & Lab
+                        </button>
+                      </div>
+                    </Card>
+                  );
+                })}
             </div>
 
             {/* Current Cohort Roster Table */}
             {currentCohort && (
               <Card className="p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">
-                      Roster: {currentCohort.name} ({currentCohort.cohortCode})
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                        {currentCohort.levelCode?.replace(/_/g, ' ') || currentCohort.level || 'Level 1 Foundation'}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        {currentCohort.cohortCode}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mt-1">
+                      Class Roster: {currentCohort.name}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Authorized enrolled student ledger under your faculty instruction.
+                      Enrolled student directory and academic progress ledger for this batch.
                     </p>
                   </div>
-                  <Badge variant="blue">
-                    {currentCohort.studentProfiles?.length || 0} Students
-                  </Badge>
+
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search student or ID..."
+                        value={rosterSearch}
+                        onChange={(e) => setRosterSearch(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white w-48 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <Badge variant="blue">
+                      {currentCohort.studentProfiles?.length || 0} Students
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -512,35 +936,46 @@ export const InstructorPortalPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {(currentCohort.studentProfiles || []).map((sp: any) => (
-                        <tr key={sp.id}>
-                          <td className="py-3 px-3 font-mono font-bold text-slate-500">
-                            {sp.studentIdNumber}
-                          </td>
-                          <td className="py-3 px-3 font-bold text-slate-900">
-                            {sp.user?.firstName} {sp.user?.lastName}
-                          </td>
-                          <td className="py-3 px-3 text-slate-500">{sp.user?.email}</td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-emerald-700">{sp.attendanceRate || 100}%</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-blue-700">{sp.completionRate || 0}%</span>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEvalStudentId(sp.id);
-                                handleTabChange('competencies');
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
-                            >
-                              Evaluate Skills
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {(currentCohort.studentProfiles || [])
+                        .filter((sp: any) => {
+                          if (!rosterSearch) return true;
+                          const q = rosterSearch.toLowerCase();
+                          return (
+                            sp.studentIdNumber?.toLowerCase().includes(q) ||
+                            sp.user?.firstName?.toLowerCase().includes(q) ||
+                            sp.user?.lastName?.toLowerCase().includes(q) ||
+                            sp.user?.email?.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((sp: any) => (
+                          <tr key={sp.id} className="hover:bg-slate-50/60">
+                            <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                              {sp.studentIdNumber}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-900">
+                              {sp.user?.firstName} {sp.user?.lastName}
+                            </td>
+                            <td className="py-3 px-3 text-slate-500">{sp.user?.email}</td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-emerald-700">{sp.attendanceRate || 100}%</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-blue-700">{sp.completionRate || 0}%</span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEvalStudentId(sp.id);
+                                  handleTabChange('competencies');
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
+                              >
+                                Evaluate Skills
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -767,7 +1202,77 @@ export const InstructorPortalPage: React.FC = () => {
         {/* TAB 4: SUBMISSIONS & GRADING */}
         {activeTab === 'grading' && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-900">Student Assignment Submissions</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Submissions & Coursework Bench</h2>
+                <p className="text-xs text-slate-500">
+                  Publish assignments, inspect cohort submissions, and evaluate coursework with AI-assisted grading drafts.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedCohortId}
+                  onChange={(e) => setSelectedCohortId(e.target.value)}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
+                >
+                  {cohorts.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.levelCode?.replace(/_/g, ' ') || 'Foundation'})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => openCreateAssignmentForModule(selectedCohortId)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Assignment</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Published Cohort Assignments Inventory */}
+            {currentCohort && (
+              <Card className="p-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-indigo-600" />
+                    <span>Assignments Published for {currentCohort.name}</span>
+                  </h3>
+                  <Badge variant="blue">{(currentCohort.assignments || []).length} Active Assignments</Badge>
+                </div>
+
+                {(currentCohort.assignments || []).length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3 text-center">
+                    No coursework assignments published for this cohort yet. Click &quot;Create Assignment&quot; to set up your first lab or project milestone.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                    {(currentCohort.assignments || []).map((assign: any) => (
+                      <div key={assign.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold text-xs text-slate-900 leading-snug line-clamp-1">{assign.title}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 shrink-0">
+                            {assign.maxPoints} pts
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{assign.description}</p>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-[10px] text-slate-500">
+                          <span>Due: {assign.dueDate ? new Date(assign.dueDate).toLocaleDateString('en-GB') : 'TBA'}</span>
+                          <span className="font-bold text-blue-700">{assign.submissions?.length || 0} Submissions</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
+
+            <div className="border-t border-slate-100 pt-2">
+              <h3 className="text-base font-bold text-slate-900 mb-3">Pending Learner Submissions</h3>
+            </div>
+
             {pendingSubmissions.length === 0 ? (
               <Card className="p-12 text-center space-y-2">
                 <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
@@ -1018,19 +1523,29 @@ export const InstructorPortalPage: React.FC = () => {
                   Inspect the academic structure, modules, lessons, video lectures, and practical activities for your classes.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-600">Active Cohort:</span>
-                <select
-                  value={selectedCohortId}
-                  onChange={(e) => setSelectedCohortId(e.target.value)}
-                  className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-600">Active Cohort:</span>
+                  <select
+                    value={selectedCohortId}
+                    onChange={(e) => setSelectedCohortId(e.target.value)}
+                    className="p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-bold text-slate-800"
+                  >
+                    {cohorts.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.levelCode?.replace(/_/g, ' ') || 'Foundation'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openCreateAssignmentForModule(selectedCohortId)}
+                  className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
-                  {cohorts.map((c: any) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.levelCode?.replace(/_/g, ' ') || 'Foundation'})
-                    </option>
-                  ))}
-                </select>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Assignment</span>
+                </button>
               </div>
             </div>
 
@@ -1087,9 +1602,19 @@ export const InstructorPortalPage: React.FC = () => {
                                 <p className="text-[10px] text-slate-400">{mod.durationHours || 12} contact hours</p>
                               </div>
                             </div>
-                            <span className="text-[10px] font-semibold text-slate-500">
-                              {mod.lessons?.length || 0} Lessons
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-500">
+                                {mod.lessons?.length || 0} Lessons
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => openCreateAssignmentForModule(currentCohort.id, course.id, mod.id, mod.title)}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Add Assignment</span>
+                              </button>
+                            </div>
                           </div>
 
                           {mod.lessons && mod.lessons.length > 0 && (
@@ -1145,6 +1670,39 @@ export const InstructorPortalPage: React.FC = () => {
                               ))}
                             </div>
                           )}
+
+                          {/* Module Practical Assignments */}
+                          {(() => {
+                            const modAssignments = (currentCohort?.assignments || []).filter((a: any) => a.moduleId === mod.id);
+                            if (modAssignments.length === 0) return null;
+                            return (
+                              <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                                  <span className="flex items-center gap-1.5 text-indigo-700">
+                                    <ClipboardList className="w-3.5 h-3.5" />
+                                    Module Assignments & Lab Deliverables ({modAssignments.length})
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {modAssignments.map((assign: any) => (
+                                    <div key={assign.id} className="p-3 rounded-lg bg-indigo-50/70 border border-indigo-200/80 text-xs space-y-1">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="font-bold text-indigo-950 truncate">{assign.title}</span>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-800 shrink-0">
+                                          {assign.maxPoints} pts
+                                        </span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-600 line-clamp-2">{assign.description}</p>
+                                      <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500">
+                                        <span>Due: {assign.dueDate ? new Date(assign.dueDate).toLocaleDateString('en-GB') : 'TBA'}</span>
+                                        <span className="font-semibold text-indigo-700">{assign.submissions?.length || 0} Submissions</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>
@@ -1647,6 +2205,137 @@ export const InstructorPortalPage: React.FC = () => {
                 <Sparkles className="w-3.5 h-3.5" /> AI Lesson Plan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE MODULE / COHORT ASSIGNMENT MODAL */}
+      {showCreateAssignmentModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto"
+        >
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="flex items-start justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-indigo-600 uppercase">
+                  Faculty Coursework Bench
+                </span>
+                <h3 className="text-lg font-black text-slate-900 mt-0.5">
+                  Publish Practical Assignment
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Create a syllabus-aligned assignment, lab exercise, or milestone deliverable for learners.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateAssignmentModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAssignment} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Target Cohort *</label>
+                <select
+                  value={assignCohortId}
+                  onChange={(e) => setAssignCohortId(e.target.value)}
+                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800"
+                >
+                  {cohorts.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.cohortCode} - {c.levelCode?.replace(/_/g, ' ') || 'Foundation'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Assignment Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Practical Lab: POST Diagnostic Troubleshooting"
+                  value={assignTitle}
+                  onChange={(e) => setAssignTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Instructions & Submission Requirements *</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Describe task expectations, required repository links, multimeter measurements, or write-up format..."
+                  value={assignDescription}
+                  onChange={(e) => setAssignDescription(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 leading-relaxed"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Max Points</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={assignMaxPoints}
+                    onChange={(e) => setAssignMaxPoints(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Due Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={assignDueDate}
+                    onChange={(e) => setAssignDueDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-violet-50 border border-violet-200">
+                <input
+                  type="checkbox"
+                  id="assignAiGrading"
+                  checked={assignAiGrading}
+                  onChange={(e) => setAssignAiGrading(e.target.checked)}
+                  className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+                <label htmlFor="assignAiGrading" className="cursor-pointer select-none">
+                  <span className="font-bold text-violet-900 block">Enable AI Grading Assistant</span>
+                  <span className="text-[10px] text-violet-700">
+                    Provides automated grading drafts and constructive rubric recommendations when learners submit.
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateAssignmentModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingAssignment}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {creatingAssignment ? 'Publishing...' : 'Publish Assignment'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

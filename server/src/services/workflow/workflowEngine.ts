@@ -447,6 +447,15 @@ export class WorkflowEngine {
         data: { curriculumVersionId: curriculumVersion.id },
       });
 
+      // Link any active cohorts of this program that have no curriculumVersionId yet
+      await tx.cohort.updateMany({
+        where: { programId: program.id, curriculumVersionId: null },
+        data: {
+          curriculumVersionId: curriculumVersion.id,
+          programVersionId: programVersionId,
+        },
+      });
+
       // Update AI generation status to PUBLISHED if record exists
       if (generation) {
         await tx.aIGeneration.update({

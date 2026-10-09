@@ -66,6 +66,31 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
       },
     });
 
+    // Ensure all cohorts have their courses populated even if curriculumVersionId was null
+    const enhancedCohorts = await Promise.all(
+      activeCohorts.map(async (cohort) => {
+        let courses = cohort.curriculumVersion?.courses || [];
+        if (courses.length === 0 && cohort.programId) {
+          courses = await prisma.course.findMany({
+            where: { programId: cohort.programId },
+            include: {
+              modules: {
+                include: { lessons: { orderBy: { order: 'asc' } } },
+                orderBy: { order: 'asc' },
+              },
+            },
+            orderBy: { order: 'asc' },
+          });
+        }
+        return {
+          ...cohort,
+          curriculumVersion: cohort.curriculumVersion
+            ? { ...cohort.curriculumVersion, courses }
+            : { id: 'fallback-cv', versionNumber: 1, courses },
+        };
+      })
+    );
+
     // Submissions requiring grading
     const pendingSubmissions = await prisma.submission.findMany({
       where: { grade: null, isLatest: true },
@@ -105,7 +130,7 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
             name: `${req.user.firstName} ${req.user.lastName}`,
             staffCode: 'FACULTY-LEAD',
           },
-      cohorts: activeCohorts,
+      cohorts: enhancedCohorts,
       pendingSubmissions,
       projects: cohortProjects,
       recentSessions: instructorProfile?.classSessions || [],
@@ -160,7 +185,28 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    res.status(200).json({ cohort });
+    let courses = cohort.curriculumVersion?.courses || [];
+    if (courses.length === 0 && cohort.programId) {
+      courses = await prisma.course.findMany({
+        where: { programId: cohort.programId },
+        include: {
+          modules: {
+            include: { lessons: { orderBy: { order: 'asc' } } },
+            orderBy: { order: 'asc' },
+          },
+        },
+        orderBy: { order: 'asc' },
+      });
+    }
+
+    const enhancedCohort = {
+      ...cohort,
+      curriculumVersion: cohort.curriculumVersion
+        ? { ...cohort.curriculumVersion, courses }
+        : { id: 'fallback-cv', versionNumber: 1, courses },
+    };
+
+    res.status(200).json({ cohort: enhancedCohort });
   } catch (error: any) {
     console.error('getCohortCurriculum error:', error);
     res.status(500).json({ message: 'Failed to fetch cohort curriculum' });

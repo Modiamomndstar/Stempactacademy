@@ -108,6 +108,118 @@ export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
     },
   ],
 
+  // 2b. Computer Hardware Engineering & Diagnostics
+  computer_hardware: [
+    {
+      youtubeId: 'ExxFxD4OSZ0',
+      embedUrl: 'https://www.youtube.com/embed/ExxFxD4OSZ0',
+      title: 'Computer Hardware Architecture & ESD Safety Precautions',
+      channel: 'PowerCert Animated Videos',
+      durationMin: 18,
+      summary: 'Overview of internal PC components, electrical grounding, antistatic wrist straps, and workbench safety protocols.',
+      tags: ['esd', 'safety', 'workbench', 'architecture', 'hardware', 'pc'],
+    },
+    {
+      youtubeId: 'b85h_gZt3MU',
+      embedUrl: 'https://www.youtube.com/embed/b85h_gZt3MU',
+      title: 'Motherboard Layout, Form Factors, Chipsets & Sockets Explained',
+      channel: 'Techquickie',
+      durationMin: 15,
+      summary: 'ATX/Micro-ATX/ITX form factors, northbridge/southbridge chipsets, VRM circuitry, PCIe expansion slots, and front-panel headers.',
+      tags: ['motherboard', 'chipset', 'form factor', 'pcie', 'vrm', 'socket'],
+    },
+    {
+      youtubeId: 'PVad0c2cljo',
+      embedUrl: 'https://www.youtube.com/embed/PVad0c2cljo',
+      title: 'Computer RAM Technologies: DDR4, DDR5, Memory Channels & Latency',
+      channel: 'Techquickie',
+      durationMin: 14,
+      summary: 'Volatile memory architecture, dual-channel bandwidth, DIMM installation, CAS latency timings, and diagnosing RAM parity faults.',
+      tags: ['ram', 'memory', 'ddr4', 'ddr5', 'dimm', 'channels', 'latency'],
+    },
+    {
+      youtubeId: '5Mvh68_S2h0',
+      embedUrl: 'https://www.youtube.com/embed/5Mvh68_S2h0',
+      title: 'Power Delivery Systems: Power Supplies (PSU) & Multimeter Voltage Testing',
+      channel: 'PowerCert Animated Videos',
+      durationMin: 16,
+      summary: 'AC to DC conversion, 12V, 5V, 3.3V power rails, 24-pin ATX connectors, 80-Plus efficiency tiers, and checking voltages with a multimeter.',
+      tags: ['psu', 'power supply', 'voltage', 'multimeter', 'atx', 'rails'],
+    },
+    {
+      youtubeId: 'rK8fV4XU0qE',
+      embedUrl: 'https://www.youtube.com/embed/rK8fV4XU0qE',
+      title: 'Storage Technologies: NVMe M.2 SSDs, SATA Drives & Data Storage',
+      channel: 'PowerCert Animated Videos',
+      durationMin: 16,
+      summary: 'Solid state vs magnetic storage, PCIe NVMe bandwidth speeds, SATA 3 interfaces, partition styles (GPT vs MBR), and storage health monitoring.',
+      tags: ['storage', 'ssd', 'nvme', 'sata', 'hdd', 'partition', 'gpt'],
+    },
+    {
+      youtubeId: 'ihX0fdVU44w',
+      embedUrl: 'https://www.youtube.com/embed/ihX0fdVU44w',
+      title: 'Complete PC Build & Component Assembly Step-by-Step Walkthrough',
+      channel: 'Linus Tech Tips',
+      durationMin: 25,
+      summary: 'Systematic assembly: mounting motherboard standoffs, installing CPU & thermal paste, seating GPU, cable routing, and verifying power-on.',
+      tags: ['assembly', 'build', 'installation', 'cables', 'pc build', 'standoffs'],
+    },
+    {
+      youtubeId: 'p_1rS0Y3M70',
+      embedUrl: 'https://www.youtube.com/embed/p_1rS0Y3M70',
+      title: 'BIOS and UEFI Configuration: Firmware Settings, POST & Flashing',
+      channel: 'PowerCert Animated Videos',
+      durationMin: 17,
+      summary: 'UEFI firmware configuration, Secure Boot, TPM 2.0, XMP memory profiles, boot disk priority, and safe BIOS flashing procedures.',
+      tags: ['bios', 'uefi', 'firmware', 'boot', 'tpm', 'xmp', 'post'],
+    },
+    {
+      youtubeId: 'bY_4n5Tf0zE',
+      embedUrl: 'https://www.youtube.com/embed/bY_4n5Tf0zE',
+      title: 'Hardware Troubleshooting & Diagnostic POST Cards: Debugging Failures',
+      channel: 'Eli the Computer Guy',
+      durationMin: 20,
+      summary: 'Diagnosing No-POST conditions, motherboard beep code patterns, PCI diagnostic POST card hex codes, and isolation troubleshooting.',
+      tags: ['diagnostic', 'post card', 'beep code', 'troubleshooting', 'no-post', 'hex code'],
+    },
+    {
+      youtubeId: 'sFvH_4sZ6qM',
+      embedUrl: 'https://www.youtube.com/embed/sFvH_4sZ6qM',
+      title: 'Digital Multimeter Measurements for PC Repair: Voltage & Continuity',
+      channel: 'EEVblog',
+      durationMin: 20,
+      summary: 'Using a digital multimeter for board-level testing: DC voltage rail verification, resistance probing, diode mode, and short circuit detection.',
+      tags: ['multimeter', 'continuity', 'testing', 'voltage rail', 'short circuit', 'probing'],
+    },
+    {
+      youtubeId: '0s0L1h3J6kA',
+      embedUrl: 'https://www.youtube.com/embed/0s0L1h3J6kA',
+      title: 'Component-Level Repair: Soldering Basics, Capacitors & Board Headers',
+      channel: 'GreatScott!',
+      durationMin: 18,
+      summary: 'Through-hole and SMD soldering techniques, desoldering swollen capacitors, header repair, flux application, and solder wick cleanup.',
+      tags: ['soldering', 'capacitor', 'repair', 'flux', 'desoldering', 'pcb'],
+    },
+    {
+      youtubeId: '1p3E7h9z9XM',
+      embedUrl: 'https://www.youtube.com/embed/1p3E7h9z9XM',
+      title: 'Network Hardware & Cable Crimping: Cat6 Ethernet, RJ45 & Testing',
+      channel: 'NetworkChuck',
+      durationMin: 16,
+      summary: 'Structured Ethernet cabling, T568B pinout standard, stripping twisted pairs, RJ45 crimping tool usage, and testing with a LAN tester.',
+      tags: ['network', 'crimping', 'rj45', 'cat6', 'ethernet', 'cable tester', 'lan'],
+    },
+    {
+      youtubeId: 'd8_xXNcGYgo',
+      embedUrl: 'https://www.youtube.com/embed/d8_xXNcGYgo',
+      title: 'Embedded Systems & Microcontroller Hardware Interfacing',
+      channel: 'Paul McWhorter',
+      durationMin: 20,
+      summary: 'Microcontroller peripherals, GPIO pin interfacing, logic levels, sensor integration, and digital communications protocols.',
+      tags: ['microcontroller', 'embedded', 'gpio', 'interfacing', 'sensors'],
+    },
+  ],
+
   // 3. AI, Machine Learning & Deep Learning (AIDM)
   ai_machine_learning: [
     {
@@ -601,13 +713,46 @@ export function getCuratedVideoForLesson(params: {
     return vids[idx];
   }
 
-  // 2. Robotics, Embedded Systems, IoT, Arduino & Hardware
+  // 2. Computer Hardware Engineering & Diagnostics
+  if (
+    combinedText.includes('computer hardware') ||
+    combinedText.includes('hardware engineering') ||
+    combinedText.includes('motherboard') ||
+    combinedText.includes('esd') ||
+    combinedText.includes('multimeter') ||
+    combinedText.includes('post card') ||
+    combinedText.includes('power delivery') ||
+    combinedText.includes('power supply') ||
+    combinedText.includes('pc architecture') ||
+    combinedText.includes('ram') ||
+    combinedText.includes('chipset') ||
+    combinedText.includes('crimping') ||
+    combinedText.includes('storage') ||
+    combinedText.includes('pc build') ||
+    combinedText.includes('bios')
+  ) {
+    const vids = VERIFIED_VIDEO_CATALOG.computer_hardware;
+    if (combinedText.includes('motherboard') || combinedText.includes('chipset')) return vids[1];
+    if (combinedText.includes('ram') || combinedText.includes('memory')) return vids[2];
+    if (combinedText.includes('power') || combinedText.includes('voltage') || combinedText.includes('psu')) return vids[3];
+    if (combinedText.includes('storage') || combinedText.includes('ssd') || combinedText.includes('nvme')) return vids[4];
+    if (combinedText.includes('assembly') || combinedText.includes('build') || combinedText.includes('bench')) return vids[5];
+    if (combinedText.includes('bios') || combinedText.includes('uefi') || combinedText.includes('firmware')) return vids[6];
+    if (combinedText.includes('diagnostic') || combinedText.includes('post card') || combinedText.includes('beep')) return vids[7];
+    if (combinedText.includes('multimeter') || combinedText.includes('continuity')) return vids[8];
+    if (combinedText.includes('solder') || combinedText.includes('capacitor') || combinedText.includes('repair')) return vids[9];
+    if (combinedText.includes('network') || combinedText.includes('cabling') || combinedText.includes('rj45') || combinedText.includes('crimping')) return vids[10];
+    if (combinedText.includes('esd') || combinedText.includes('safety') || combinedText.includes('workbench')) return vids[0];
+    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
+    return vids[idx];
+  }
+
+  // 2a. Robotics, Embedded Systems, IoT & Arduino
   if (
     combinedText.includes('robot') ||
     combinedText.includes('arduino') ||
     combinedText.includes('embedded') ||
     combinedText.includes('microcontroller') ||
-    combinedText.includes('hardware') ||
     combinedText.includes('iot') ||
     combinedText.includes('sensor') ||
     schoolCode.toUpperCase().includes('RIOTH') ||

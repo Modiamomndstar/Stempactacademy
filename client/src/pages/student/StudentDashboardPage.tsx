@@ -43,6 +43,7 @@ import {
   Check,
   Plus,
   Maximize2,
+  MapPin,
 } from 'lucide-react';
 import { StudentCopilotModal } from '../../components/StudentCopilotModal';
 import { getVideoPlayerInfo } from '../../components/admin/ProgramDetailModal';
@@ -517,13 +518,23 @@ export const StudentDashboardPage: React.FC = () => {
     announcements,
   } = data;
 
+  const academicLevelLabel = profile?.currentLevel || cohort?.levelCode?.replace(/_/g, ' ') || cohort?.level || 'Level 1 Foundation';
+  const cohortSectionLabel = cohort?.cohortCode ? `${cohort.name} (${cohort.cohortCode})` : cohort?.name || 'Class Batch';
+
   const getPageHeaderConfig = () => {
     switch (activeTab) {
       case 'curriculum':
         return {
           title: 'Curriculum & Lessons',
-          subtitle: `${program?.name || 'Academic Program'} canonical modular syllabus, lecture resources, and lesson tracker.`,
-          badge: <Badge variant="blue">{coursesList.length} Courses</Badge>,
+          subtitle: `${program?.name || 'Academic Program'} • ${academicLevelLabel} • ${cohortSectionLabel}`,
+          badge: (
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                {academicLevelLabel}
+              </span>
+              <Badge variant="blue">{coursesList.length} Courses</Badge>
+            </div>
+          ),
           actions: (
             <button
               type="button"
@@ -540,17 +551,29 @@ export const StudentDashboardPage: React.FC = () => {
       case 'competencies':
         return {
           title: 'Assignments & Projects',
-          subtitle: 'Coursework submissions, practical github capstones, and mentor evaluation reports.',
-          badge: <Badge variant="blue">{assignments?.length || 0} Assignments</Badge>,
+          subtitle: `${program?.name || 'Academic Program'} • ${academicLevelLabel} • ${cohortSectionLabel}`,
+          badge: (
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                {academicLevelLabel}
+              </span>
+              <Badge variant="blue">{assignments?.length || 0} Assignments</Badge>
+            </div>
+          ),
         };
       case 'attendance':
         return {
           title: 'Timetable & Attendance Register',
-          subtitle: 'Verified cohort session attendance log and participation compliance record.',
+          subtitle: `${program?.name || 'Academic Program'} • ${academicLevelLabel} • ${cohortSectionLabel}`,
           badge: (
-            <Badge variant={metrics?.totalClasses === 0 ? 'blue' : 'green'}>
-              {metrics?.totalClasses === 0 ? 'Pending Session Start' : `${metrics?.attendanceRate || 0}% Attendance`}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                {academicLevelLabel}
+              </span>
+              <Badge variant={metrics?.totalClasses === 0 ? 'blue' : 'green'}>
+                {metrics?.totalClasses === 0 ? 'Pending Session Start' : `${metrics?.attendanceRate || 0}% Attendance`}
+              </Badge>
+            </div>
           ),
         };
       case 'finance':
@@ -570,7 +593,7 @@ export const StudentDashboardPage: React.FC = () => {
         return {
           title: 'Academic Progression Journey',
           subtitle: 'Track your level completions, progression eligibility, and enroll in next-level cohorts when ready.',
-          badge: <Badge variant="blue">{profile.currentLevel || 'Level Progression'}</Badge>,
+          badge: <Badge variant="blue">{academicLevelLabel}</Badge>,
         };
       case 'notifications':
         return {
@@ -980,6 +1003,28 @@ export const StudentDashboardPage: React.FC = () => {
                     : 0}
                   %)
                 </div>
+              </div>
+            </div>
+
+            {/* Academic Standing & Cohort Level Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-300" />
+                  {academicLevelLabel}
+                </span>
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-white/10 text-slate-200">
+                  Cohort: {cohort?.name} ({cohort?.cohortCode || 'STP'})
+                </span>
+                {(cohort as any)?.learningCenter && (
+                  <span className="text-xs text-slate-300 flex items-center gap-1 font-semibold">
+                    <MapPin className="w-3.5 h-3.5 text-rose-400" />
+                    {(cohort as any).learningCenter.name}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-300">
+                Specialization Track: <strong className="text-white">{program?.name}</strong>
               </div>
             </div>
 
