@@ -123,6 +123,57 @@ export const StudentDashboardPage: React.FC = () => {
   const [curriculumSearch, setCurriculumSearch] = useState<string>('');
   const [expandedUnitIds, setExpandedUnitIds] = useState<Set<string>>(new Set());
 
+  const coursesList = curriculumData?.courses || data?.curriculum?.courses || [];
+
+  // Flattened lesson list for sequential UoPeople-style navigation
+  const flatLessonsList = useMemo(() => {
+    const list: any[] = [];
+    coursesList.forEach((course: any) => {
+      (course.modules || []).forEach((mod: any, mIdx: number) => {
+        (mod.lessons || []).forEach((les: any, lIdx: number) => {
+          list.push({
+            ...les,
+            courseTitle: course.title,
+            courseCode: course.code,
+            moduleTitle: mod.title,
+            moduleId: mod.id || `mod-${mIdx}`,
+            unitNumber: mIdx + 1,
+            lessonNumber: lIdx + 1,
+          });
+        });
+      });
+    });
+    return list;
+  }, [coursesList]);
+
+  // Current lesson sequential indices
+  const currentLessonIndex = useMemo(() => {
+    if (!selectedLesson) return -1;
+    return flatLessonsList.findIndex((l: any) => l.id === selectedLesson.id);
+  }, [selectedLesson, flatLessonsList]);
+
+  const prevLesson = currentLessonIndex > 0 ? flatLessonsList[currentLessonIndex - 1] : null;
+  const nextLesson =
+    currentLessonIndex >= 0 && currentLessonIndex < flatLessonsList.length - 1
+      ? flatLessonsList[currentLessonIndex + 1]
+      : null;
+
+  // Auto-select first lesson when curriculum loads if none selected
+  useEffect(() => {
+    if (activeTab === 'curriculum' && !selectedLesson && flatLessonsList.length > 0) {
+      const firstUncompleted = flatLessonsList.find(
+        (l: any) => !completedLessonIds.has(l.id) && l.progress?.status !== 'COMPLETED'
+      );
+      const target = firstUncompleted || flatLessonsList[0];
+      setSelectedLesson(target);
+      setSelectedCourseTitle(target.courseTitle);
+      setSelectedModuleTitle(target.moduleTitle);
+      if (target.moduleId) {
+        setExpandedUnitIds((prev) => new Set([...prev, target.moduleId]));
+      }
+    }
+  }, [activeTab, flatLessonsList, selectedLesson, completedLessonIds]);
+
   // Synchronize Tab with URL
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -463,57 +514,6 @@ export const StudentDashboardPage: React.FC = () => {
     projects,
     announcements,
   } = data;
-
-  const coursesList = curriculumData?.courses || data.curriculum?.courses || [];
-
-  // Flattened lesson list for sequential UoPeople-style navigation
-  const flatLessonsList = useMemo(() => {
-    const list: any[] = [];
-    coursesList.forEach((course: any) => {
-      (course.modules || []).forEach((mod: any, mIdx: number) => {
-        (mod.lessons || []).forEach((les: any, lIdx: number) => {
-          list.push({
-            ...les,
-            courseTitle: course.title,
-            courseCode: course.code,
-            moduleTitle: mod.title,
-            moduleId: mod.id || `mod-${mIdx}`,
-            unitNumber: mIdx + 1,
-            lessonNumber: lIdx + 1,
-          });
-        });
-      });
-    });
-    return list;
-  }, [coursesList]);
-
-  // Current lesson sequential indices
-  const currentLessonIndex = useMemo(() => {
-    if (!selectedLesson) return -1;
-    return flatLessonsList.findIndex((l: any) => l.id === selectedLesson.id);
-  }, [selectedLesson, flatLessonsList]);
-
-  const prevLesson = currentLessonIndex > 0 ? flatLessonsList[currentLessonIndex - 1] : null;
-  const nextLesson =
-    currentLessonIndex >= 0 && currentLessonIndex < flatLessonsList.length - 1
-      ? flatLessonsList[currentLessonIndex + 1]
-      : null;
-
-  // Auto-select first lesson when curriculum loads if none selected
-  useEffect(() => {
-    if (activeTab === 'curriculum' && !selectedLesson && flatLessonsList.length > 0) {
-      const firstUncompleted = flatLessonsList.find(
-        (l: any) => !completedLessonIds.has(l.id) && l.progress?.status !== 'COMPLETED'
-      );
-      const target = firstUncompleted || flatLessonsList[0];
-      setSelectedLesson(target);
-      setSelectedCourseTitle(target.courseTitle);
-      setSelectedModuleTitle(target.moduleTitle);
-      if (target.moduleId) {
-        setExpandedUnitIds((prev) => new Set([...prev, target.moduleId]));
-      }
-    }
-  }, [activeTab, flatLessonsList, selectedLesson, completedLessonIds]);
 
   const getPageHeaderConfig = () => {
     switch (activeTab) {
