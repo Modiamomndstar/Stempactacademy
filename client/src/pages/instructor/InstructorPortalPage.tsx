@@ -166,15 +166,26 @@ export const InstructorPortalPage: React.FC = () => {
   };
 
   // Sync Tab with URL
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = (tabId: string, cohortId?: string) => {
     setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
+    const newParams: Record<string, string> = { tab: tabId };
+    if (cohortId) {
+      setSelectedCohortId(cohortId);
+      newParams.cohortId = cohortId;
+    } else if (selectedCohortId) {
+      newParams.cohortId = selectedCohortId;
+    }
+    setSearchParams(newParams);
   };
 
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
+    }
+    const cohortIdFromUrl = searchParams.get('cohortId');
+    if (cohortIdFromUrl && cohortIdFromUrl !== selectedCohortId) {
+      setSelectedCohortId(cohortIdFromUrl);
     }
   }, [searchParams]);
 
@@ -185,8 +196,15 @@ export const InstructorPortalPage: React.FC = () => {
       const res = await api.getInstructorDashboard();
       setData(res);
       if (res.cohorts && res.cohorts.length > 0) {
-        if (!selectedCohortId || !res.cohorts.some((c: any) => c.id === selectedCohortId)) {
-          setSelectedCohortId(res.cohorts[0].id);
+        const fromUrl = searchParams.get('cohortId');
+        if (fromUrl && res.cohorts.some((c: any) => c.id === fromUrl)) {
+          setSelectedCohortId(fromUrl);
+        } else if (!selectedCohortId || !res.cohorts.some((c: any) => c.id === selectedCohortId)) {
+          // Default to cohort with active students first, so instructor immediately sees learners
+          const withStudents = res.cohorts.find(
+            (c: any) => (c.studentProfiles?.length || c.enrollments?.length || 0) > 0
+          );
+          setSelectedCohortId(withStudents ? withStudents.id : res.cohorts[0].id);
         }
       }
     } catch (err: any) {
@@ -755,12 +773,12 @@ export const InstructorPortalPage: React.FC = () => {
 
                       <h4 className="text-xs font-black text-slate-900">{c.name}</h4>
                       <div className="text-[11px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-100">
-                        <span>{c.studentProfiles?.length || 0} Students Enrolled</span>
+                        <span>{c.studentProfiles?.length || c.enrollments?.length || 0} Students Enrolled</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
                               setSelectedCohortId(c.id);
-                              handleTabChange('curriculum');
+                              handleTabChange('curriculum', c.id);
                             }}
                             className="text-blue-600 font-bold hover:underline cursor-pointer"
                           >
@@ -770,9 +788,12 @@ export const InstructorPortalPage: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedCohortId(c.id);
-                              handleTabChange('cohorts');
+                              handleTabChange('cohorts', c.id);
+                              setTimeout(() => {
+                                document.getElementById('class-roster')?.scrollIntoView({ behavior: 'smooth' });
+                              }, 150);
                             }}
-                            className="text-slate-700 font-bold hover:underline cursor-pointer"
+                            className="text-indigo-600 font-bold hover:underline cursor-pointer"
                           >
                             Roster
                           </button>
@@ -816,6 +837,42 @@ export const InstructorPortalPage: React.FC = () => {
               </span>
             </div>
 
+            {/* Quick Active Section Status Bar */}
+            {currentCohort && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-200 text-indigo-900">
+                        {currentCohort.levelCode?.replace(/_/g, ' ') || 'Level 1 Foundation'}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
+                        {currentCohort.cohortCode}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-black text-slate-900 mt-0.5">
+                      Selected Section: {currentCohort.name}
+                    </h4>
+                    <p className="text-[11px] text-slate-600">
+                      <strong>{(currentCohort.studentProfiles?.length || currentCohort.enrollments?.length || 0)} Enrolled Learner(s)</strong> • Schedule: {currentCohort.schedule}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('class-roster')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Jump to Student Roster Table</span>
+                  <span>↓</span>
+                </button>
+              </div>
+            )}
+
             {/* Cohorts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cohorts
@@ -828,7 +885,10 @@ export const InstructorPortalPage: React.FC = () => {
                       className={`p-6 space-y-4 transition-all cursor-pointer border-2 ${
                         isSelected ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'hover:border-slate-300'
                       }`}
-                      onClick={() => setSelectedCohortId(c.id)}
+                      onClick={() => {
+                        setSelectedCohortId(c.id);
+                        document.getElementById('class-roster')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -854,31 +914,44 @@ export const InstructorPortalPage: React.FC = () => {
                           </div>
                         )}
                         <div>
-                          <strong>Enrolled Roster:</strong> {c.studentProfiles?.length || c.currentEnrollment || 0} students
+                          <strong>Enrolled Roster:</strong> {c.studentProfiles?.length || c.enrollments?.length || 0} students
                         </div>
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => {
                             setSelectedCohortId(c.id);
-                            handleTabChange('attendance');
+                            document.getElementById('class-roster')?.scrollIntoView({ behavior: 'smooth' });
                           }}
-                          className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
                         >
-                          Take Attendance →
+                          <Users className="w-3.5 h-3.5" />
+                          <span>View Roster ({c.studentProfiles?.length || c.enrollments?.length || 0}) ↓</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCohortId(c.id);
-                            handleTabChange('curriculum');
-                          }}
-                          className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                        >
-                          Curriculum & Lab
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCohortId(c.id);
+                              handleTabChange('attendance', c.id);
+                            }}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                          >
+                            Attendance →
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCohortId(c.id);
+                              handleTabChange('curriculum', c.id);
+                            }}
+                            className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                          >
+                            Curriculum
+                          </button>
+                        </div>
                       </div>
                     </Card>
                   );
@@ -887,7 +960,8 @@ export const InstructorPortalPage: React.FC = () => {
 
             {/* Current Cohort Roster Table */}
             {currentCohort && (
-              <Card className="p-6 space-y-4">
+              <div id="class-roster" className="scroll-mt-24">
+                <Card className="p-6 space-y-4 border-2 border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -906,7 +980,25 @@ export const InstructorPortalPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-slate-500 whitespace-nowrap">Switch Section:</label>
+                      <select
+                        value={selectedCohortId}
+                        onChange={(e) => setSelectedCohortId(e.target.value)}
+                        className="p-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white shadow-2xs max-w-[240px] truncate"
+                      >
+                        {cohorts.map((c: any) => {
+                          const count = c.studentProfiles?.length || c.enrollments?.length || 0;
+                          return (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({count} {count === 1 ? 'student' : 'students'})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
@@ -914,11 +1006,14 @@ export const InstructorPortalPage: React.FC = () => {
                         placeholder="Search student or ID..."
                         value={rosterSearch}
                         onChange={(e) => setRosterSearch(e.target.value)}
-                        className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white w-48 focus:ring-2 focus:ring-blue-500"
+                        className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white w-44 focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <Badge variant="blue">
-                      {currentCohort.studentProfiles?.length || 0} Students
+                      {((currentCohort.studentProfiles?.length > 0
+                        ? currentCohort.studentProfiles
+                        : (currentCohort.enrollments || []).map((e: any) => e.student).filter(Boolean)
+                      ) || []).length} Students
                     </Badge>
                   </div>
                 </div>
@@ -936,8 +1031,12 @@ export const InstructorPortalPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {(currentCohort.studentProfiles || [])
-                        .filter((sp: any) => {
+                      {(() => {
+                        const rawProfiles = (currentCohort.studentProfiles?.length > 0
+                          ? currentCohort.studentProfiles
+                          : (currentCohort.enrollments || []).map((e: any) => e.student).filter(Boolean)
+                        ) || [];
+                        const filteredProfiles = rawProfiles.filter((sp: any) => {
                           if (!rosterSearch) return true;
                           const q = rosterSearch.toLowerCase();
                           return (
@@ -946,11 +1045,30 @@ export const InstructorPortalPage: React.FC = () => {
                             sp.user?.lastName?.toLowerCase().includes(q) ||
                             sp.user?.email?.toLowerCase().includes(q)
                           );
-                        })
-                        .map((sp: any) => (
+                        });
+
+                        if (filteredProfiles.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={6} className="py-12 text-center text-slate-400">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Users className="w-8 h-8 text-slate-300" />
+                                  <p className="text-xs font-bold text-slate-600">
+                                    No students enrolled in {currentCohort.name} yet.
+                                  </p>
+                                  <p className="text-[11px] text-slate-400">
+                                    Use the &quot;Switch Section&quot; dropdown above to select a class section with enrolled learners.
+                                  </p>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return filteredProfiles.map((sp: any) => (
                           <tr key={sp.id} className="hover:bg-slate-50/60">
                             <td className="py-3 px-3 font-mono font-bold text-slate-500">
-                              {sp.studentIdNumber}
+                              {sp.studentIdNumber || 'STP-ID'}
                             </td>
                             <td className="py-3 px-3 font-bold text-slate-900">
                               {sp.user?.firstName} {sp.user?.lastName}
@@ -975,11 +1093,13 @@ export const InstructorPortalPage: React.FC = () => {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
               </Card>
+              </div>
             )}
           </div>
         )}
