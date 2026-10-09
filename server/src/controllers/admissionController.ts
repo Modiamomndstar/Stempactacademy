@@ -362,3 +362,42 @@ export const deliverAdmissionLetter = async (req: AuthRequest, res: Response): P
   }
 };
 
+/**
+ * Transfer admission offer / applicant to a new program and cohort.
+ * POST /api/admissions/:admissionId/transfer-program
+ * Authorized: SUPER_ADMIN, ACADEMIC_ADMIN, ADMISSIONS_ADMIN
+ */
+export const transferProgram = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+    const { admissionId } = req.params;
+    const { newProgramId, newCohortId, newLevel, notes } = req.body;
+
+    if (!newProgramId || !newCohortId) {
+      res.status(400).json({ message: 'Target program ID and cohort ID are required.' });
+      return;
+    }
+
+    const updated = await admissionService.transferProgramAndCohort({
+      admissionId,
+      newProgramId,
+      newCohortId,
+      newLevel,
+      notes,
+      staffUser: req.user,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Applicant program and cohort transfer completed successfully.',
+      admission: updated,
+    });
+  } catch (error: any) {
+    console.error('transferProgram error:', error);
+    res.status(400).json({ message: error.message || 'Failed to transfer program' });
+  }
+};
+

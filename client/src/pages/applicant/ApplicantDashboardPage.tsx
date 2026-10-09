@@ -457,7 +457,19 @@ export const ApplicantDashboardPage: React.FC = () => {
       done: !isReassessmentRequired && (placement?.status === 'APPROVED' || placement?.status === 'MODIFIED' || !!admission),
     },
     { key: 'ADMISSION_OFFER', title: 'Admission Offer', desc: 'Provisional offer issued', done: !!admission },
-    { key: 'FINANCIAL_CLEARANCE', title: 'Financial Clearance', desc: 'Tuition clearance verified', done: !!clearanceData?.cleared },
+    {
+      key: 'FINANCIAL_CLEARANCE',
+      title: 'Financial Clearance',
+      desc: 'Tuition clearance verified',
+      done: Boolean(
+        clearanceData?.isCleared ||
+        clearanceData?.cleared ||
+        clearanceData?.status === 'CLEARED' ||
+        clearanceData?.status === 'WAIVED' ||
+        admission?.status === 'FINANCIALLY_CLEARED' ||
+        admission?.status === 'ENROLLED'
+      ),
+    },
     { key: 'ENROLLMENT', title: 'Enrollment', desc: 'Official letter delivered & enrolled', done: admission?.status === 'ENROLLED' || user?.role === 'STUDENT' },
   ];
 
@@ -1146,7 +1158,7 @@ export const ApplicantDashboardPage: React.FC = () => {
 
                 {/* Offer Action Buttons */}
                 <div className="flex flex-wrap items-center gap-3 pt-2">
-                  {admission.status === 'ISSUED' && (
+                  {(admission.status === 'OFFERED' || admission.status === 'ISSUED') && (
                     <>
                       <button
                         type="button"
@@ -1174,6 +1186,17 @@ export const ApplicantDashboardPage: React.FC = () => {
                     >
                       <CreditCard className="w-4 h-4" />
                       <span>Proceed to Tuition & Clearance</span>
+                    </button>
+                  )}
+
+                  {admission.status === 'FINANCIALLY_CLEARED' && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('tuition')}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Financially Cleared — Finalize Enrollment</span>
                     </button>
                   )}
 
@@ -1271,13 +1294,13 @@ export const ApplicantDashboardPage: React.FC = () => {
                     <div className="flex justify-between py-2 border-b border-slate-100 text-emerald-700 font-semibold">
                       <span>Amount Cleared to Date:</span>
                       <span className="font-mono">
-                        ₦{Number(invoice.paidAmount || 0).toLocaleString()}
+                        ₦{Number(invoice.amountPaid !== undefined ? invoice.amountPaid : (invoice.paidAmount || 0)).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between py-3 text-sm font-bold bg-slate-50 px-4 rounded-xl">
                       <span className="text-slate-900">Remaining Balance:</span>
                       <span className="text-blue-600 font-mono">
-                        ₦{Number(invoice.balance !== undefined ? invoice.balance : invoice.totalAmount - (invoice.paidAmount || 0)).toLocaleString()}
+                        ₦{Number(invoice.balance !== undefined ? invoice.balance : invoice.totalAmount - (invoice.amountPaid !== undefined ? invoice.amountPaid : (invoice.paidAmount || 0))).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -1479,51 +1502,66 @@ export const ApplicantDashboardPage: React.FC = () => {
                     Financial Clearance Status
                   </h3>
 
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Clearance Status:</span>
-                      <strong className={`uppercase ${clearanceData?.cleared ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {clearanceData?.cleared ? 'CLEARED' : 'PENDING'}
-                      </strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Clearance Basis:</span>
-                      <span className="text-slate-700 font-medium">
-                        {clearanceData?.status || 'Tuition Deposit Verification'}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const isFinanciallyCleared = Boolean(
+                      clearanceData?.isCleared ||
+                      clearanceData?.cleared ||
+                      clearanceData?.status === 'CLEARED' ||
+                      clearanceData?.status === 'WAIVED' ||
+                      admission?.status === 'FINANCIALLY_CLEARED' ||
+                      admission?.status === 'ENROLLED'
+                    );
 
-                  {clearanceData?.cleared ? (
-                    <div className="space-y-3 pt-2">
-                      <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-xl border border-emerald-200">
-                        Congratulations! You have satisfied institutional financial clearance requirements.
-                      </div>
-                      {admission?.status !== 'ENROLLED' ? (
-                        <button
-                          type="button"
-                          disabled={enrolling}
-                          onClick={handleFinalizeEnrollment}
-                          className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>{enrolling ? 'Finalizing Enrollment...' : 'Finalize Cohort Enrollment'}</span>
-                        </button>
-                      ) : (
-                        <Link
-                          to="/portal/student"
-                          className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 text-center"
-                        >
-                          <span>Open Student Learning Portal</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </Link>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-slate-500 leading-relaxed pt-2">
-                      Official matriculation, student portal activation, and official admission letter delivery require verified financial clearance via online checkout, bank transfer verification, or an approved scholarship waiver.
-                    </div>
-                  )}
+                    return (
+                      <>
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Clearance Status:</span>
+                            <strong className={`uppercase ${isFinanciallyCleared ? 'text-emerald-600' : 'text-amber-600'}`}>
+                              {isFinanciallyCleared ? 'CLEARED' : 'PENDING'}
+                            </strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Clearance Basis:</span>
+                            <span className="text-slate-700 font-medium">
+                              {clearanceData?.status || (isFinanciallyCleared ? 'CLEARED' : 'Tuition Deposit Verification')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {isFinanciallyCleared ? (
+                          <div className="space-y-3 pt-2">
+                            <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-xl border border-emerald-200">
+                              Congratulations! You have satisfied institutional financial clearance requirements.
+                            </div>
+                            {admission?.status !== 'ENROLLED' ? (
+                              <button
+                                type="button"
+                                disabled={enrolling}
+                                onClick={handleFinalizeEnrollment}
+                                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                              >
+                                <Check className="w-4 h-4" />
+                                <span>{enrolling ? 'Finalizing Enrollment...' : 'Finalize Cohort Enrollment'}</span>
+                              </button>
+                            ) : (
+                              <Link
+                                to="/portal/student"
+                                className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 text-center"
+                              >
+                                <span>Open Student Learning Portal</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </Link>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500 leading-relaxed pt-2">
+                            Official matriculation, student portal activation, and official admission letter delivery require verified financial clearance via online checkout, bank transfer verification, or an approved scholarship waiver.
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (

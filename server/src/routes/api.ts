@@ -109,6 +109,7 @@ router.get('/admissions/:admissionId/eligibility', authenticate, admissionContro
 router.post('/admissions/:admissionId/enroll', authenticate, admissionController.enrollStudent);
 router.get('/admissions/:admissionId/document', authenticate, admissionController.getAdmissionDocument);
 router.post('/admissions/:admissionId/deliver-letter', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.deliverAdmissionLetter);
+router.post('/admissions/:admissionId/transfer-program', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), admissionController.transferProgram);
 
 // 8. Portals: Student, Parent, Instructor, Applicant, Coordinator, Partner
 router.get('/student/dashboard', authenticate, studentController.getStudentDashboard);

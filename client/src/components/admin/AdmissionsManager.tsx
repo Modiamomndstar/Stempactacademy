@@ -26,6 +26,9 @@ import {
   GraduationCap,
   Briefcase,
   User,
+  Printer,
+  ArrowRightLeft,
+  Layers,
 } from 'lucide-react';
 
 interface AdmissionsManagerProps {
@@ -77,6 +80,13 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
 
   // Document preview state
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+
+  // Transfer Program & Cohort Modal State
+  const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
+  const [transferProgramId, setTransferProgramId] = useState<string>('');
+  const [transferCohortId, setTransferCohortId] = useState<string>('');
+  const [transferLevel, setTransferLevel] = useState<string>('Level 1 (Foundation)');
+  const [transferNotes, setTransferNotes] = useState<string>('');
 
   // Filtered applications
   const filteredApps = applications.filter((app) => {
@@ -226,6 +236,48 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
       alert(err.message || 'Failed to retrieve admission document');
     } finally {
       setDrawerLoading(false);
+    }
+  };
+
+  // 7. Accept Offer on Behalf of Candidate (Admin Action)
+  const handleAcceptOnBehalf = async (admissionId: string) => {
+    if (!window.confirm('Confirm that candidate has accepted this admission offer?')) return;
+    setProcessing(true);
+    setActionError('');
+    try {
+      await api.acceptAdmission(admissionId);
+      setActionSuccess('Admission offer accepted on behalf of candidate! Status updated.');
+      await onDataRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to accept admission offer');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // 8. Transfer Applicant to a New Program & Cohort
+  const handleTransferProgramSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedApp?.admission?.id || !transferProgramId || !transferCohortId) {
+      setActionError('Please select both a program and a target cohort.');
+      return;
+    }
+    setProcessing(true);
+    setActionError('');
+    try {
+      await api.transferAdmissionProgram(selectedApp.admission.id, {
+        newProgramId: transferProgramId,
+        newCohortId: transferCohortId,
+        newLevel: transferLevel,
+        notes: transferNotes,
+      });
+      setActionSuccess('Candidate transferred to new program & cohort successfully! Academic records and invoice reconciled.');
+      setShowTransferModal(false);
+      await onDataRefresh();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to transfer program');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -1034,40 +1086,148 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
             </div>
 
             {/* Administrative Action Controls */}
-            {selectedApp.admission && (
-              <div className="space-y-2 pt-4 border-t border-slate-200">
-                <h4 className="font-bold text-xs text-slate-900">Admission Actions</h4>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleViewAdmissionDoc(selectedApp.admission.id)}
-                    className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
-                  >
-                    View Provisional Document
-                  </button>
-                  <button
-                    onClick={() => handleDeliverOfficialLetter(selectedApp.admission.id)}
-                    disabled={processing}
-                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs disabled:opacity-50"
-                  >
-                    Trigger Official Letter Delivery
-                  </button>
-                  <button
-                    onClick={() => handleEnrollStudent(selectedApp.admission.id)}
-                    disabled={processing}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50"
-                  >
-                    Finalize Enrollment
-                  </button>
-                  <button
-                    onClick={() => handleWithdrawAdmission(selectedApp.admission.id)}
-                    disabled={processing}
-                    className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50"
-                  >
-                    Withdraw Offer
-                  </button>
+            {selectedApp.admission && (() => {
+              const admStatus = selectedApp.admission.status;
+              const isCleared = admStatus === 'FINANCIALLY_CLEARED' || admStatus === 'ENROLLED';
+              const isAccepted = admStatus === 'ACCEPTED' || isCleared;
+              const isEnrolled = admStatus === 'ENROLLED';
+
+              return (
+                <div className="space-y-3 pt-4 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-xs text-slate-900">Admission Actions & Lifecycle</h4>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                      isEnrolled
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : isCleared
+                        ? 'bg-teal-100 text-teal-800'
+                        : isAccepted
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {admStatus}
+                    </span>
+                  </div>
+
+                  {/* Status Banner Guidance */}
+                  {admStatus === 'OFFERED' && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Provisional Offer Issued:</strong> Awaiting candidate acceptance & tuition financial clearance. You can accept on candidate's behalf or transfer them to another program/cohort below.
+                      </div>
+                    </div>
+                  )}
+
+                  {admStatus === 'ACCEPTED' && (
+                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Offer Accepted:</strong> Awaiting tuition payment or scholarship waiver clearance in the Tuition & Ledger tab.
+                      </div>
+                    </div>
+                  )}
+
+                  {admStatus === 'FINANCIALLY_CLEARED' && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Financially Cleared:</strong> Full clearance confirmed! Click <strong>Finalize Enrollment</strong> to matriculate the candidate into the cohort.
+                      </div>
+                    </div>
+                  )}
+
+                  {admStatus === 'ENROLLED' && (
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
+                      <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Officially Matriculated:</strong> Student ID: <strong>{selectedApp.admission.studentIdNumber || 'Assigned'}</strong>. Active in cohort roster.
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      onClick={() => handleViewAdmissionDoc(selectedApp.admission.id)}
+                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{isEnrolled ? 'View Official Admission Letter' : 'View Provisional Document'}</span>
+                    </button>
+
+                    {admStatus === 'OFFERED' && (
+                      <button
+                        onClick={() => handleAcceptOnBehalf(selectedApp.admission.id)}
+                        disabled={processing}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Accept on Behalf of Candidate</span>
+                      </button>
+                    )}
+
+                    {/* Change Program / Cohort Button */}
+                    <button
+                      onClick={() => {
+                        setTransferProgramId(selectedApp.programId || selectedApp.admission.programId || (programs[0]?.id || ''));
+                        setTransferCohortId(selectedApp.cohortId || selectedApp.admission.cohortId || '');
+                        setTransferLevel(selectedApp.admission.level || 'Level 1 (Foundation)');
+                        setTransferNotes('');
+                        setShowTransferModal(true);
+                      }}
+                      disabled={processing}
+                      className="px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      <span>Change Program / Transfer Cohort</span>
+                    </button>
+
+                    {/* Finalize Enrollment Button (Gated by financial clearance) */}
+                    {!isEnrolled && (
+                      <button
+                        onClick={() => handleEnrollStudent(selectedApp.admission.id)}
+                        disabled={processing || !isCleared}
+                        title={!isCleared ? 'Requires financial clearance or tuition payment first' : 'Matriculate student into cohort'}
+                        className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition ${
+                          isCleared
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm'
+                            : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Finalize Enrollment</span>
+                        {!isCleared && <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-normal">Requires Clearance</span>}
+                      </button>
+                    )}
+
+                    {/* Deliver Official Letter */}
+                    <button
+                      onClick={() => handleDeliverOfficialLetter(selectedApp.admission.id)}
+                      disabled={processing || !isCleared}
+                      title={!isCleared ? 'Requires financial clearance first' : 'Deliver official admission pack'}
+                      className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 transition ${
+                        isCleared
+                          ? 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer shadow-xs'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                      }`}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Deliver Official Letter</span>
+                    </button>
+
+                    {!isEnrolled && (
+                      <button
+                        onClick={() => handleWithdrawAdmission(selectedApp.admission.id)}
+                        disabled={processing}
+                        className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50 cursor-pointer"
+                      >
+                        Withdraw Offer
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1083,43 +1243,202 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
                 </span>
                 <h3 className="font-black text-slate-900 text-base mt-1">Admission Offer Document</h3>
               </div>
-              <button onClick={() => setPreviewDoc(null)} className="p-1 text-slate-400 hover:text-slate-600">
+              <button onClick={() => setPreviewDoc(null)} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 text-xs font-serif leading-relaxed">
-              <div className="text-center pb-3 border-b border-slate-200 font-sans">
-                <div className="font-black text-base tracking-tight text-slate-900">STEMPACT ACADEMY</div>
-                <div className="text-[10px] text-slate-500 font-mono">Ile-Ife Campus, Osun State, Nigeria</div>
-              </div>
+            {(() => {
+              const applicantName = previewDoc.student?.name || previewDoc.applicantName || selectedApp?.fullName || 'Admitted Candidate';
+              const appNumber = selectedApp?.applicationNumber || previewDoc.applicationNumber || 'APP-2026';
+              const progName = previewDoc.academic?.programName || previewDoc.programName || selectedApp?.program?.name || 'STEM Program Track';
+              const cohortStr = previewDoc.academic?.cohortName || previewDoc.academic?.cohortCode || previewDoc.cohortCode || selectedApp?.cohort?.name || 'Cohort Intake';
+              const admRef = previewDoc.admission?.admissionNumber || previewDoc.admissionNumber || selectedApp?.admission?.admissionNumber || 'ADM-2026';
+              const studentIdStr = previewDoc.student?.studentId || selectedApp?.admission?.studentIdNumber || 'Assigned on Enrollment';
 
-              <div>
-                <p>Dear <strong>{previewDoc.applicantName}</strong>,</p>
-                <p className="mt-2">
-                  Following review of your application ({previewDoc.applicationNumber}) and diagnostic placement evaluation, we are pleased to offer you provisional admission to:
-                </p>
-                <div className="my-3 p-3 bg-white rounded-xl border border-slate-200 font-sans">
-                  <div><strong>Program:</strong> {previewDoc.programName}</div>
-                  <div><strong>Cohort:</strong> {previewDoc.cohortCode}</div>
-                  <div><strong>Admission Ref:</strong> {previewDoc.admissionNumber}</div>
-                  <div><strong>Student ID Number:</strong> {previewDoc.studentIdNumber || 'Assigned on Enrollment'}</div>
+              return (
+                <div className="space-y-4">
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 text-xs font-serif leading-relaxed">
+                    <div className="text-center pb-3 border-b border-slate-200 font-sans">
+                      <div className="font-black text-base tracking-tight text-slate-900">STEMPACT ACADEMY</div>
+                      <div className="text-[10px] text-slate-500 font-mono">Ile-Ife Campus, Osun State, Nigeria</div>
+                    </div>
+
+                    <div>
+                      <p>Dear <strong>{applicantName}</strong>,</p>
+                      <p className="mt-2">
+                        Following review of your application ({appNumber}) and diagnostic placement evaluation, we are pleased to offer you provisional admission to:
+                      </p>
+                      <div className="my-3 p-3 bg-white rounded-xl border border-slate-200 font-sans space-y-1">
+                        <div><strong>Program:</strong> {progName}</div>
+                        <div><strong>Cohort:</strong> {cohortStr}</div>
+                        <div><strong>Admission Ref:</strong> {admRef}</div>
+                        <div><strong>Student ID Number:</strong> {studentIdStr}</div>
+                      </div>
+                    </div>
+
+                    <div className="font-sans text-[11px] p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+                      <strong>Important Notice:</strong> This document represents a provisional admission offer. Official final enrollment clearance and delivery of the official admission letter require completed financial clearance in accordance with Academy regulations.
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print Document</span>
+                    </button>
+                    <button
+                      onClick={() => setPreviewDoc(null)}
+                      className="px-6 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs cursor-pointer"
+                    >
+                      Close Preview
+                    </button>
+                  </div>
                 </div>
-              </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
-              <div className="font-sans text-[11px] p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-                <strong>Important Notice:</strong> This document represents a provisional admission offer. Official final enrollment clearance and delivery of the official admission letter require completed financial clearance in accordance with Academy regulations.
+      {/* MODAL 4: TRANSFER PROGRAM & COHORT */}
+      {showTransferModal && selectedApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 flex items-center gap-1">
+                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                  Academic Re-alignment
+                </span>
+                <h3 className="font-black text-slate-900 text-base mt-0.5">Transfer Program & Cohort</h3>
+                <p className="text-xs text-slate-500">Applicant: {selectedApp.fullName} ({selectedApp.applicationNumber})</p>
               </div>
-            </div>
-
-            <div className="flex justify-end">
               <button
-                onClick={() => setPreviewDoc(null)}
-                className="px-6 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs"
+                type="button"
+                onClick={() => setShowTransferModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                Close Preview
+                <X className="w-5 h-5" />
               </button>
             </div>
+
+            <form onSubmit={handleTransferProgramSubmit} className="space-y-4 text-xs">
+              {/* Program Selector */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Target Program *</label>
+                <select
+                  value={transferProgramId}
+                  onChange={(e) => {
+                    const newProgId = e.target.value;
+                    setTransferProgramId(newProgId);
+                    // Reset or pick first available cohort of new program
+                    const matchingCohorts = cohorts.filter((c: any) => c.programId === newProgId);
+                    if (matchingCohorts.length > 0) {
+                      setTransferCohortId(matchingCohorts[0].id);
+                      setTransferLevel(matchingCohorts[0].level || 'Level 1 (Foundation)');
+                    } else {
+                      setTransferCohortId('');
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium focus:ring-2 focus:ring-purple-400"
+                  required
+                >
+                  <option value="">— Select Target Program —</option>
+                  {programs.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.school?.code ? `(${p.school.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Academic Level Selector */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Academic Level Placement *</span>
+                </label>
+                <select
+                  value={transferLevel}
+                  onChange={(e) => setTransferLevel(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium focus:ring-2 focus:ring-purple-400"
+                  required
+                >
+                  <option value="Level 1 (Foundation)">Level 1 — Foundation (Beginner)</option>
+                  <option value="Level 2 (Core / Intermediate)">Level 2 — Intermediate (Core Skills)</option>
+                  <option value="Level 3 (Advanced / Specialist)">Level 3 — Advanced (Specialist / Production)</option>
+                  <option value="Level 4 (Mastery)">Level 4 — Mastery (Executive / Capstone)</option>
+                </select>
+                <p className="text-[10px] text-slate-400">Determines student stage in the new curriculum track.</p>
+              </div>
+
+              {/* Cohort Selector */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Target Cohort / Intake Batch *</label>
+                <select
+                  value={transferCohortId}
+                  onChange={(e) => {
+                    setTransferCohortId(e.target.value);
+                    const selectedCohort = cohorts.find((c: any) => c.id === e.target.value);
+                    if (selectedCohort?.level) {
+                      setTransferLevel(selectedCohort.level);
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium focus:ring-2 focus:ring-purple-400"
+                  required
+                >
+                  <option value="">— Select Cohort Batch —</option>
+                  {cohorts
+                    .filter((c: any) => !transferProgramId || c.programId === transferProgramId)
+                    .map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.cohortCode}) • ₦{(c.trainingFee || 0).toLocaleString()} • {c.mode || 'Hybrid'}
+                      </option>
+                    ))}
+                </select>
+                {cohorts.filter((c: any) => !transferProgramId || c.programId === transferProgramId).length === 0 && (
+                  <p className="text-[10px] text-rose-500">No active cohorts found for this program. Create a cohort first.</p>
+                )}
+              </div>
+
+              {/* Administrative Rationale */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Transfer Reason & Notes</label>
+                <textarea
+                  rows={2}
+                  value={transferNotes}
+                  onChange={(e) => setTransferNotes(e.target.value)}
+                  placeholder="e.g. Applicant requested track switch after consulting faculty counselor; aptitude aligns with Software Engineering..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
+                />
+              </div>
+
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-[11px] text-purple-900 leading-relaxed">
+                <strong>Financial Reconciliation Note:</strong> The candidate's existing tuition payments will be automatically transferred. If the new cohort tuition fee is different, the outstanding balance will update accordingly.
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowTransferModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={processing || !transferCohortId}
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {processing ? 'Transferring...' : 'Confirm Program Transfer'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

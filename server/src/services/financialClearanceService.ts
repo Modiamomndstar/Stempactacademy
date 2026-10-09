@@ -211,9 +211,14 @@ export class FinancialClearanceService {
           },
         });
 
-    // CRITICAL: Advance admission status to FINANCIALLY_CLEARED ONLY if offer was already ACCEPTED!
-    // If offer is still OFFERED, financial clearance does NOT substitute for applicant acceptance.
-    if (admission && isCleared && admission.status === AdmissionStatus.ACCEPTED) {
+    // Advance admission status to FINANCIALLY_CLEARED upon full payment clearance or waiver
+    if (
+      admission &&
+      isCleared &&
+      (admission.status === AdmissionStatus.ACCEPTED ||
+       admission.status === AdmissionStatus.OFFERED ||
+       admission.status === AdmissionStatus.ISSUED)
+    ) {
       await prisma.admission.update({
         where: { id: admission.id },
         data: { status: AdmissionStatus.FINANCIALLY_CLEARED },

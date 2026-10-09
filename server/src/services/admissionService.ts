@@ -1,4 +1,4 @@
-import { AdmissionStatus, ApplicationStatus, Role } from '@prisma/client';
+import { AdmissionStatus, ApplicationStatus, Role, InvoiceStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { identifierService } from './identifierService.js';
 import { paymentService } from './paymentService.js';
@@ -450,6 +450,139 @@ export class AdmissionService {
     }
 
     return admission;
+  }
+
+  /**
+   * Transfer an applicant/admission to a new program, cohort, and academic level.
+   * Reconciles academic placement, admission details, and tuition invoice balances.
+   */
+  async transferProgramAndCohort(params: {
+    admissionId: string;
+    newProgramId: string;
+    newCohortId: string;
+    newLevel?: string;
+    notes?: string;
+    staffUser: { id: string; role: Role; firstName?: string; lastName?: string };
+  }) {
+    const { admissionId, newProgramId, newCohortId, newLevel, notes, staffUser } = params;
+
+    const authorizedRoles: Role[] = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN];
+    if (!authorizedRoles.includes(staffUser.role)) {
+      throw new Error('Forbidden: Only Academic or Admissions Administration can transfer programs.');
+    }
+
+    const admission = await prisma.admission.findUnique({
+      where: { id: admissionId },
+      include: {
+        application: { include: { placement: true } },
+        cohort: true,
+      },
+    });
+
+    if (!admission) {
+      throw new Error('Admission record not found.');
+    }
+
+    const [newProgram, newCohort] = await Promise.all([
+      prisma.program.findUnique({ where: { id: newProgramId }, include: { school: true } }),
+      prisma.cohort.findUnique({ where: { id: newCohortId } }),
+    ]);
+
+    if (!newProgram) {
+      throw new Error('Target program not found.');
+    }
+    if (!newCohort) {
+      throw new Error('Target cohort not found.');
+    }
+
+    const assignedLevel = newLevel || newCohort.level || admission.level || 'Level 1 (Foundation)';
+
+    // Update Admission, Application, Placement transactionally
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Update Application
+      await tx.application.update({
+        where: { id: admission.applicationId },
+        data: {
+          programId: newProgram.id,
+          cohortId: newCohort.id,
+        },
+      });
+
+      // 2. Update Placement if exists
+      if (admission.placementId) {
+        await tx.placement.update({
+          where: { id: admission.placementId },
+          data: {
+            programId: newProgram.id,
+            recommendedProgram: newProgram.name,
+            approvedProgram: newProgram.name,
+            approvedLevel: assignedLevel,
+            approvedCohortId: newCohort.id,
+            adminNotes: notes ? `Program Transfer: ${notes}` : 'Transferred by Admissions Administration',
+          },
+        });
+      }
+
+      // 3. Update Admission
+      const updatedAdmission = await tx.admission.update({
+        where: { id: admission.id },
+        data: {
+          programId: newProgram.id,
+          programName: newProgram.name,
+          level: assignedLevel,
+          cohortId: newCohort.id,
+          schedule: newCohort.schedule,
+          notes: notes ? `${admission.notes || ''} [Transfer Note: ${notes}]` : admission.notes,
+        },
+        include: {
+          cohort: { include: { program: true } },
+          application: { include: { user: true } },
+        },
+      });
+
+      // 4. Reconcile primary tuition invoice
+      const primaryInvoice = await tx.invoice.findFirst({
+        where: {
+          OR: [
+            { admissionId: admission.id },
+            { applicationId: admission.applicationId },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (primaryInvoice) {
+        const discount = (newCohort.trainingFee * newCohort.discountPercentage) / 100;
+        const newTotalFee = newCohort.trainingFee - discount + newCohort.registrationFee + newCohort.certificationFee;
+        const currentPaid = primaryInvoice.amountPaid || 0;
+        const newBalance = Math.max(0, newTotalFee - currentPaid);
+        const newStatus =
+          newBalance === 0
+            ? InvoiceStatus.PAID
+            : currentPaid > 0
+            ? InvoiceStatus.PARTIALLY_PAID
+            : InvoiceStatus.UNPAID;
+
+        await tx.invoice.update({
+          where: { id: primaryInvoice.id },
+          data: {
+            cohortId: newCohort.id,
+            title: `Tuition & Enrollment Fee - ${newProgram.name} (${newCohort.cohortCode})`,
+            baseAmount: newCohort.trainingFee,
+            totalAmount: newTotalFee,
+            balance: newBalance,
+            status: newStatus,
+          },
+        });
+      }
+
+      return updatedAdmission;
+    });
+
+    // Re-evaluate financial clearance
+    await financialClearanceService.evaluateFinancialClearance({ admissionId: admission.id });
+
+    return updated;
   }
 }
 

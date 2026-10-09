@@ -159,6 +159,8 @@ export const api = {
     apiRequest(`/admissions/${admissionId}/deliver-letter`, { method: 'POST' }),
   withdrawAdmission: (admissionId: string, reason: string) =>
     apiRequest(`/admissions/${admissionId}/withdraw`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  transferAdmissionProgram: (admissionId: string, data: { newProgramId: string; newCohortId: string; newLevel?: string; notes?: string }) =>
+    apiRequest(`/admissions/${admissionId}/transfer-program`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Portals: Student, Parent, Instructor, Coordinator
   getStudentDashboard: () => apiRequest('/student/dashboard'),
