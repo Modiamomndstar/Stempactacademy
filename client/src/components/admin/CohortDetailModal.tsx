@@ -330,9 +330,14 @@ export const CohortDetailModal: React.FC<CohortDetailModalProps> = ({
                 )}
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {cohort?.name || 'Cohort Operations Console'}
-              </h2>
+              <div className="pt-1">
+                <span className="text-[10px] font-mono text-indigo-300 uppercase tracking-widest font-bold block">
+                  Class Section Operations
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
+                  {cohort?.name || 'Cohort Operations Console'}
+                </h2>
+              </div>
               <p className="text-xs text-slate-300 max-w-3xl">
                 {program?.name} • Delivery: <strong>{cohort?.mode}</strong> • Lead: <strong>{cohort?.instructorName}</strong>
               </p>

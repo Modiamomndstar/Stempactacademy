@@ -1665,22 +1665,37 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                   onClick={() => setSelectedCohortId(c.id)}
                 >
                   <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                          {c.cohortCode || c.code}
-                        </span>
-                        {c.academicSession && (
-                          <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                            {c.academicSession.name}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {c.cohortCode || c.code}
                           </span>
-                        )}
+                          {c.academicSession && (
+                            <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              {c.academicSession.name}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            Cohort: {extractCleanCohortName(c.name, c.program?.name)}
+                          </span>
+                        </div>
+
+                        <div className="pt-0.5">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                            Class Section
+                          </div>
+                          <h4 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                            {c.name}
+                          </h4>
+                          <div className="text-xs text-slate-500 font-medium mt-0.5">
+                            {c.program?.name}
+                            {c.program?.school && (
+                              <span className="text-slate-400"> • {c.program.school.name}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <h4 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {c.name}
-                      </h4>
-                      <div className="text-xs text-slate-500">{c.program?.name}</div>
-                    </div>
+
                     <span
                       className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                         c.status === 'OPEN'
