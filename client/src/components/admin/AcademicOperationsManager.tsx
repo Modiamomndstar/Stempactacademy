@@ -105,6 +105,8 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   const [selectedAcademicSessionId, setSelectedAcademicSessionId] = useState<string>('ALL');
   const [cohortStatusFilter, setCohortStatusFilter] = useState('');
   const [cohortSearch, setCohortSearch] = useState('');
+  const [selectedProgramFilter, setSelectedProgramFilter] = useState<string>('ALL');
+  const [selectedCohortNameFilter, setSelectedCohortNameFilter] = useState<string>('ALL');
 
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState('');
@@ -280,6 +282,18 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   const filteredCohorts = cohorts.filter((c) => {
     if (selectedAcademicSessionId !== 'ALL') {
       if (c.academicSessionId !== selectedAcademicSessionId && c.academicSession?.id !== selectedAcademicSessionId) {
+        return false;
+      }
+    }
+    if (selectedProgramFilter !== 'ALL') {
+      const progId = c.programId || c.program?.id;
+      const progCode = c.program?.code;
+      if (progId !== selectedProgramFilter && progCode !== selectedProgramFilter) {
+        return false;
+      }
+    }
+    if (selectedCohortNameFilter !== 'ALL') {
+      if (!c.name?.toLowerCase().includes(selectedCohortNameFilter.toLowerCase())) {
         return false;
       }
     }
@@ -1333,75 +1347,220 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {runningProgramsInSession.map(({ program, programVersion, curriculumVersion, cohorts: progCohorts }) => (
-                <div
-                  key={program?.id || Math.random()}
-                  className="p-4 rounded-xl bg-white border border-slate-200 space-y-2.5 shadow-2xs hover:border-blue-300 transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                        {program?.code}
-                      </span>
-                      <h5 className="font-bold text-xs text-slate-900 mt-1">{program?.name}</h5>
-                    </div>
-                    <button
-                      onClick={() => setSelectedProgramIdOrCode(program?.code || program?.id)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                      title="Inspect Program Console & Syllabus"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+              {runningProgramsInSession.map(({ program, programVersion, curriculumVersion, cohorts: progCohorts }) => {
+                const isSelectedProg = selectedProgramFilter === program?.id || selectedProgramFilter === program?.code;
+                const totalEnrolled = progCohorts.reduce((sum, item) => sum + (item.currentEnrollment || 0), 0);
+                const totalCapacity = progCohorts.reduce((sum, item) => sum + (item.maxCapacity || 0), 0);
+                // Extract distinct cohort names / intake batch labels
+                const cohortBatchNames = Array.from(new Set(progCohorts.map((co) => co.name).filter(Boolean)));
+                const ayNames = Array.from(new Set(progCohorts.map((co) => co.academicSession?.name).filter(Boolean)));
 
-                  <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono">
-                    <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-semibold">
-                      Prog v{programVersion?.versionNumber || 1}
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
-                      Curr v{curriculumVersion?.versionNumber || 1}
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                      {progCohorts.length} {progCohorts.length === 1 ? 'Cohort' : 'Cohorts'}
-                    </span>
+                return (
+                  <div
+                    key={program?.id || Math.random()}
+                    onClick={() => {
+                      // Toggle program filter on click
+                      setSelectedProgramFilter((prev) => (prev === (program?.id || program?.code) ? 'ALL' : (program?.id || program?.code)));
+                    }}
+                    className={`p-4 rounded-xl bg-white border transition-all cursor-pointer space-y-2.5 shadow-2xs hover:shadow-sm ${
+                      isSelectedProg
+                        ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/20'
+                        : 'border-slate-200 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {program?.code}
+                          </span>
+                          {/* Academic Year Badge */}
+                          {ayNames.length > 0 && (
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                              {ayNames.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                        <h5 className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition leading-snug">
+                          {program?.name}
+                        </h5>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProgramIdOrCode(program?.code || program?.id);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                          title="Inspect Program Console & Syllabus"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Cohort Intake Batch Tag */}
+                    {cohortBatchNames.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-semibold">Cohort:</span>
+                        {cohortBatchNames.map((name: any, nIdx: number) => (
+                          <span
+                            key={nIdx}
+                            className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate max-w-[200px]"
+                            title={String(name)}
+                          >
+                            {String(name)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Versions & Capacity Footprint */}
+                    <div className="flex items-center justify-between text-[10px] font-mono pt-1 border-t border-slate-100 flex-wrap gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-semibold">
+                          Prog v{programVersion?.versionNumber || 1}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                          Curr v{curriculumVersion?.versionNumber || 1}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 font-sans">
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                          isSelectedProg ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {progCohorts.length} {progCohorts.length === 1 ? 'Class Section' : 'Class Sections'}
+                        </span>
+                        {totalCapacity > 0 && (
+                          <span className="text-slate-500 font-mono text-[10px]">
+                            ({totalEnrolled}/{totalCapacity} seats)
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
           {/* Filters for Cohort Cards */}
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-wrap gap-3 items-center justify-between">
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search class sections & intakes..."
-                  value={cohortSearch}
-                  onChange={(e) => setCohortSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-blue-600"
-                />
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex flex-wrap gap-3 items-center justify-between">
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search class sections & intakes..."
+                    value={cohortSearch}
+                    onChange={(e) => setCohortSearch(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-blue-600"
+                  />
+                </div>
+
+                {/* Filter by Program */}
+                <select
+                  value={selectedProgramFilter}
+                  onChange={(e) => setSelectedProgramFilter(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
+                >
+                  <option value="ALL">All Programs ({programs.length})</option>
+                  {programs.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Filter by Cohort Name / Intake Batch */}
+                {(() => {
+                  const uniqueCohortNames = Array.from(new Set(cohorts.map((c: any) => c.name).filter(Boolean)));
+                  return uniqueCohortNames.length > 0 ? (
+                    <select
+                      value={selectedCohortNameFilter}
+                      onChange={(e) => setSelectedCohortNameFilter(e.target.value)}
+                      className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
+                    >
+                      <option value="ALL">All Cohort Batches</option>
+                      {uniqueCohortNames.map((name: any, idx: number) => (
+                        <option key={idx} value={String(name)}>
+                          Cohort: {String(name)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null;
+                })()}
+
+                <select
+                  value={cohortStatusFilter}
+                  onChange={(e) => setCohortStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
+                >
+                  <option value="">All Section Statuses</option>
+                  <option value="OPEN">OPEN (Accepting)</option>
+                  <option value="ALMOST_FULL">ALMOST FULL</option>
+                  <option value="FULL">FULL</option>
+                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
               </div>
 
-              <select
-                value={cohortStatusFilter}
-                onChange={(e) => setCohortStatusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
-              >
-                <option value="">All Section Statuses</option>
-                <option value="OPEN">OPEN (Accepting)</option>
-                <option value="ALMOST_FULL">ALMOST FULL</option>
-                <option value="FULL">FULL</option>
-                <option value="IN_PROGRESS">IN PROGRESS</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CLOSED">CLOSED</option>
-              </select>
+              <div className="flex items-center gap-2">
+                {(selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL' || cohortStatusFilter || cohortSearch) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProgramFilter('ALL');
+                      setSelectedCohortNameFilter('ALL');
+                      setCohortStatusFilter('');
+                      setCohortSearch('');
+                    }}
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+                <span className="text-xs font-mono text-slate-500 font-semibold">
+                  Showing {filteredCohorts.length} class sections
+                </span>
+              </div>
             </div>
 
-            <span className="text-xs font-mono text-slate-500 font-semibold">
-              Showing {filteredCohorts.length} class sections
-            </span>
+            {/* Active Filter Indicators */}
+            {(selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL') && (
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 flex-wrap text-xs">
+                <span className="text-slate-500 font-semibold text-[11px]">Active Drilldown:</span>
+                {selectedProgramFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold text-[11px]">
+                    <span>Program: {programs.find((p: any) => p.id === selectedProgramFilter || p.code === selectedProgramFilter)?.name || selectedProgramFilter}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProgramFilter('ALL')}
+                      className="hover:text-blue-900 cursor-pointer ml-1"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {selectedCohortNameFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                    <span>Cohort: {selectedCohortNameFilter}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCohortNameFilter('ALL')}
+                      className="hover:text-emerald-900 cursor-pointer ml-1"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cohorts Grid */}
@@ -1451,6 +1610,32 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     >
                       {c.status}
                     </span>
+                  </div>
+
+                  {/* Badges Row: Level, Center, Schedule */}
+                  <div className="flex items-center gap-2 text-[10px] flex-wrap">
+                    {c.level && (
+                      <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-semibold">
+                        {c.level}
+                      </span>
+                    )}
+                    {c.learningCenter ? (
+                      <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-semibold flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-rose-500" />
+                        <span>{c.learningCenter.name || c.learningCenter.cityOrTown}</span>
+                      </span>
+                    ) : c.location ? (
+                      <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400" />
+                        <span>{c.location}</span>
+                      </span>
+                    ) : null}
+                    {c.instructorName && (
+                      <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-semibold flex items-center gap-1">
+                        <Users className="w-3 h-3 text-blue-500" />
+                        <span>{c.instructorName}</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Version Anchors */}
