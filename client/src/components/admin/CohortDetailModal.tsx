@@ -1022,6 +1022,24 @@ export const CohortDetailModal: React.FC<CohortDetailModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Cohort Full Name & Display Identifier */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 dark:text-slate-300">
+                      Cohort / Class Section Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formState.name}
+                      onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                      placeholder="e.g. 2026 Cohort 1 or Internet of Things — 2026 Cohort 1 (Section A)"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold focus:outline-blue-600"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-400">
+                      Edit this name at any time (e.g. rename from "Alpha Intake 2026" to "2026 Cohort 1" or customize section labels).
+                    </p>
+                  </div>
+
                   {/* Capacity & Pricing Settings */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">

@@ -105,6 +105,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
   const [selectedAcademicSessionId, setSelectedAcademicSessionId] = useState<string>('ALL');
   const [cohortStatusFilter, setCohortStatusFilter] = useState('');
   const [cohortSearch, setCohortSearch] = useState('');
+  const [selectedSchoolCohortFilter, setSelectedSchoolCohortFilter] = useState<string>('ALL');
   const [selectedProgramFilter, setSelectedProgramFilter] = useState<string>('ALL');
   const [selectedCohortNameFilter, setSelectedCohortNameFilter] = useState<string>('ALL');
 
@@ -278,10 +279,35 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
     return true;
   });
 
+  // Helper to extract clean cohort intake name without repeating program name
+  const extractCleanCohortName = (fullName?: string, progName?: string): string => {
+    if (!fullName) return 'General Intake';
+    let clean = fullName;
+    if (progName && clean.toLowerCase().startsWith(progName.toLowerCase())) {
+      clean = clean.slice(progName.length).trim();
+      if (clean.startsWith('—') || clean.startsWith('-')) {
+        clean = clean.slice(1).trim();
+      }
+    } else if (clean.includes(' — ')) {
+      const parts = clean.split(' — ');
+      if (parts.length > 1) clean = parts[1].trim();
+    }
+    // Remove (Section A) suffix if present for grouping
+    clean = clean.replace(/\s*\([^\)]*Section[^\)]*\)/gi, '').trim();
+    return clean || fullName;
+  };
+
   // Filtered cohorts
   const filteredCohorts = cohorts.filter((c) => {
     if (selectedAcademicSessionId !== 'ALL') {
       if (c.academicSessionId !== selectedAcademicSessionId && c.academicSession?.id !== selectedAcademicSessionId) {
+        return false;
+      }
+    }
+    if (selectedSchoolCohortFilter !== 'ALL') {
+      const schId = c.program?.schoolId || c.program?.school?.id;
+      const schCode = c.program?.school?.code;
+      if (schId !== selectedSchoolCohortFilter && schCode !== selectedSchoolCohortFilter) {
         return false;
       }
     }
@@ -293,7 +319,8 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
       }
     }
     if (selectedCohortNameFilter !== 'ALL') {
-      if (!c.name?.toLowerCase().includes(selectedCohortNameFilter.toLowerCase())) {
+      const cleanName = extractCleanCohortName(c.name, c.program?.name);
+      if (cleanName !== selectedCohortNameFilter && !c.name?.toLowerCase().includes(selectedCohortNameFilter.toLowerCase())) {
         return false;
       }
     }
@@ -326,6 +353,15 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
     }>();
 
     list.forEach((c) => {
+      // Filter out if school filter is active
+      if (selectedSchoolCohortFilter !== 'ALL') {
+        const schId = c.program?.schoolId || c.program?.school?.id;
+        const schCode = c.program?.school?.code;
+        if (schId !== selectedSchoolCohortFilter && schCode !== selectedSchoolCohortFilter) {
+          return;
+        }
+      }
+
       const progId = c.programId || c.program?.id;
       if (!progId) return;
       if (!programMap.has(progId)) {
@@ -344,7 +380,7 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
     });
 
     return Array.from(programMap.values());
-  }, [cohorts, selectedAcademicSessionId]);
+  }, [cohorts, selectedAcademicSessionId, selectedSchoolCohortFilter]);
 
   // Current selected session details
   const activeSessionDetails = useMemo(() => {
@@ -1405,15 +1441,18 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                     {cohortBatchNames.length > 0 && (
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] text-slate-400 font-semibold">Cohort:</span>
-                        {cohortBatchNames.map((name: any, nIdx: number) => (
-                          <span
-                            key={nIdx}
-                            className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate max-w-[200px]"
-                            title={String(name)}
-                          >
-                            {String(name)}
-                          </span>
-                        ))}
+                        {cohortBatchNames.map((name: any, nIdx: number) => {
+                          const cleanCohortName = extractCleanCohortName(String(name), program?.name);
+                          return (
+                            <span
+                              key={nIdx}
+                              className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 truncate max-w-[200px]"
+                              title={cleanCohortName}
+                            >
+                              {cleanCohortName}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -1462,31 +1501,63 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
                   />
                 </div>
 
+                {/* Filter by School */}
+                <select
+                  value={selectedSchoolCohortFilter}
+                  onChange={(e) => {
+                    setSelectedSchoolCohortFilter(e.target.value);
+                    // Reset program filter if current program does not belong to the selected school
+                    if (e.target.value !== 'ALL' && selectedProgramFilter !== 'ALL') {
+                      const prog = programs.find((p: any) => p.id === selectedProgramFilter || p.code === selectedProgramFilter);
+                      if (prog && prog.schoolId !== e.target.value && prog.school?.code !== e.target.value) {
+                        setSelectedProgramFilter('ALL');
+                      }
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
+                >
+                  <option value="ALL">All Academic Schools ({effectiveSchools.length})</option>
+                  {effectiveSchools.map((s: any) => (
+                    <option key={s.id || s.code} value={s.id || s.code}>
+                      {s.code} — {s.name}
+                    </option>
+                  ))}
+                </select>
+
                 {/* Filter by Program */}
                 <select
                   value={selectedProgramFilter}
                   onChange={(e) => setSelectedProgramFilter(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
                 >
-                  <option value="ALL">All Programs ({programs.length})</option>
-                  {programs.map((p: any) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} — {p.name}
-                    </option>
-                  ))}
+                  <option value="ALL">
+                    {selectedSchoolCohortFilter !== 'ALL' ? 'All School Programs' : `All Programs (${programs.length})`}
+                  </option>
+                  {programs
+                    .filter((p: any) => {
+                      if (selectedSchoolCohortFilter === 'ALL') return true;
+                      return p.schoolId === selectedSchoolCohortFilter || p.school?.code === selectedSchoolCohortFilter;
+                    })
+                    .map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} — {p.name}
+                      </option>
+                    ))}
                 </select>
 
-                {/* Filter by Cohort Name / Intake Batch */}
+                {/* Filter by Cohort Intake Batch (Deduplicated Clean Names) */}
                 {(() => {
-                  const uniqueCohortNames = Array.from(new Set(cohorts.map((c: any) => c.name).filter(Boolean)));
-                  return uniqueCohortNames.length > 0 ? (
+                  const uniqueCleanCohortNames = Array.from(
+                    new Set(cohorts.map((c: any) => extractCleanCohortName(c.name, c.program?.name)).filter(Boolean))
+                  );
+                  return uniqueCleanCohortNames.length > 0 ? (
                     <select
                       value={selectedCohortNameFilter}
                       onChange={(e) => setSelectedCohortNameFilter(e.target.value)}
                       className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-medium focus:outline-blue-600"
                     >
                       <option value="ALL">All Cohort Batches</option>
-                      {uniqueCohortNames.map((name: any, idx: number) => (
+                      {uniqueCleanCohortNames.map((name: any, idx: number) => (
                         <option key={idx} value={String(name)}>
                           Cohort: {String(name)}
                         </option>
@@ -1511,10 +1582,11 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
               </div>
 
               <div className="flex items-center gap-2">
-                {(selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL' || cohortStatusFilter || cohortSearch) && (
+                {(selectedSchoolCohortFilter !== 'ALL' || selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL' || cohortStatusFilter || cohortSearch) && (
                   <button
                     type="button"
                     onClick={() => {
+                      setSelectedSchoolCohortFilter('ALL');
                       setSelectedProgramFilter('ALL');
                       setSelectedCohortNameFilter('ALL');
                       setCohortStatusFilter('');
@@ -1532,9 +1604,21 @@ export const AcademicOperationsManager: React.FC<AcademicOperationsManagerProps>
             </div>
 
             {/* Active Filter Indicators */}
-            {(selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL') && (
+            {(selectedSchoolCohortFilter !== 'ALL' || selectedProgramFilter !== 'ALL' || selectedCohortNameFilter !== 'ALL') && (
               <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 flex-wrap text-xs">
                 <span className="text-slate-500 font-semibold text-[11px]">Active Drilldown:</span>
+                {selectedSchoolCohortFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-[11px]">
+                    <span>School: {effectiveSchools.find((s: any) => s.id === selectedSchoolCohortFilter || s.code === selectedSchoolCohortFilter)?.name || selectedSchoolCohortFilter}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSchoolCohortFilter('ALL')}
+                      className="hover:text-indigo-900 cursor-pointer ml-1"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
                 {selectedProgramFilter !== 'ALL' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold text-[11px]">
                     <span>Program: {programs.find((p: any) => p.id === selectedProgramFilter || p.code === selectedProgramFilter)?.name || selectedProgramFilter}</span>
