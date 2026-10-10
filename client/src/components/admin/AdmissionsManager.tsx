@@ -65,7 +65,7 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
   // Placement Review Modal State
   const [reviewingPlacement, setReviewingPlacement] = useState<any | null>(null);
   const [boardAction, setBoardAction] = useState<'APPROVE' | 'MODIFY' | 'REJECT' | 'RETURN_FOR_REASSESSMENT'>('APPROVE');
-  const [approvedLevel, setApprovedLevel] = useState('Level 2 (Accelerated)');
+  const [approvedLevel, setApprovedLevel] = useState('Level 1 — Foundation');
   const [approvedProgramId, setApprovedProgramId] = useState('');
   const [approvedCohortId, setApprovedCohortId] = useState('');
   const [boardNotes, setBoardNotes] = useState('');
@@ -557,7 +557,9 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
                       <button
                         onClick={() => {
                           setReviewingPlacement(plc);
-                          setApprovedLevel(plc.recommendedLevel || 'Level 2 (Accelerated)');
+                          // Pre-select recommended level from placement if available, otherwise default to Level 1
+                          const recLevel = plc.recommendedLevel || 'Level 1 — Foundation';
+                          setApprovedLevel(recLevel.includes('Level') ? recLevel : 'Level 1 — Foundation');
                           setApprovedProgramId(plc.application?.programId || '');
                           setApprovedCohortId(plc.application?.cohortId || '');
                           setBoardNotes(plc.adminNotes || '');
@@ -647,9 +649,10 @@ export const AdmissionsManager: React.FC<AdmissionsManagerProps> = ({
                       onChange={(e) => setApprovedLevel(e.target.value)}
                       className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
                     >
-                      <option value="Level 1 (Foundation)">Level 1 (Foundation)</option>
-                      <option value="Level 2 (Accelerated)">Level 2 (Accelerated)</option>
-                      <option value="Level 3 (Advanced Specialization)">Level 3 (Advanced Specialization)</option>
+                      <option value="Level 1 — Foundation">Level 1 — Foundation</option>
+                      <option value="Level 2 — Intermediate">Level 2 — Intermediate</option>
+                      <option value="Level 3 — Advanced">Level 3 — Advanced</option>
+                      <option value="Level 4 — Mastery / Specialist">Level 4 — Mastery / Specialist</option>
                     </select>
                   </div>
 

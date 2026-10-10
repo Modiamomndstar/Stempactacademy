@@ -47,18 +47,11 @@ export class PlacementService {
         rationale: `Sound performance (${scorePercentage.toFixed(1)}%). Sound digital literacy and fundamental syntax; benefits from supervised lab sprints.`,
         ruleVersion: CURRENT_PLACEMENT_RULE_VERSION,
       };
-    } else if (scorePercentage >= 30) {
+    } else {
       return {
         recommendedLevel: 'Level 1 — Foundation Bootcamp',
         levelCode: AcademicLevel.LEVEL_1_FOUNDATION,
-        rationale: `Foundational performance (${scorePercentage.toFixed(1)}%). Eager learner; best served by structured foundations in computational logic and syntax.`,
-        ruleVersion: CURRENT_PLACEMENT_RULE_VERSION,
-      };
-    } else {
-      return {
-        recommendedLevel: 'Level 0 — Assessment & Digital Literacy',
-        levelCode: AcademicLevel.LEVEL_0_ASSESSMENT,
-        rationale: `Score (${scorePercentage.toFixed(1)}%). Recommended for prerequisite digital literacy and computational thinking orientation.`,
+        rationale: `Foundational performance (${scorePercentage.toFixed(1)}%). Recommended for foundational computational logic, introductory toolchains, and hands-on laboratory mentoring.`,
         ruleVersion: CURRENT_PLACEMENT_RULE_VERSION,
       };
     }
@@ -408,7 +401,19 @@ export class PlacementService {
 
     const finalProgramName = resolvedProgram?.name || placement.recommendedProgram;
     const finalLevel = approvedLevel || placement.recommendedLevel;
-    const finalLevelCode = approvedLevelCode || placement.recommendedLevelCode || null;
+
+    // Helper to map level strings to canonical AcademicLevel enum
+    const parseLevelCode = (lvlStr?: string | null): AcademicLevel | null => {
+      if (!lvlStr) return null;
+      const s = lvlStr.toUpperCase();
+      if (s.includes('LEVEL_4') || s.includes('LEVEL 4') || s.includes('SPECIALIST') || s.includes('MASTERY')) return AcademicLevel.LEVEL_4_SPECIALIST;
+      if (s.includes('LEVEL_3') || s.includes('LEVEL 3') || s.includes('ADVANCED')) return AcademicLevel.LEVEL_3_ADVANCED;
+      if (s.includes('LEVEL_2') || s.includes('LEVEL 2') || s.includes('INTERMEDIATE') || s.includes('ACCELERATED')) return AcademicLevel.LEVEL_2_INTERMEDIATE;
+      if (s.includes('LEVEL_1') || s.includes('LEVEL 1') || s.includes('FOUNDATION')) return AcademicLevel.LEVEL_1_FOUNDATION;
+      return null;
+    };
+
+    const finalLevelCode = approvedLevelCode || parseLevelCode(approvedLevel) || placement.recommendedLevelCode || AcademicLevel.LEVEL_1_FOUNDATION;
 
     const finalCohort = approvedCohortId
       ? await prisma.cohort.findUnique({ where: { id: approvedCohortId } })
