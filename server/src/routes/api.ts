@@ -210,6 +210,7 @@ router.get('/admin/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.COORDI
 router.get('/admin/directory/stats', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getDirectoryStats);
 router.get('/admin/directory/users', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getDirectoryUsers);
 router.get('/admin/directory/users/:id/profile360', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.FINANCE_ADMIN, Role.ADMISSIONS_ADMIN, Role.MARKETING_MANAGER), adminDirectoryController.getUserProfile360);
+router.post('/admin/students/:id/transfer-section', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), adminDirectoryController.transferStudentSection);
 
 // 16. Admin & Staff Management
 router.post('/admin/admins', authenticate, authorize(Role.SUPER_ADMIN), adminUserController.createAdmin);

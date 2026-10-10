@@ -819,3 +819,196 @@ export const getUserProfile360 = async (req: AuthRequest, res: Response): Promis
     res.status(500).json({ message: 'Failed to retrieve 360 degree user profile' });
   }
 };
+
+/**
+ * Transfer / Switch a Student to a Different Class Section or Cohort.
+ * Preserves all grades, invoices, and attendance while atomically updating
+ * currentCohortId, StudentCohortEnrollment, recalculating seat counts,
+ * and creating an AuditLog entry.
+ */
+export const transferStudentSection = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params; // studentProfile id or user id
+    const { targetCohortId, reason } = req.body;
+
+    if (!targetCohortId) {
+      res.status(400).json({ message: 'Target cohort ID is required.' });
+      return;
+    }
+
+    // 1. Resolve student profile
+    const student = await prisma.studentProfile.findFirst({
+      where: {
+        OR: [{ id }, { userId: id }],
+      },
+      include: {
+        user: true,
+        cohort: true,
+      },
+    });
+
+    if (!student) {
+      res.status(404).json({ message: 'Student profile not found.' });
+      return;
+    }
+
+    const sourceCohortId = student.currentCohortId;
+
+    if (sourceCohortId === targetCohortId) {
+      res.status(400).json({ message: 'Student is already enrolled in this class section.' });
+      return;
+    }
+
+    // 2. Fetch target cohort and verify capacity
+    const targetCohort = await prisma.cohort.findUnique({
+      where: { id: targetCohortId },
+      include: {
+        program: true,
+        enrollments: { where: { status: { in: ['ENROLLED', 'ACTIVE'] } } },
+      },
+    });
+
+    if (!targetCohort) {
+      res.status(404).json({ message: 'Target cohort / class section not found.' });
+      return;
+    }
+
+    const targetActiveCount = targetCohort.enrollments.length;
+    if (targetActiveCount >= targetCohort.maxCapacity) {
+      res.status(400).json({
+        message: `Target section "${targetCohort.name}" is already at full capacity (${targetActiveCount}/${targetCohort.maxCapacity}). Please expand the section max capacity first.`,
+      });
+      return;
+    }
+
+    // 3. Perform atomic transfer
+    await prisma.$transaction(async (tx) => {
+      // a. Mark old enrollment as WITHDRAWN (with reason transfer) if exists
+      if (sourceCohortId) {
+        await tx.studentCohortEnrollment.updateMany({
+          where: {
+            studentId: student.id,
+            cohortId: sourceCohortId,
+            status: { in: ['ENROLLED', 'ACTIVE'] },
+          },
+          data: {
+            status: 'WITHDRAWN',
+            withdrawalReason: `Transferred to ${targetCohort.name}. Reason: ${reason || 'Administrative adjustment'}`,
+            withdrawnAt: new Date(),
+            notes: `Transferred to ${targetCohort.name} by admin (${req.user?.firstName || 'Admin'}). Reason: ${reason || 'Administrative adjustment'}`,
+          },
+        });
+
+        // Recalculate source cohort enrollment count
+        const sourceActiveCount = await tx.studentCohortEnrollment.count({
+          where: {
+            cohortId: sourceCohortId,
+            status: { in: ['ENROLLED', 'ACTIVE'] },
+          },
+        });
+        const sourceCohortRecord = await tx.cohort.findUnique({ where: { id: sourceCohortId } });
+        const sourceCap = sourceCohortRecord?.maxCapacity || 25;
+        await tx.cohort.update({
+          where: { id: sourceCohortId },
+          data: {
+            currentEnrollment: sourceActiveCount,
+            status: sourceActiveCount >= sourceCap ? 'FULL' : 'OPEN',
+          },
+        });
+      }
+
+      // b. Upsert new enrollment in target cohort
+      await tx.studentCohortEnrollment.upsert({
+        where: {
+          studentId_cohortId: {
+            studentId: student.id,
+            cohortId: targetCohortId,
+          },
+        },
+        create: {
+          studentId: student.id,
+          cohortId: targetCohortId,
+          programId: targetCohort.programId,
+          curriculumVersionId: targetCohort.curriculumVersionId,
+          academicSessionId: targetCohort.academicSessionId,
+          enrolledById: req.user?.id,
+          status: 'ENROLLED',
+          notes: `Transferred from ${student.cohort?.name || 'Previous Section'}. Reason: ${reason || 'Administrative adjustment'}`,
+        },
+        update: {
+          status: 'ENROLLED',
+          withdrawalReason: null,
+          withdrawnAt: null,
+          notes: `Re-enrolled/Transferred from ${student.cohort?.name || 'Previous Section'}. Reason: ${reason || 'Administrative adjustment'}`,
+        },
+      });
+
+      // c. Update studentProfile currentCohortId
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: {
+          currentCohortId: targetCohortId,
+          currentLevel: targetCohort.level,
+        },
+      });
+
+      // d. Recalculate target cohort enrollment count
+      const newTargetActiveCount = await tx.studentCohortEnrollment.count({
+        where: {
+          cohortId: targetCohortId,
+          status: { in: ['ENROLLED', 'ACTIVE'] },
+        },
+      });
+
+      const updatedStatus =
+        newTargetActiveCount >= targetCohort.maxCapacity
+          ? 'FULL'
+          : targetCohort.maxCapacity - newTargetActiveCount <= 3
+          ? 'ALMOST_FULL'
+          : 'OPEN';
+
+      await tx.cohort.update({
+        where: { id: targetCohortId },
+        data: {
+          currentEnrollment: newTargetActiveCount,
+          status: updatedStatus,
+        },
+      });
+
+      // e. Audit Log
+      await tx.auditLog.create({
+        data: {
+          userId: req.user?.id,
+          userName: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Admin',
+          userRole: req.user?.role || 'SUPER_ADMIN',
+          action: 'STUDENT_SECTION_TRANSFER',
+          resource: 'StudentProfile',
+          resourceId: student.id,
+          previousValue: JSON.stringify({
+            cohortId: student.cohort?.id || null,
+            cohortName: student.cohort?.name || null,
+          }),
+          newValue: JSON.stringify({
+            cohortId: targetCohort.id,
+            cohortName: targetCohort.name,
+            reason: reason || 'Administrative adjustment',
+            studentName: `${student.user.firstName} ${student.user.lastName}`,
+            studentIdNumber: student.studentIdNumber,
+          }),
+        },
+      });
+    });
+
+    res.status(200).json({
+      message: `Student successfully transferred to ${targetCohort.name}.`,
+      targetCohort: {
+        id: targetCohort.id,
+        name: targetCohort.name,
+      },
+    });
+  } catch (error: any) {
+    console.error('transferStudentSection error:', error);
+    res.status(500).json({ message: 'Failed to transfer student section.' });
+  }
+};
+

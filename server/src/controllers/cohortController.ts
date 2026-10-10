@@ -206,13 +206,41 @@ export const updateCohort = async (req: Request, res: Response): Promise<void> =
       instructorName,
     } = req.body;
 
+    const existingCohort = await prisma.cohort.findUnique({
+      where: { id },
+      include: { enrollments: { where: { status: { in: ['ENROLLED', 'ACTIVE'] } } } },
+    });
+
+    if (!existingCohort) {
+      res.status(404).json({ message: 'Cohort not found' });
+      return;
+    }
+
+    const newCapacity = maxCapacity !== undefined ? Number(maxCapacity) : existingCohort.maxCapacity;
+    const actualEnrollment = currentEnrollment !== undefined ? Number(currentEnrollment) : existingCohort.currentEnrollment;
+
+    let targetStatus: CohortStatus = (status as CohortStatus) || existingCohort.status;
+
+    // Automatic capacity status logic if status wasn't explicitly forced to a terminal/in-progress status:
+    if (!status) {
+      if (actualEnrollment >= newCapacity) {
+        if (targetStatus === 'OPEN' || targetStatus === 'ALMOST_FULL') {
+          targetStatus = 'FULL';
+        }
+      } else if (existingCohort.status === 'FULL' && newCapacity > actualEnrollment) {
+        // Reopen previously FULL cohort because maxCapacity was expanded!
+        const remainingSeats = newCapacity - actualEnrollment;
+        targetStatus = remainingSeats <= 3 ? 'ALMOST_FULL' : 'OPEN';
+      }
+    }
+
     const cohort = await prisma.cohort.update({
       where: { id },
       data: {
         ...(name && { name }),
-        ...(status && { status: status as CohortStatus }),
-        ...(maxCapacity !== undefined && { maxCapacity: Number(maxCapacity) }),
-        ...(currentEnrollment !== undefined && { currentEnrollment: Number(currentEnrollment) }),
+        status: targetStatus,
+        ...(maxCapacity !== undefined && { maxCapacity: newCapacity }),
+        ...(currentEnrollment !== undefined && { currentEnrollment: actualEnrollment }),
         ...(trainingFee !== undefined && { trainingFee: Number(trainingFee) }),
         ...(registrationFee !== undefined && { registrationFee: Number(registrationFee) }),
         ...(certificationFee !== undefined && { certificationFee: Number(certificationFee) }),

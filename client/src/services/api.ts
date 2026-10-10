@@ -489,6 +489,12 @@ export const api = {
     return apiRequest(`/admin/directory/users${qs ? `?${qs}` : ''}`);
   },
   getUserProfile360: (id: string) => apiRequest(`/admin/directory/users/${id}/profile360`),
+  transferStudentSection: (studentId: string, data: { targetCohortId: string; reason?: string }) =>
+    apiRequest(`/admin/students/${studentId}/transfer-section`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
+
 
 

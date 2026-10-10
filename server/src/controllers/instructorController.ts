@@ -25,9 +25,32 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
       },
     });
 
-    // Find all active cohorts
+    // Determine cohort filter:
+    // If user is SUPER_ADMIN or ACADEMIC_ADMIN and passed ?filter=assigned, filter by assignment;
+    // Otherwise, if user has role INSTRUCTOR (and not super/academic admin), only show cohorts they are assigned to
+    // (via CohortInstructor junction OR instructorName matching their name).
+    const filterMode = req.query.filter as string | undefined;
+    const isAcademyAdmin = req.user.role === 'SUPER_ADMIN' || req.user.role === 'ACADEMIC_ADMIN';
+
+    let cohortWhereClause: any = {
+      status: { in: ['OPEN', 'ALMOST_FULL', 'IN_PROGRESS'] },
+    };
+
+    if (!isAcademyAdmin || filterMode === 'assigned') {
+      const instructorNameSearch = req.user.lastName || '';
+      cohortWhereClause = {
+        ...cohortWhereClause,
+        OR: [
+          ...(instructorProfile ? [{ instructors: { some: { instructorId: instructorProfile.id } } }] : []),
+          { instructors: { some: { instructor: { userId: req.user.id } } } },
+          ...(instructorNameSearch ? [{ instructorName: { contains: instructorNameSearch, mode: 'insensitive' } }] : []),
+        ],
+      };
+    }
+
+    // Find active cohorts
     const activeCohorts = await prisma.cohort.findMany({
-      where: { status: { in: ['OPEN', 'ALMOST_FULL', 'IN_PROGRESS'] } },
+      where: cohortWhereClause,
       include: {
         program: { include: { school: true } },
         learningCenter: true,

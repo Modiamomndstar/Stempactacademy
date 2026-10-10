@@ -29,6 +29,8 @@ import {
   Activity,
   Check,
   TrendingUp,
+  ArrowRightLeft,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -38,14 +40,25 @@ import { api } from '../../services/api';
 interface Learner360ModalProps {
   userId: string;
   onClose: () => void;
+  onTransferred?: () => void;
 }
 
-export const Learner360Modal: React.FC<Learner360ModalProps> = ({ userId, onClose }) => {
+export const Learner360Modal: React.FC<Learner360ModalProps> = ({ userId, onClose, onTransferred }) => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeDossierTab, setActiveDossierTab] = useState<
     'overview' | 'academic' | 'submissions' | 'finance' | 'activity'
   >('overview');
+
+  // Transfer Class Section State
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [targetCohortId, setTargetCohortId] = useState('');
+  const [transferReason, setTransferReason] = useState('');
+  const [allCohorts, setAllCohorts] = useState<any[]>([]);
+  const [loadingCohorts, setLoadingCohorts] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [transferError, setTransferError] = useState('');
+  const [transferSuccess, setTransferSuccess] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -352,9 +365,146 @@ export const Learner360Modal: React.FC<Learner360ModalProps> = ({ userId, onClos
             <div className="space-y-6">
               {/* Active & Past Cohort Enrollments */}
               <div className="space-y-3">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-blue-600" /> Enrolled Cohorts & Programs
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-blue-600" /> Enrolled Cohorts & Programs
+                  </h3>
+                  {studentProfile && (
+                    <button
+                      onClick={async () => {
+                        setShowTransferModal(true);
+                        setTransferError('');
+                        setTransferSuccess('');
+                        setLoadingCohorts(true);
+                        try {
+                          const res = await api.getCohorts({ openOnly: 'true' });
+                          setAllCohorts(res.cohorts || res || []);
+                        } catch (err: any) {
+                          setTransferError('Failed to load available cohorts.');
+                        } finally {
+                          setLoadingCohorts(false);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition cursor-pointer"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                      Transfer Section / Stream
+                    </button>
+                  )}
+                </div>
+
+                {transferSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{transferSuccess}</span>
+                  </div>
+                )}
+
+                {/* INLINE TRANSFER CLASS SECTION FORM */}
+                {showTransferModal && (
+                  <div className="p-5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                        <h4 className="font-black text-indigo-950 text-xs">
+                          Transfer Student to Another Class Section / Cohort
+                        </h4>
+                      </div>
+                      <button
+                        onClick={() => setShowTransferModal(false)}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      This action moves the student to a new class section, stream, or program. All existing assignment grades, tuition payments, and attendance marks are safely preserved.
+                    </p>
+
+                    {transferError && (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                        <span>{transferError}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700">Select Target Class Section / Cohort *</label>
+                        <select
+                          value={targetCohortId}
+                          onChange={(e) => setTargetCohortId(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-xs focus:ring-2 focus:ring-indigo-300"
+                        >
+                          <option value="">— Select Target Class Section —</option>
+                          {allCohorts.map((c: any) => {
+                            const isCurrent = c.id === studentProfile?.currentCohortId;
+                            const availableSeats = Math.max(0, (c.maxCapacity || 0) - (c.currentEnrollment || 0));
+                            return (
+                              <option key={c.id} value={c.id} disabled={isCurrent || availableSeats === 0}>
+                                {c.name} {isCurrent ? '(Current)' : availableSeats === 0 ? '(FULL)' : `(${availableSeats}/${c.maxCapacity} seats available)`}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {loadingCohorts && <p className="text-[10px] text-slate-400">Loading open sections...</p>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-slate-700">Transfer Reason</label>
+                        <input
+                          type="text"
+                          value={transferReason}
+                          onChange={(e) => setTransferReason(e.target.value)}
+                          placeholder="e.g. Relocated center, Schedule clash, Level upgrade"
+                          className="w-full p-2.5 rounded-xl border border-indigo-200 bg-white text-xs focus:ring-2 focus:ring-indigo-300"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
+                      <button
+                        type="button"
+                        onClick={() => setShowTransferModal(false)}
+                        className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={transferring || !targetCohortId}
+                        onClick={async () => {
+                          if (!targetCohortId) return;
+                          setTransferring(true);
+                          setTransferError('');
+                          setTransferSuccess('');
+                          try {
+                            const res = await api.transferStudentSection(studentProfile.id, {
+                              targetCohortId,
+                              reason: transferReason,
+                            });
+                            setTransferSuccess(res.message || 'Student transferred successfully!');
+                            setShowTransferModal(false);
+                            setTargetCohortId('');
+                            setTransferReason('');
+                            // Refresh dossier profile
+                            const updated = await api.getUserProfile360(userId);
+                            setProfile(updated?.profile || updated);
+                            if (onTransferred) onTransferred();
+                          } catch (err: any) {
+                            setTransferError(err.message || 'Failed to transfer student.');
+                          } finally {
+                            setTransferring(false);
+                          }
+                        }}
+                        className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {transferring ? 'Transferring...' : 'Confirm Section Transfer'}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {enrollments && enrollments.length > 0 ? (
                   <div className="grid grid-cols-1 gap-3">
                     {enrollments.map((enr: any) => (
@@ -1379,6 +1529,10 @@ export const Directory360Manager: React.FC = () => {
         <Learner360Modal
           userId={selectedUserId}
           onClose={() => setSelectedUserId(null)}
+          onTransferred={() => {
+            fetchStats();
+            fetchUsers();
+          }}
         />
       )}
     </div>

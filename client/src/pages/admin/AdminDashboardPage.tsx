@@ -2368,14 +2368,33 @@ export const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Max Capacity</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-300">Max Capacity (Seats)</label>
+                    {editingCohort && (
+                      <span className="text-[10px] text-brand-400 font-mono">
+                        Enrolled: {editingCohort.currentEnrollment || 0}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
-                    min="1"
+                    min={editingCohort ? Math.max(1, editingCohort.currentEnrollment || 1) : 1}
                     value={cohortFeeForm.maxCapacity}
-                    onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, maxCapacity: Number(e.target.value) })}
+                    onChange={(e) => {
+                      const newCap = Number(e.target.value);
+                      const currentEnrolled = editingCohort?.currentEnrollment || 0;
+                      // Auto-update status preview
+                      let nextStatus = cohortFeeForm.status;
+                      if (cohortFeeForm.status === 'FULL' && newCap > currentEnrolled) {
+                        nextStatus = (newCap - currentEnrolled <= 3) ? 'ALMOST_FULL' : 'OPEN';
+                      }
+                      setCohortFeeForm({ ...cohortFeeForm, maxCapacity: newCap, status: nextStatus });
+                    }}
                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Increase capacity to immediately accommodate more students. Reopens full cohorts automatically.
+                  </p>
                 </div>
               </div>
 
