@@ -110,3 +110,211 @@
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* ============================================================
+   AI COPILOT CHAT MARKDOWN TYPOGRAPHY & TABLE STYLING
+   ============================================================ */
+.chat-markdown {
+  color: #1e293b;
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.65;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 1rem;
+  margin-bottom: 0.45rem;
+  line-height: 1.35;
+}
+
+.chat-markdown h1 { font-size: 1.15rem; }
+.chat-markdown h2 { font-size: 1.05rem; }
+.chat-markdown h3 { font-size: 0.95rem; }
+.chat-markdown h4 { font-size: 0.875rem; }
+
+.chat-markdown h1:first-child,
+.chat-markdown h2:first-child,
+.chat-markdown h3:first-child,
+.chat-markdown h4:first-child {
+  margin-top: 0;
+}
+
+.chat-markdown p {
+  margin-bottom: 0.65rem;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown strong,
+.chat-markdown b {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chat-markdown em,
+.chat-markdown i {
+  font-style: italic;
+}
+
+.chat-markdown ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.chat-markdown ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.chat-markdown li {
+  margin-bottom: 0.25rem;
+  line-height: 1.55;
+}
+
+.chat-markdown blockquote {
+  border-left: 3px solid #10b981;
+  background-color: #f0fdf4;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin: 0.65rem 0;
+  color: #065f46;
+  font-style: italic;
+}
+
+.chat-markdown code {
+  font-family: var(--font-mono);
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-size: 0.825em;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+}
+
+.chat-markdown pre {
+  background-color: #090d16;
+  color: #38bdf8;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  margin: 0.65rem 0;
+  border: 1px solid #1e293b;
+}
+
+.chat-markdown pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Responsive GFM Markdown Tables */
+.chat-markdown table {
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.65rem;
+  background-color: #ffffff;
+}
+
+.chat-markdown thead {
+  background-color: #f1f5f9;
+}
+
+.chat-markdown th {
+  padding: 0.6rem 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: left;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  white-space: nowrap;
+}
+
+.chat-markdown td {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.chat-markdown tr:nth-child(even) td {
+  background-color: #f8fafc;
+}
+
+.chat-markdown tr:hover td {
+  background-color: #f1f5f9;
+}
+
+.chat-markdown a {
+  color: #0284c7;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.chat-markdown hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0.85rem 0;
+}
+
+/* Dark mode adjustments */
+.dark .chat-markdown {
+  color: #e2e8f0;
+}
+.dark .chat-markdown h1,
+.dark .chat-markdown h2,
+.dark .chat-markdown h3,
+.dark .chat-markdown h4,
+.dark .chat-markdown strong,
+.dark .chat-markdown b {
+  color: #ffffff;
+}
+.dark .chat-markdown table {
+  background-color: #0f172a;
+  border-color: #334155;
+}
+.dark .chat-markdown th {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+.dark .chat-markdown td {
+  border-color: #334155;
+  color: #cbd5e1;
+}
+.dark .chat-markdown tr:nth-child(even) td {
+  background-color: #1e293b/40;
+}
+.dark .chat-markdown tr:hover td {
+  background-color: #1e293b;
+}
+.dark .chat-markdown code {
+  background-color: #1e293b;
+  color: #38bdf8;
+  border-color: #334155;
+}
+.dark .chat-markdown blockquote {
+  background-color: #064e3b/30;
+  color: #a7f3d0;
+  border-color: #059669;
+}
