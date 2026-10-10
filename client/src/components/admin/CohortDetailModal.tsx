@@ -77,18 +77,24 @@ export const CohortDetailModal: React.FC<CohortDetailModalProps> = ({
     endDate: '',
     applicationDeadline: '',
     level: 'Level 1',
+    levelCode: 'LEVEL_1_FOUNDATION',
+    learningCenterId: '',
   });
+
+  const [availableCenters, setAvailableCenters] = useState<any[]>([]);
 
   const loadCohortData = async () => {
     if (!cohortId) return;
     setLoading(true);
     setError('');
     try {
-      const [cohortRes, analysisRes] = await Promise.all([
+      const [cohortRes, analysisRes, centersRes] = await Promise.all([
         api.getCohortById(cohortId).catch(() => null),
         api.getCohortAnalysis(cohortId).catch(() => null),
+        api.getCenters().catch(() => ({ centers: [] })),
       ]);
 
+      setAvailableCenters(centersRes?.centers || []);
       const c = cohortRes?.cohort;
       setCohort(c);
       setAnalysis(analysisRes);
@@ -111,6 +117,8 @@ export const CohortDetailModal: React.FC<CohortDetailModalProps> = ({
           endDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : '',
           applicationDeadline: c.applicationDeadline ? new Date(c.applicationDeadline).toISOString().split('T')[0] : '',
           level: c.level || 'Level 1',
+          levelCode: c.levelCode || 'LEVEL_1_FOUNDATION',
+          learningCenterId: c.learningCenterId || '',
         });
       }
     } catch (err: any) {
@@ -1157,6 +1165,105 @@ export const CohortDetailModal: React.FC<CohortDetailModalProps> = ({
                         value={formState.endDate}
                         onChange={(e) => setFormState({ ...formState, endDate: e.target.value })}
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Location & Learning Center & Level Customization */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Academic Level
+                      </label>
+                      <select
+                        value={formState.levelCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          const labelMap: Record<string, string> = {
+                            LEVEL_1_FOUNDATION: 'Level 1 (Foundation)',
+                            LEVEL_2_INTERMEDIATE: 'Level 2 (Intermediate)',
+                            LEVEL_3_ADVANCED: 'Level 3 (Advanced)',
+                            LEVEL_4_SPECIALIST: 'Level 4 (Mastery / Specialist)',
+                          };
+                          setFormState({
+                            ...formState,
+                            levelCode: code,
+                            level: labelMap[code] || 'Level 1',
+                          });
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-blue-600"
+                      >
+                        <option value="LEVEL_1_FOUNDATION">Level 1 — Foundation</option>
+                        <option value="LEVEL_2_INTERMEDIATE">Level 2 — Intermediate</option>
+                        <option value="LEVEL_3_ADVANCED">Level 3 — Advanced</option>
+                        <option value="LEVEL_4_SPECIALIST">Level 4 — Mastery / Specialist</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Learning Center Campus
+                      </label>
+                      <select
+                        value={formState.learningCenterId}
+                        onChange={(e) => {
+                          const centerId = e.target.value;
+                          const centerObj = availableCenters.find((c) => c.id === centerId);
+                          setFormState({
+                            ...formState,
+                            learningCenterId: centerId,
+                            location: centerObj ? `${centerObj.name}, ${centerObj.cityOrTown || centerObj.address}` : formState.location,
+                          });
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-blue-600"
+                      >
+                        <option value="">— Virtual / No Fixed Center —</option>
+                        {availableCenters.map((ctr: any) => (
+                          <option key={ctr.id} value={ctr.id}>
+                            {ctr.name} {ctr.cityOrTown ? `· ${ctr.cityOrTown}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Delivery Mode
+                      </label>
+                      <input
+                        type="text"
+                        value={formState.mode}
+                        onChange={(e) => setFormState({ ...formState, mode: e.target.value })}
+                        placeholder="e.g. Hybrid, Onsite Ile-Ife, 100% Online"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-blue-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Lead Instructor Name
+                      </label>
+                      <input
+                        type="text"
+                        value={formState.instructorName}
+                        onChange={(e) => setFormState({ ...formState, instructorName: e.target.value })}
+                        placeholder="e.g. Engr. Damilola Adeyemi"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-blue-600"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        Physical Location / Campus Room
+                      </label>
+                      <input
+                        type="text"
+                        value={formState.location}
+                        onChange={(e) => setFormState({ ...formState, location: e.target.value })}
+                        placeholder="e.g. STEMPACT Main Hub, Fajuyi Road, Lab 1"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-blue-600"
                       />
                     </div>
                   </div>

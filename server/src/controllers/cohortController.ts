@@ -248,6 +248,8 @@ export const updateCohort = async (req: Request, res: Response): Promise<void> =
         ...(schedule && { schedule }),
         ...(mode && { mode }),
         ...(location && { location }),
+        ...(req.body.learningCenterId !== undefined && { learningCenterId: req.body.learningCenterId || null }),
+        ...(req.body.levelCode && { levelCode: req.body.levelCode }),
         ...(startDate && { startDate: new Date(startDate) }),
         ...(endDate && { endDate: new Date(endDate) }),
         ...(applicationDeadline && { applicationDeadline: new Date(applicationDeadline) }),
