@@ -104,7 +104,19 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Cohort Fee Edit Modal State
   const [editingCohort, setEditingCohort] = useState<any | null>(null);
-  const [cohortFeeForm, setCohortFeeForm] = useState({
+  const [cohortFeeForm, setCohortFeeForm] = useState<{
+    trainingFee: number;
+    registrationFee: number;
+    certificationFee: number;
+    discountPercentage: number;
+    maxCapacity: number;
+    status: string;
+    schedule: string;
+    mode: string;
+    installmentPlan: string;
+    instructorName: string;
+    instructorIds: string[];
+  }>({
     trainingFee: 65000,
     registrationFee: 5000,
     certificationFee: 10000,
@@ -114,6 +126,8 @@ export const AdminDashboardPage: React.FC = () => {
     schedule: '',
     mode: 'Hybrid (Onsite Ile-Ife & Virtual)',
     installmentPlan: 'full',
+    instructorName: '',
+    instructorIds: [],
   });
 
   // Admin Creation Form
@@ -590,6 +604,10 @@ export const AdminDashboardPage: React.FC = () => {
   // Open Edit Cohort Pricing Modal
   const handleOpenEditCohort = (c: any) => {
     setEditingCohort(c);
+    const existingInstructorIds: string[] = Array.isArray(c.instructors)
+      ? c.instructors.map((ci: any) => ci.instructorId || ci.instructor?.id || ci.id).filter(Boolean)
+      : [];
+
     setCohortFeeForm({
       trainingFee: c.trainingFee ?? 65000,
       registrationFee: c.registrationFee ?? 5000,
@@ -600,6 +618,8 @@ export const AdminDashboardPage: React.FC = () => {
       schedule: c.schedule ?? '',
       mode: c.mode ?? 'Hybrid (Onsite Ile-Ife & Virtual)',
       installmentPlan: c.installmentPlan ?? 'full',
+      instructorName: c.instructorName ?? '',
+      instructorIds: existingInstructorIds,
     });
   };
 
@@ -2437,6 +2457,82 @@ export const AdminDashboardPage: React.FC = () => {
                   placeholder="e.g. Mon, Wed, Fri (4:00 PM – 7:00 PM) & Saturdays"
                   className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
                 />
+              </div>
+
+              {/* Lead Instructor & Faculty Multi-Assign */}
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">
+                    Lead Instructor Name
+                  </label>
+                  <input
+                    type="text"
+                    value={cohortFeeForm.instructorName}
+                    onChange={(e) => setCohortFeeForm({ ...cohortFeeForm, instructorName: e.target.value })}
+                    placeholder="e.g. Engr. Damilola Adeyemi"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Display name shown to students on cohort certificates and public catalog.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                    <span>Assign Faculty Instructors (Portal Access)</span>
+                    <span className="text-[10px] text-brand-400 font-normal">
+                      {cohortFeeForm.instructorIds.length} assigned
+                    </span>
+                  </label>
+                  {instructors && instructors.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                      {instructors.map((inst: any) => {
+                        const targetId = inst.instructorProfile?.id || inst.id;
+                        const isChecked = cohortFeeForm.instructorIds.includes(targetId) || cohortFeeForm.instructorIds.includes(inst.id);
+                        return (
+                          <label
+                            key={inst.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg border transition cursor-pointer text-[11px] ${
+                              isChecked
+                                ? 'bg-brand-500/10 border-brand-500/40 text-brand-300 font-bold'
+                                : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                const nextIds = isChecked
+                                  ? cohortFeeForm.instructorIds.filter((id) => id !== targetId && id !== inst.id)
+                                  : [...cohortFeeForm.instructorIds, targetId];
+                                const primaryName = !isChecked && !cohortFeeForm.instructorName
+                                  ? `${inst.firstName} ${inst.lastName}`
+                                  : cohortFeeForm.instructorName;
+                                setCohortFeeForm({
+                                  ...cohortFeeForm,
+                                  instructorIds: nextIds,
+                                  instructorName: primaryName,
+                                });
+                              }}
+                              className="rounded accent-brand-500 w-3.5 h-3.5"
+                            />
+                            <div className="truncate">
+                              <p className="leading-tight">{inst.firstName} {inst.lastName}</p>
+                              <p className="text-[9px] text-slate-400 font-mono">{inst.instructorProfile?.staffCode || inst.email}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="p-3 text-center text-slate-500 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px]">
+                      No instructors registered. Add instructors in Staff Management.
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Instructors checked here will see this class section in their Faculty Cockpit.
+                  </p>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
