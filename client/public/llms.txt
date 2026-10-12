@@ -1,0 +1,56 @@
+# STEMPACT ACADEMY
+> STEM, Digital Skills, Technical & Vocational Education, Innovation, and Entrepreneurship Academy based in Ile-Ife, Osun State, Nigeria. "STEM Skills for Real-World Impact."
+
+STEMPACT ACADEMY is an accredited institution delivering industry-aligned technology, engineering, creative media, and entrepreneurship education across Nigeria and globally via hybrid, physical, and virtual classrooms.
+
+## Core Summary
+- **Organization**: STEMPACT ACADEMY
+- **Headquarters / Main Hub**: STEMPACT Innovation Hub, Fajuyi Road, Ile-Ife, Osun State, Nigeria
+- **Learning Center Network**: Physical campuses, satellite hubs (Ile-Ife, Osun State), and a 100% Virtual Global Campus.
+- **Delivery Formats**: Onsite practical laboratory sessions, hybrid cohorts, and interactive online bootcamps.
+- **Accreditation & Outcomes**: Dual certification (practical competence & project defense), industry portfolio review, and placement readiness.
+- **Website**: https://stempactacademy.com
+- **Admissions Application**: https://stempactacademy.com/apply
+- **Certificate Verification**: https://stempactacademy.com/verify-certificate
+
+## Academic Structure & Schools
+STEMPACT ACADEMY operates 4 core schools and over 11 specialized career track programs:
+
+### 1. School of Computing & Software Engineering
+- **Full-Stack Web & Cloud Software Engineering**: TypeScript, React, Node.js, Python, PostgreSQL, Docker, Cloud Architecture.
+- **Mobile Application Development**: React Native, Flutter, iOS & Android application deployment.
+- **Cybersecurity & Ethical Hacking**: Network security, vulnerability assessment, defense operations.
+
+### 2. School of Artificial Intelligence & Data Science
+- **Data Science & Analytics**: Python, Pandas, SQL, PowerBI, statistical modeling.
+- **Applied Artificial Intelligence & Machine Learning**: Deep learning, Computer Vision, Natural Language Processing, LLM fine-tuning.
+
+### 3. School of Hardware, Robotics & Emerging Technologies
+- **IoT & Embedded Systems**: Arduino, ESP32, Raspberry Pi, sensor integration.
+- **Robotics & Automation**: Mechanical design, firmware programming, autonomous navigation.
+- **Renewable Solar Energy & Electrical Technology**: Solar PV installation, inverter sizing, power auditing.
+
+### 4. School of Creative Media & Digital Innovation
+- **UI/UX Product Design**: User research, Figma, design systems, rapid prototyping.
+- **Digital Marketing & Growth Strategy**: SEO, content strategy, brand storytelling, analytics.
+- **Tech Entrepreneurship & Product Incubation**: Startup validation, pitch deck mastery, business finance.
+
+## Progressive Academic Levels
+STEMPACT ACADEMY utilizes a structured 4-tier academic progression model:
+1. **Level 1 — Foundation**: Fundamental syntax, digital literacy, foundational labs, and core principles.
+2. **Level 2 — Intermediate**: Applied frameworks, database design, hardware interfacing, and team sprints.
+3. **Level 3 — Advanced**: Enterprise architecture, distributed systems, capstone project development.
+4. **Level 4 — Mastery / Specialist**: Industrial defense, venture building, specialist research, and mentorship.
+
+## Admissions & Placement Benchmarks
+- Prospective students submit an application via the online Admissions Wizard (`/apply`).
+- An AI-powered assessment benchmark and Academic Placement Board evaluate applicant background to recommend optimal level placement (Level 1 Foundation through Level 4 Mastery).
+- Flexible payment models: Full tuition, phased milestone payments, and corporate/government sponsorships.
+
+## Key URLs for Crawlers & LLM Query Routing
+- Homepage: https://stempactacademy.com
+- Open Cohorts & Class Sections: https://stempactacademy.com/cohorts
+- Academic Programs Catalog: https://stempactacademy.com/schools
+- Student & Staff Portal Login: https://stempactacademy.com/login
+- New Student Enrollment: https://stempactacademy.com/apply
+- Credential & Certificate Verification: https://stempactacademy.com/verify-certificate
