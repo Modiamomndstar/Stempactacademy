@@ -1,56 +1,74 @@
 # STEMPACT ACADEMY
-> STEM, Digital Skills, Technical & Vocational Education, Innovation, and Entrepreneurship Academy based in Ile-Ife, Osun State, Nigeria. "STEM Skills for Real-World Impact."
+> Pan-African Hybrid STEM, Digital Skills, Technical & Vocational Education, Innovation, and Entrepreneurship Academy. "STEM Skills for Real-World Impact."
 
-STEMPACT ACADEMY is an accredited institution delivering industry-aligned technology, engineering, creative media, and entrepreneurship education across Nigeria and globally via hybrid, physical, and virtual classrooms.
+STEMPACT ACADEMY is an institution delivering practical technology, engineering, creative media, renewable energy, and venture building education across Nigeria and expanding across Africa through physical learning centers and a borderless virtual campus.
 
-## Core Summary
-- **Organization**: STEMPACT ACADEMY
-- **Headquarters / Main Hub**: STEMPACT Innovation Hub, Fajuyi Road, Ile-Ife, Osun State, Nigeria
-- **Learning Center Network**: Physical campuses, satellite hubs (Ile-Ife, Osun State), and a 100% Virtual Global Campus.
-- **Delivery Formats**: Onsite practical laboratory sessions, hybrid cohorts, and interactive online bootcamps.
-- **Accreditation & Outcomes**: Dual certification (practical competence & project defense), industry portfolio review, and placement readiness.
-- **Website**: https://stempactacademy.com
-- **Admissions Application**: https://stempactacademy.com/apply
-- **Certificate Verification**: https://stempactacademy.com/verify-certificate
+## Institutional Model & Learning Centers Network
+STEMPACT ACADEMY operates a decentralized, hybrid multi-campus learning model:
+- **Academy Model**: Hybrid Institution (In-Person Practical Labs + Immersive Virtual Classrooms + Satellite Hubs).
+- **Physical Learning Centers Network**:
+  - Multiple physical learning centers, innovation labs, and satellite centers located across Ile-Ife, Osun State, Nigeria.
+  - Active regional expansion with satellite centers and corporate/government partner hubs being established across Nigerian states and Pan-African tech hubs.
+  - Dedicated hardware laboratories, maker spaces, IoT test benches, and solar energy installation testbeds.
+- **Virtual Global Campus**: 100% online cohort delivery with live interactive lectures, code reviews, and remote lab environments accessible across Africa and worldwide.
+- **Modular Academic Operations**: Administrators dynamically create, expand, and manage new physical learning centers, satellite hubs, schools, and programs via the Academic Operations Management platform.
+- **Official Website**: https://stempactacademy.com
+- **Online Admissions Application**: https://stempactacademy.com/apply
+- **Digital Credential Verification**: https://stempactacademy.com/verify-certificate
 
-## Academic Structure & Schools
-STEMPACT ACADEMY operates 4 core schools and over 11 specialized career track programs:
+## Academic Schools Architecture
+STEMPACT ACADEMY is organized into 8 foundational academic schools, with an expandable structure allowing the continuous launch of new schools and specialized technical departments:
 
-### 1. School of Computing & Software Engineering
-- **Full-Stack Web & Cloud Software Engineering**: TypeScript, React, Node.js, Python, PostgreSQL, Docker, Cloud Architecture.
-- **Mobile Application Development**: React Native, Flutter, iOS & Android application deployment.
-- **Cybersecurity & Ethical Hacking**: Network security, vulnerability assessment, defense operations.
+### 1. School of Computing & Software Engineering (CSE)
+Master computer science foundations, modern web technologies, backend architectures, mobile applications, cloud engineering, and DevOps.
+- Key Programs: Computer Science Foundation, Web Development, Software Development, Full-Stack Software Engineering, Mobile App Development, Cloud Computing & DevOps, Computer Systems & Networking.
 
-### 2. School of Artificial Intelligence & Data Science
-- **Data Science & Analytics**: Python, Pandas, SQL, PowerBI, statistical modeling.
-- **Applied Artificial Intelligence & Machine Learning**: Deep learning, Computer Vision, Natural Language Processing, LLM fine-tuning.
+### 2. School of Artificial Intelligence, Data & Machine Learning (AIDM)
+Transform raw data into predictive intelligence, production machine learning pipelines, and generative AI solutions.
+- Key Programs: Data Science & Analytics, Applied Machine Learning, Deep Learning & Computer Vision, Natural Language Processing, Generative AI & LLM Systems.
 
-### 3. School of Hardware, Robotics & Emerging Technologies
-- **IoT & Embedded Systems**: Arduino, ESP32, Raspberry Pi, sensor integration.
-- **Robotics & Automation**: Mechanical design, firmware programming, autonomous navigation.
-- **Renewable Solar Energy & Electrical Technology**: Solar PV installation, inverter sizing, power auditing.
+### 3. School of Robotics, IoT, Embedded Systems & Hardware (RIOTH)
+Bridge software with the physical world through hardware engineering, robotics, firmware development, and prototyping.
+- Key Programs: Robotics & Automation, IoT & Smart Embedded Systems, Drone Engineering & Autonomous Systems, PCB Design & Electronics Fabrication, 3D CAD & Digital Prototyping.
 
-### 4. School of Creative Media & Digital Innovation
-- **UI/UX Product Design**: User research, Figma, design systems, rapid prototyping.
-- **Digital Marketing & Growth Strategy**: SEO, content strategy, brand storytelling, analytics.
-- **Tech Entrepreneurship & Product Incubation**: Startup validation, pitch deck mastery, business finance.
+### 4. School of Renewable Energy & Technical Engineering (RETE)
+Engineering clean technology and sustainable energy infrastructure for Africa's future.
+- Key Programs: Solar PV Design & Practical Installation, Battery Energy Storage & Inverter Systems, Smart Energy Management & Microgrids, Electrical Technology & Power Auditing.
+
+### 5. School of Digital Media, Marketing & AI Productivity (DMAP)
+Supercharge visual storytelling, creative digital media, and automated growth marketing leveraging AI tools.
+- Key Programs: UI/UX Product Design, Digital Marketing & Growth Strategy, AI-Assisted Creative Media & Motion Design, AI Productivity & Workflow Automation.
+
+### 6. School of Business, Innovation & Entrepreneurship (BIE)
+Convert technological innovations into viable, scalable, and venture-backed African enterprises.
+- Key Programs: Tech Entrepreneurship & Venture Building, Product Management, Startup Incubation, Business Strategy & Digital Finance.
+
+### 7. STEMPACT Kids & Teens (SKT)
+Early-stage STEM development for learners aged 7–17 through experiential learning and gamified creativity.
+- Key Programs: Creative Block Coding, Python for Young Inventors, Robotics & Smart Inventions for Kids, Digital Arts & Game Design.
+
+### 8. Innovation & Startup Lab (ISL)
+Multidisciplinary incubator for advanced students, fellows, and faculty building prototypes, competing in international hackathons, and commercializing research into market-ready technology products.
+
+## Dynamic Growth & Expansion
+The academy's administrative framework allows new academic schools, vocational tracks, specialized programs, and physical learning centers to be configured dynamically. As STEMPACT launches new campuses and schools across African cities, all catalog updates are automatically reflected in admissions and enrollment.
 
 ## Progressive Academic Levels
-STEMPACT ACADEMY utilizes a structured 4-tier academic progression model:
-1. **Level 1 — Foundation**: Fundamental syntax, digital literacy, foundational labs, and core principles.
-2. **Level 2 — Intermediate**: Applied frameworks, database design, hardware interfacing, and team sprints.
-3. **Level 3 — Advanced**: Enterprise architecture, distributed systems, capstone project development.
-4. **Level 4 — Mastery / Specialist**: Industrial defense, venture building, specialist research, and mentorship.
+Every student's learning pathway follows a structured 4-tier competency progression:
+1. **Level 1 — Foundation**: Core principles, technical literacy, syntax mastery, and foundational lab exercises.
+2. **Level 2 — Intermediate**: Framework mastery, database engineering, hardware interfacing, and collaborative team sprints.
+3. **Level 3 — Advanced**: Distributed systems, microservices, enterprise capstone engineering, and real-world deployment.
+4. **Level 4 — Mastery / Specialist**: Specialist research, venture incubation, industrial project defense, and mentorship.
 
-## Admissions & Placement Benchmarks
-- Prospective students submit an application via the online Admissions Wizard (`/apply`).
-- An AI-powered assessment benchmark and Academic Placement Board evaluate applicant background to recommend optimal level placement (Level 1 Foundation through Level 4 Mastery).
-- Flexible payment models: Full tuition, phased milestone payments, and corporate/government sponsorships.
+## Admissions & AI Placement
+- Prospective applicants complete a diagnostic placement evaluation on the admissions portal (`/apply`).
+- The Academic Placement Board and recommendation engine assign students to the exact competency tier (Level 1 Foundation through Level 4 Mastery) tailored to their background.
+- Multiple payment tracks: Full tuition, installment milestones, and sponsor-funded scholarships.
 
-## Key URLs for Crawlers & LLM Query Routing
-- Homepage: https://stempactacademy.com
-- Open Cohorts & Class Sections: https://stempactacademy.com/cohorts
-- Academic Programs Catalog: https://stempactacademy.com/schools
-- Student & Staff Portal Login: https://stempactacademy.com/login
-- New Student Enrollment: https://stempactacademy.com/apply
-- Credential & Certificate Verification: https://stempactacademy.com/verify-certificate
+## Key Official Links
+- Main Portal: https://stempactacademy.com
+- Schools & Academic Catalog: https://stempactacademy.com/schools
+- Class Sections & Cohorts: https://stempactacademy.com/cohorts
+- Student Admissions Wizard: https://stempactacademy.com/apply
+- Student & Staff Login: https://stempactacademy.com/login
+- Certificate Verification: https://stempactacademy.com/verify-certificate
