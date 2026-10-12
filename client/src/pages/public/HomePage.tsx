@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { School, Program, Cohort } from '../../types';
 import { STEMLogo } from '../../components/STEMLogo';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { parseCohortDisplay } from '../../utils/cohortDisplay';
 import {
   ArrowRight,
   Sparkles,
@@ -351,49 +352,75 @@ export const HomePage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 relative z-10">
-            {openCohorts.slice(0, 4).map((cohort) => (
-              <div
-                key={cohort.id}
-                className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/15 text-white flex flex-col justify-between space-y-4"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-blue-200 mb-1">
-                    <span>{cohort.cohortCode}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                      {cohort.availableSeats ?? 8} Seats Left
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-sm text-white leading-snug line-clamp-2">
-                    {cohort.name}
-                  </h3>
-                  <div className="text-[11px] text-slate-300 mt-2 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3 text-emerald-400" />
-                      <span>Starts: {cohort.startDate ? new Date(cohort.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'TBA'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      <span className="truncate">{cohort.schedule}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+            {openCohorts.slice(0, 4).map((cohort) => {
+              const display = parseCohortDisplay(cohort);
+              return (
+                <div
+                  key={cohort.id}
+                  className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/15 text-white flex flex-col justify-between space-y-4"
+                >
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Tuition</div>
-                    <div className="font-extrabold text-sm text-white">
-                      ₦{(cohort.trainingFee || 0).toLocaleString()}
+                    {/* Top Identifiers Row */}
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-blue-200 mb-2">
+                      <span className="font-mono">{cohort.cohortCode}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                        {cohort.availableSeats ?? 8} Seats Left
+                      </span>
+                    </div>
+
+                    {/* Program Full Name (Clear Title) */}
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-blue-300 truncate">
+                        {cohort.program?.school?.name || 'Academic Program'}
+                      </div>
+                      <h3 className="font-bold text-sm text-white leading-snug line-clamp-2" title={display.programName}>
+                        {display.programName}
+                      </h3>
+                      <div className="text-[11px] font-medium text-blue-200/90">
+                        {display.levelLabel}
+                      </div>
+                    </div>
+
+                    {/* Cohort Intake Name & Class Section Badges */}
+                    <div className="pt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold">
+                        {display.cohortName}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-white/10 border border-white/20 text-slate-200 text-[10px] font-medium">
+                        {display.sectionName}
+                      </span>
+                    </div>
+
+                    {/* Schedule & Timing */}
+                    <div className="text-[11px] text-slate-300 mt-3 space-y-1 pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>Starts: {cohort.startDate ? new Date(cohort.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'TBA'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{cohort.schedule}</span>
+                      </div>
                     </div>
                   </div>
-                  <Link
-                    to={`/apply?cohortId=${cohort.id}&programId=${cohort.programId}`}
-                    className="px-3.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold transition-colors"
-                  >
-                    Apply
-                  </Link>
+
+                  <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Tuition</div>
+                      <div className="font-extrabold text-sm text-white">
+                        ₦{(cohort.trainingFee || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <Link
+                      to={`/apply?cohortId=${cohort.id}&programId=${cohort.programId}`}
+                      className="px-3.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold transition-colors"
+                    >
+                      Apply
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

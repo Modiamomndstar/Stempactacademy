@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Cohort, School } from '../../types';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
+import { parseCohortDisplay } from '../../utils/cohortDisplay';
 import {
   Calendar,
   Clock,
@@ -178,6 +179,7 @@ export const CohortsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCohorts.map((cohort) => {
+              const display = parseCohortDisplay(cohort);
               const availableSeats = cohort.availableSeats ?? Math.max(0, cohort.maxCapacity - cohort.currentEnrollment);
               const isFull = availableSeats <= 0 || cohort.status === 'FULL';
               const isAlmostFull = cohort.status === 'ALMOST_FULL' || availableSeats <= 3;
@@ -227,15 +229,34 @@ export const CohortsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Program & Title */}
-                    <div>
-                      <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">
-                        {cohort.program?.school?.name || cohort.program?.name || 'Academy School'}
+                    {/* Program Full Name, School & Academic Level */}
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
+                        {cohort.program?.school?.name || 'Academy School'}
                       </span>
-                      <h3 className="text-lg font-bold text-slate-900 mt-1 leading-snug">
-                        {cohort.name}
+                      <h3 className="text-xl font-black text-slate-900 leading-snug tracking-tight">
+                        {display.programName}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1">{cohort.level}</p>
+                      {/* Program Level indicator directly under the program title */}
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-bold">
+                        <span>{display.levelLabel}</span>
+                      </div>
+                    </div>
+
+                    {/* Cohort Intake Name & Class Section Badges */}
+                    <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Cohort:</span>
+                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded border border-emerald-300">
+                          {display.cohortName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2">
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Section:</span>
+                        <span className="text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                          {display.sectionName}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Schedule Details */}

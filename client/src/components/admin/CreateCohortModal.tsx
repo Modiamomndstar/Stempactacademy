@@ -464,12 +464,13 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 2026 Cohort 1 or 2027 Cohort 1"
+                  placeholder="e.g. 2026 Cohort 1 or 2026 Cohort 1 Intake"
                   value={batchName}
                   onChange={(e) => setBatchName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
                   required
                 />
+                <p className="text-[10px] text-slate-400">The overall admission cohort name (e.g. 2026 Cohort 1).</p>
               </div>
 
               <div className="space-y-1.5">
@@ -478,13 +479,27 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Section A, Section B, or Weekend Stream"
+                  placeholder="e.g. Class Alpha, Section A, or Weekend Stream"
                   value={sectionName}
                   onChange={(e) => setSectionName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:outline-blue-600"
                   required
                 />
+                <p className="text-[10px] text-slate-400">Specific class group/stream for timetable scheduling.</p>
               </div>
+            </div>
+
+            {/* Live Name Preview */}
+            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between flex-wrap gap-2 text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-blue-900">Name Preview on Applicant Cards:</span>
+                <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-blue-200 text-blue-800 font-bold">
+                  [Program Name] — {batchName.trim() || '2026 Cohort 1'} ({sectionName.trim() || 'Section A'})
+                </span>
+              </div>
+              <span className="text-[10px] text-blue-600 font-semibold">
+                Cohort Intake: <strong>{batchName.trim() || '2026 Cohort 1'}</strong> • Section: <strong>{sectionName.trim() || 'Section A'}</strong>
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
