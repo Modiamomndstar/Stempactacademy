@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { academicDeliveryService } from '../services/academicDeliveryService.js';
@@ -307,7 +308,10 @@ export const registerWard = async (req: AuthRequest, res: Response): Promise<voi
     const {
       firstName,
       lastName,
+      fullName,
       email,
+      username,
+      password,
       phone,
       dateOfBirth,
       gender,
@@ -321,10 +325,15 @@ export const registerWard = async (req: AuthRequest, res: Response): Promise<voi
       relationship,
     } = req.body;
 
-    if (!firstName || !lastName || !programId) {
-      res.status(400).json({ message: 'First name, last name, and programId are required.' });
+    const resolvedFullName = (fullName || `${firstName || ''} ${lastName || ''}`).trim();
+    if (!resolvedFullName || !programId) {
+      res.status(400).json({ message: 'Ward full name and programId are required.' });
       return;
     }
+
+    const nameParts = resolvedFullName.split(' ');
+    const fName = firstName || nameParts[0] || 'Learner';
+    const lName = lastName || nameParts.slice(1).join(' ') || 'Ward';
 
     // Ensure parent profile exists
     let parentProfile = await prisma.parentProfile.findUnique({
@@ -336,7 +345,43 @@ export const registerWard = async (req: AuthRequest, res: Response): Promise<voi
         data: {
           userId: req.user.id,
           relationship: relationship || 'PARENT',
-          emergencyContact: phone || '',
+          emergencyContact: phone || (req.user as any)?.phone || '',
+        },
+      });
+    }
+
+    // Determine unique Ward Email & Username
+    const cleanFirst = fName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanLast = lName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const randomSuffix = Date.now().toString().slice(-4);
+
+    const wardEmail = email?.trim() || `${cleanFirst}.${cleanLast}.${randomSuffix}@ward.stempact.org`;
+    const wardUsername = username?.trim().toLowerCase() || `${cleanFirst}.${cleanLast}${randomSuffix}`;
+
+    // Provision or attach User account for the child
+    let wardUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: wardEmail },
+          { username: wardUsername },
+        ],
+      },
+    });
+
+    if (!wardUser) {
+      const defaultPassword = password?.trim() || 'StempactWard@2026';
+      const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+      wardUser = await prisma.user.create({
+        data: {
+          email: wardEmail,
+          username: wardUsername,
+          passwordHash,
+          firstName: fName,
+          lastName: lName,
+          phone: phone || (req.user as any)?.phone || '',
+          role: 'STUDENT',
+          isActive: true,
         },
       });
     }
@@ -346,18 +391,17 @@ export const registerWard = async (req: AuthRequest, res: Response): Promise<voi
     const count = await prisma.application.count();
     const applicationNumber = `APP-${year}-${String(count + 1).padStart(5, '0')}`;
 
-    const wardEmail = email?.trim() || `${firstName.toLowerCase().replace(/\s+/g, '')}.${lastName.toLowerCase().replace(/\s+/g, '')}.${Date.now().toString().slice(-4)}@ward.stempact.org`;
-
     const application = await prisma.application.create({
       data: {
         applicationNumber,
+        userId: wardUser.id,
         programId,
         cohortId: cohortId || null,
         preferredCenterId: preferredCenterId || null,
         preferredSchedule: 'Flexible / Center Scheduled',
-        fullName: `${firstName} ${lastName}`.trim(),
+        fullName: resolvedFullName,
         email: wardEmail,
-        phone: phone || '08000000000',
+        phone: phone || (req.user as any)?.phone || '08000000000',
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date('2010-01-01'),
         gender: gender || 'OTHER',
         address: address || 'Ile-Ife, Osun State',
@@ -368,15 +412,21 @@ export const registerWard = async (req: AuthRequest, res: Response): Promise<voi
         isMinor: true,
         parentName: `${req.user.firstName} ${req.user.lastName}`,
         parentEmail: req.user.email,
-        parentPhone: phone || '08000000000',
+        parentPhone: phone || (req.user as any)?.phone || '08000000000',
         parentRelationship: relationship || parentProfile.relationship || 'Parent',
         status: 'SUBMITTED',
       },
     });
 
     res.status(201).json({
-      message: 'Ward registration submitted successfully.',
+      message: 'Ward registration submitted and student account provisioned successfully.',
       application,
+      wardAccount: {
+        id: wardUser.id,
+        username: wardUser.username,
+        email: wardUser.email,
+        fullName: resolvedFullName,
+      },
     });
   } catch (error: any) {
     console.error('registerWard error:', error);

@@ -22,6 +22,9 @@ import {
   FolderGit2,
   DollarSign,
   HeartHandshake,
+  Key,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { ParentAssistantModal } from '../../components/ParentAssistantModal';
 import { PageHeader } from '../../components/PageHeader';
@@ -57,6 +60,8 @@ export const ParentPortalPage: React.FC = () => {
   // Ward application fields
   const [wardFullName, setWardFullName] = useState('');
   const [wardEmail, setWardEmail] = useState('');
+  const [wardUsername, setWardUsername] = useState('');
+  const [wardPassword, setWardPassword] = useState('');
   const [wardPhone, setWardPhone] = useState('');
   const [wardDob, setWardDob] = useState('');
   const [wardGender, setWardGender] = useState('');
@@ -70,6 +75,8 @@ export const ParentPortalPage: React.FC = () => {
   const [wardCohortId, setWardCohortId] = useState('');
   const [wardCenterId, setWardCenterId] = useState('');
   const [wardRelationship, setWardRelationship] = useState('Parent');
+  const [createdWardCredentials, setCreatedWardCredentials] = useState<{ username?: string; email?: string; password?: string } | null>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
 
   // Synchronize Tab & Ward with URL
   const handleTabChange = (tabId: string) => {
@@ -177,10 +184,13 @@ export const ParentPortalPage: React.FC = () => {
     setRegisteringWard(true);
     setRegisterWardError('');
     setRegisterWardSuccess('');
+    setCreatedWardCredentials(null);
     try {
-      await api.registerWard({
+      const res = await api.registerWard({
         fullName: wardFullName,
         email: wardEmail,
+        username: wardUsername || undefined,
+        password: wardPassword || undefined,
         phone: wardPhone,
         dateOfBirth: wardDob ? new Date(wardDob).toISOString() : undefined,
         gender: wardGender || undefined,
@@ -195,8 +205,17 @@ export const ParentPortalPage: React.FC = () => {
         preferredCenterId: wardCenterId || undefined,
         relationship: wardRelationship,
       });
-      setRegisterWardSuccess(`Ward application for "${wardFullName}" submitted! Admissions will review and link them to your account.`);
-      setWardFullName(''); setWardEmail(''); setWardPhone('');
+
+      const effectivePassword = wardPassword || 'StempactWard@2026';
+      const effectiveUsername = res?.wardAccount?.username || wardUsername || wardEmail;
+      setCreatedWardCredentials({
+        username: effectiveUsername,
+        email: res?.wardAccount?.email || wardEmail,
+        password: effectivePassword,
+      });
+
+      setRegisterWardSuccess(`Ward application for "${wardFullName}" submitted and student account provisioned successfully!`);
+      setWardFullName(''); setWardEmail(''); setWardUsername(''); setWardPassword(''); setWardPhone('');
       setWardDob(''); setWardGender(''); setWardAddress('');
       setWardEducationLevel(''); setWardCareerGoals('');
       setWardLearningObjectives(''); setWardStatement('');
@@ -207,6 +226,20 @@ export const ParentPortalPage: React.FC = () => {
     } finally {
       setRegisteringWard(false);
     }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdWardCredentials) return;
+    const loginText = [
+      `STEMPACT Academy Student Portal Login Credentials`,
+      `Student Login URL: ${window.location.origin}/login`,
+      `Username: ${createdWardCredentials.username || '—'}`,
+      `Email: ${createdWardCredentials.email || '—'}`,
+      `Password: ${createdWardCredentials.password || '—'}`,
+    ].join('\n');
+    navigator.clipboard.writeText(loginText);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 3000);
   };
 
   return (
@@ -686,6 +719,55 @@ export const ParentPortalPage: React.FC = () => {
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">{registerWardSuccess}</div>
               )}
 
+              {createdWardCredentials && (
+                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-950 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-xs text-indigo-900">
+                      <Key className="w-4 h-4 text-indigo-600" />
+                      <span>Student Portal Credentials Provisioned</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyCredentials}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition cursor-pointer"
+                    >
+                      {copiedCreds ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedCreds ? 'Copied!' : 'Copy Login Details'}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-indigo-700">
+                    Hand these login credentials to your child or ward so they can sign in directly to the Student Learning Portal:
+                  </p>
+                  <div className="bg-white p-3 rounded-xl border border-indigo-100 font-mono text-[11px] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-sans">Login Portal URL:</span>
+                      <a href="/login" target="_blank" rel="noreferrer" className="font-bold text-blue-600 hover:underline">/login</a>
+                    </div>
+                    {createdWardCredentials.username && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-sans">Student Username:</span>
+                        <span className="font-bold text-slate-900">{createdWardCredentials.username}</span>
+                      </div>
+                    )}
+                    {createdWardCredentials.email && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-sans">Student Email:</span>
+                        <span className="font-bold text-slate-900">{createdWardCredentials.email}</span>
+                      </div>
+                    )}
+                    {createdWardCredentials.password && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-sans">Initial Password:</span>
+                        <span className="font-bold text-emerald-700">{createdWardCredentials.password}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-indigo-500">
+                    Students can update their password and profile security at any time from their student settings.
+                  </p>
+                </div>
+              )}
+
               {/* Personal Info */}
               <div className="space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Personal Information</span>
@@ -732,6 +814,42 @@ export const ParentPortalPage: React.FC = () => {
                     <option value="Sibling">Sibling</option>
                     <option value="Other">Other</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Student Portal Account & Login Credentials */}
+              <div className="space-y-1 pt-2 border-t border-slate-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5" />
+                  Student Portal Account & Login Details
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Provision an immediate student login account for your child. They can use either their username or email to log in at <strong>/login</strong>.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Child's Username <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={wardUsername}
+                    onChange={(e) => setWardUsername(e.target.value)}
+                    placeholder="e.g. tobi.adeyemi"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400">If omitted, an easy username is auto-generated from their name.</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Child's Initial Password <span className="font-normal text-slate-400">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={wardPassword}
+                    onChange={(e) => setWardPassword(e.target.value)}
+                    placeholder="e.g. WardPass@2026"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400">Default password: <span className="font-mono text-indigo-600">StempactWard@2026</span> if blank.</p>
                 </div>
               </div>
 
