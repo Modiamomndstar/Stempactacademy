@@ -88,6 +88,23 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
     return Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1));
   };
 
+  const formatAcademicTierLabel = (lvl?: string | number): string => {
+    const s = String(lvl ?? '').toUpperCase();
+    if (s.includes('5') || s.includes('6') || s.includes('INNOV') || s.includes('ENTREP')) {
+      return 'Venture Lab / Innovation Hub';
+    }
+    if (s.includes('4') || s.includes('SPEC') || s.includes('MASTERY')) {
+      return 'Level 4 — Specialist / Mastery';
+    }
+    if (s.includes('3') || s.includes('ADVANC')) {
+      return 'Level 3 — Advanced';
+    }
+    if (s.includes('2') || s.includes('INTER')) {
+      return 'Level 2 — Intermediate';
+    }
+    return 'Level 1 — Foundation';
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
       {/* Workspace Top Header */}
@@ -98,7 +115,7 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
               AI Proposed Draft
             </span>
             <span className="text-xs text-emerald-200 font-mono">
-              Level {draft.academicLevel} • {draft.durationWeeks} Weeks
+              {formatAcademicTierLabel(draft.academicLevel)} • {draft.durationWeeks} Weeks
             </span>
           </div>
           <h2 className="text-2xl font-bold mt-1 text-white tracking-tight">
@@ -304,9 +321,9 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-200 dark:border-slate-700">
-                    <span className="text-slate-500">Level (0-6)</span>
+                    <span className="text-slate-500">Academic Tier</span>
                     <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                      Level {draft.academicLevel}
+                      {formatAcademicTierLabel(draft.academicLevel)}
                     </span>
                   </div>
 

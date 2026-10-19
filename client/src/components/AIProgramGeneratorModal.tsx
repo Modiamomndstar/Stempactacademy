@@ -14,6 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { AcademicLevel, ProgramDraft } from '../types';
+import { isInnovationLabProgram, isInnovationLabSchool } from '../utils/schoolClassifier';
 
 interface AIProgramGeneratorModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
 }) => {
   const [selectedProgramId, setSelectedProgramId] = useState<string>(initialProgramId || '');
   const [domain, setDomain] = useState('Full Stack Web Engineering & Cloud Native Systems');
-  const [academicLevel, setAcademicLevel] = useState<AcademicLevel>(AcademicLevel.LEVEL_2_INTERMEDIATE);
+  const [academicLevel, setAcademicLevel] = useState<AcademicLevel>(AcademicLevel.LEVEL_1_FOUNDATION);
   const [targetAudience, setTargetAudience] = useState('Polytechnic and university students, young tech professionals, and career switchers');
   const [durationWeeks, setDurationWeeks] = useState<number>(12);
   const [keywords, setKeywords] = useState('React, Node.js, PostgreSQL, Docker, REST APIs, Microservices, Deployment');
@@ -54,7 +55,21 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
       const prog = existingPrograms.find((p) => p.id === selectedProgramId || p.code === selectedProgramId);
       if (prog) {
         setDomain(prog.name || '');
-        if (prog.level) setAcademicLevel(prog.level as AcademicLevel);
+        if (isInnovationLabProgram(prog) || isInnovationLabSchool(prog.school)) {
+          setAcademicLevel(AcademicLevel.LEVEL_5_INNOVATION);
+        } else if (
+          prog.level &&
+          ([
+            AcademicLevel.LEVEL_1_FOUNDATION,
+            AcademicLevel.LEVEL_2_INTERMEDIATE,
+            AcademicLevel.LEVEL_3_ADVANCED,
+            AcademicLevel.LEVEL_4_SPECIALIST,
+          ] as string[]).includes(String(prog.level))
+        ) {
+          setAcademicLevel(prog.level as AcademicLevel);
+        } else {
+          setAcademicLevel(AcademicLevel.LEVEL_1_FOUNDATION);
+        }
         if (prog.duration || prog.durationWeeks) {
           const parsed = prog.duration
             ? parseInt(String(prog.duration).replace(/\D/g, ''), 10)
@@ -208,21 +223,36 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
                 {/* Academic Level */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
-                    Academic Level
+                    Academic Level / Pathway Tier
                   </label>
                   <select
                     value={academicLevel}
                     onChange={(e) => setAcademicLevel(e.target.value as AcademicLevel)}
                     className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value={AcademicLevel.LEVEL_0_ASSESSMENT}>Level 0: Foundation / Exploratory (Ages 7-12)</option>
-                    <option value={AcademicLevel.LEVEL_1_FOUNDATION}>Level 1: Beginner / Discovery</option>
-                    <option value={AcademicLevel.LEVEL_2_INTERMEDIATE}>Level 2: Intermediate / Builder (Recommended)</option>
-                    <option value={AcademicLevel.LEVEL_3_ADVANCED}>Level 3: Accelerated / Specialist</option>
-                    <option value={AcademicLevel.LEVEL_4_SPECIALIST}>Level 4: Advanced / Systems Architect</option>
-                    <option value={AcademicLevel.LEVEL_5_INNOVATION}>Level 5: Executive / Industry Practitioner</option>
-                    <option value={AcademicLevel.LEVEL_6_ENTREPRENEURSHIP}>Level 6: Startup Lab / Venture Capstone</option>
+                    <optgroup label="Core Academic Progression (Levels 1 – 4)">
+                      <option value={AcademicLevel.LEVEL_1_FOUNDATION}>
+                        Level 1 — Foundation (Beginner / Core Principles)
+                      </option>
+                      <option value={AcademicLevel.LEVEL_2_INTERMEDIATE}>
+                        Level 2 — Intermediate (Applied Implementation)
+                      </option>
+                      <option value={AcademicLevel.LEVEL_3_ADVANCED}>
+                        Level 3 — Advanced (Systems &amp; Architecture)
+                      </option>
+                      <option value={AcademicLevel.LEVEL_4_SPECIALIST}>
+                        Level 4 — Specialist / Mastery (Production Capstone)
+                      </option>
+                    </optgroup>
+                    <optgroup label="Post-Academic Accelerator Pathway">
+                      <option value={AcademicLevel.LEVEL_5_INNOVATION}>
+                        Venture Lab / Innovation Hub (Applied R&amp;D &amp; Commercialization)
+                      </option>
+                    </optgroup>
                   </select>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Standard programs follow Core Levels 1–4; Innovation Lab programs use the Venture Lab pathway.
+                  </p>
                 </div>
 
                 {/* Duration */}
