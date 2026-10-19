@@ -4,6 +4,7 @@ import { AssessmentService } from './assessmentService.js';
 import { emailService } from './emailService.js';
 import { createNotification } from './notificationService.js';
 import { identifierService } from './identifierService.js';
+import { isInnovationLabSchool } from '../utils/schoolClassifier.js';
 
 export const CURRENT_PLACEMENT_RULE_VERSION = 'STEMPACT_RULES_V1';
 
@@ -189,12 +190,60 @@ export class PlacementService {
       }
     }
 
-    // 3. Score deterministically
-    const scoreResult = AssessmentService.calculateAssessmentScore(questionsToScore, answers);
-
-    // 4. Evaluate placement recommendation via canonical rules
     const targetProgramId = application.programId || assessment.programId;
-    const recommendation = this.evaluatePlacementRecommendation(scoreResult.percentage);
+    const progWithSchool = await prisma.program.findUnique({
+      where: { id: targetProgramId },
+      include: { school: true },
+    });
+
+    const isInnovation = isInnovationLabSchool(progWithSchool?.school) ||
+      (assessment.title && assessment.title.toLowerCase().includes('venture'));
+
+    const progName = application.program?.name || progWithSchool?.name || assessment.program?.name || 'STEMPACT Academy';
+
+    // 3. Score deterministically / Evaluate Venture Portfolio Completeness
+    let scoreResult: any;
+    let recommendation: PlacementRecommendation;
+
+    if (isInnovation) {
+      // Calculate submission completeness based on non-empty answer fields
+      const submittedCount = Object.values(answers || {}).filter((v) => String(v || '').trim().length > 0).length;
+      const totalQuestions = questionsToScore.length || 6;
+      const completionRate = Math.min(100, Math.round((submittedCount / totalQuestions) * 100)) || 100;
+
+      scoreResult = {
+        totalScore: completionRate,
+        maxPossibleScore: 100,
+        percentage: completionRate,
+        categoryPercentages: {
+          VENTURE_PORTFOLIO: 100,
+          TECHNICAL_INNOVATION: 100,
+          PROTOTYPE_DEMO: 100,
+          PITCH_DECK: 100,
+        },
+        categoryTotals: {},
+        isPassing: true,
+        detailedResults: questionsToScore.map((q) => ({
+          questionId: q.id,
+          category: q.category,
+          points: q.points || 20,
+          earned: answers[q.id] ? (q.points || 20) : 0,
+          isCorrect: Boolean(answers[q.id]),
+          studentAnswer: answers[q.id] || '',
+          correctAnswer: 'SUBMISSION_EVALUATION',
+        })),
+      };
+
+      recommendation = {
+        recommendedLevel: 'Level 5 — Venture Lab / Applied R&D Innovation',
+        levelCode: AcademicLevel.LEVEL_5_INNOVATION,
+        rationale: `Venture & Pitch Portfolio dossier submitted for ${progName}. Candidate project prototype, code repository, and pitch deck staged for Innovation Review Board evaluation and incubator cohort matching.`,
+        ruleVersion: 'STEMPACT_VENTURE_V1',
+      };
+    } else {
+      scoreResult = AssessmentService.calculateAssessmentScore(questionsToScore, answers);
+      recommendation = this.evaluatePlacementRecommendation(scoreResult.percentage);
+    }
 
     // 5. Resolve active ProgramVersion and CurriculumVersion
     const currentProgramVersion = await prisma.programVersion.findFirst({
@@ -211,8 +260,6 @@ export class PlacementService {
       },
       orderBy: { startDate: 'asc' },
     });
-
-    const progName = application.program?.name || assessment.program?.name || 'STEMPACT Academy';
 
     // 7. Atomic transaction: create attempt, upsert placement in PENDING_REVIEW, update application status
     const result = await prisma.$transaction(async (tx) => {
@@ -267,6 +314,7 @@ export class PlacementService {
           curriculumVersionId: currentCurriculumVersionId,
           recommendedCohortId: recommendedCohort?.id || null,
           reason: recommendation.rationale,
+          adminNotes: isInnovation ? 'Venture & Pitch Portfolio dossier submitted by applicant. Staged for Innovation Review Board evaluation and incubator cohort matching.' : null,
           ruleVersion: recommendation.ruleVersion,
           status: 'PENDING_REVIEW',
         },
@@ -280,6 +328,7 @@ export class PlacementService {
           curriculumVersionId: currentCurriculumVersionId,
           recommendedCohortId: recommendedCohort?.id || null,
           reason: recommendation.rationale,
+          adminNotes: isInnovation ? 'Venture & Pitch Portfolio dossier submitted by applicant. Staged for Innovation Review Board evaluation and incubator cohort matching.' : null,
           ruleVersion: recommendation.ruleVersion,
           status: 'PENDING_REVIEW',
           approvedProgram: null,
@@ -290,7 +339,6 @@ export class PlacementService {
           reviewedAt: null,
           reviewerId: null,
           reviewerName: null,
-          adminNotes: null,
         },
       });
 
@@ -313,8 +361,26 @@ export class PlacementService {
           score: scoreResult.percentage,
           recommendedLevel: recommendation.recommendedLevel,
           recommendationReason: recommendation.rationale,
+          isInnovationLab: Boolean(isInnovation),
         })
         .catch((err) => console.error('Failed to send assessment completed email:', err));
+    }
+
+    // If Innovation Lab applicant, notify Innovation Managers and Super Admins
+    if (isInnovation) {
+      prisma.user.findMany({
+        where: { role: { in: [Role.INNOVATION_MANAGER, Role.SUPER_ADMIN] }, isActive: true },
+        select: { id: true },
+      }).then((staff) => {
+        for (const s of staff) {
+          createNotification({
+            userId: s.id,
+            title: `🚀 New Venture Dossier: ${progName}`,
+            message: `${application.fullName} submitted a Venture & Pitch Portfolio for ${progName}. Ready for Innovation Board review.`,
+            type: 'INFO',
+          }).catch(() => null);
+        }
+      }).catch(() => null);
     }
 
     return {

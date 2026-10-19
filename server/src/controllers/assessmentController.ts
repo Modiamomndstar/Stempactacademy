@@ -48,6 +48,7 @@ export const getAssessmentForProgram = async (req: Request, res: Response): Prom
         id: data.assessment.id,
         title: data.currentVersion?.title || data.assessment.title,
         programId: data.assessment.programId,
+        isInnovationLab: Boolean((data as any).isInnovationLab),
         durationMinutes: data.currentVersion?.durationMinutes || data.assessment.durationMinutes,
         passingScore: data.currentVersion?.passingScore || data.assessment.passingScore,
         instructions: data.currentVersion?.instructions || data.assessment.instructions,

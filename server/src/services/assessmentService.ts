@@ -2,6 +2,7 @@ import { WorkflowStatus, AcademicLevel, Role, AIActionType } from '@prisma/clien
 import prisma from '../config/prisma.js';
 import { AIOrchestrator } from './ai/aiOrchestrator.js';
 import { AssessmentGenerationSchema } from './ai/types.js';
+import { isInnovationLabSchool } from '../utils/schoolClassifier.js';
 
 export interface ScoreCalculationResult {
   totalScore: number;
@@ -155,6 +156,18 @@ export class AssessmentService {
         select: { programId: true },
       });
       if (app?.programId) targetProgramId = app.programId;
+    }
+
+    // 0. Dynamic School Routing: If this program belongs to an Innovation & Startup Lab school,
+    // provide an authentic 6-section Venture & Innovation Portfolio Dossier instead of academic MCQs.
+    if (targetProgramId) {
+      const prog = await prisma.program.findUnique({
+        where: { id: targetProgramId },
+        include: { school: true },
+      });
+      if (prog && isInnovationLabSchool(prog.school)) {
+        return await AssessmentService.getOrCreateInnovationVentureDossier(targetProgramId);
+      }
     }
 
     // 1. Find assessment specifically for program
@@ -436,6 +449,163 @@ Difficulty: Baseline Placement Diagnostic.`;
       };
     } catch (err) {
       console.error('[AssessmentService.generateAiAssessmentForProgram error]:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Generates or retrieves an authentic 6-section Venture & Innovation Dossier for programs
+   * under the Innovation & Startup Lab school (or any venture lab school).
+   */
+  static async getOrCreateInnovationVentureDossier(programId: string) {
+    try {
+      const prog = await prisma.program.findUnique({
+        where: { id: programId },
+        include: { school: true },
+      });
+      if (!prog) return null;
+
+      // Check if an existing assessment exists for this program
+      let assessment = await prisma.assessment.findFirst({
+        where: { programId },
+        include: {
+          versions: {
+            where: { isCurrent: true },
+            include: { questions: { orderBy: { order: 'asc' } } },
+          },
+          questions: { orderBy: { order: 'asc' } },
+        },
+      });
+
+      if (assessment && assessment.questions.length >= 4) {
+        const currentVersion = assessment.versions[0] || null;
+        return {
+          assessment,
+          currentVersion,
+          questions: currentVersion?.questions && currentVersion.questions.length > 0 ? currentVersion.questions : assessment.questions,
+          isInnovationLab: true,
+        };
+      }
+
+      // If existing assessment is empty or corrupted, purge and build authentic dossier
+      if (assessment) {
+        await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: assessment.id } }).catch(() => null);
+        await prisma.assessmentVersion.deleteMany({ where: { assessmentId: assessment.id } }).catch(() => null);
+        await prisma.assessment.delete({ where: { id: assessment.id } }).catch(() => null);
+      }
+
+      // Create authentic 6-section Venture & Innovation Dossier
+      const newAssessment = await prisma.assessment.create({
+        data: {
+          title: `STEMPACT ${prog.name} Venture & Pitch Portfolio Dossier`,
+          programId: prog.id,
+          durationMinutes: 45,
+          passingScore: 60,
+          instructions: `Welcome to the STEMPACT Innovation & Startup Lab track for ${prog.name}. Candidate placement and incubator matching are evaluated through your problem statement, technical innovation, working prototype/demo, pitch deck, and traction rather than an academic diagnostic exam. Please provide the required venture artifacts below.`,
+        },
+      });
+
+      const newVersion = await prisma.assessmentVersion.create({
+        data: {
+          assessmentId: newAssessment.id,
+          versionNumber: 1,
+          title: newAssessment.title,
+          instructions: newAssessment.instructions,
+          durationMinutes: 45,
+          passingScore: 60,
+          status: WorkflowStatus.PUBLISHED,
+          isCurrent: true,
+        },
+      });
+
+      const dossierQuestions = [
+        {
+          order: 1,
+          category: 'VENTURE_PORTFOLIO',
+          type: 'SHORT_ANSWER',
+          prompt: 'Venture & Problem Statement: What real-world problem or market opportunity does your project, prototype, or research address, and who is your target user or beneficiary?',
+          options: JSON.stringify([]),
+          correctAnswer: 'SUBMISSION_EVALUATION',
+          points: 20,
+        },
+        {
+          order: 2,
+          category: 'TECHNICAL_INNOVATION',
+          type: 'SHORT_ANSWER',
+          prompt: 'Technical Architecture & Solution Innovation: Describe your technology stack, algorithm design, hardware components, or novel technical approach that powers this solution.',
+          options: JSON.stringify([]),
+          correctAnswer: 'SUBMISSION_EVALUATION',
+          points: 20,
+        },
+        {
+          order: 3,
+          category: 'PROTOTYPE_DEMO',
+          type: 'SHORT_ANSWER',
+          prompt: 'Working Prototype / Demo / Repository URL: Provide a direct URL to your live demo, GitHub repository, Figma prototype, or video walkthrough (e.g. YouTube, Loom, GitHub).',
+          options: JSON.stringify([]),
+          correctAnswer: 'SUBMISSION_EVALUATION',
+          points: 20,
+        },
+        {
+          order: 4,
+          category: 'PITCH_DECK',
+          type: 'SHORT_ANSWER',
+          prompt: 'Pitch Deck / Slide Presentation URL: Provide a public link to your slide deck (Google Slides, Pitch.com, Canva, or public PDF link).',
+          options: JSON.stringify([]),
+          correctAnswer: 'SUBMISSION_EVALUATION',
+          points: 20,
+        },
+        {
+          order: 5,
+          category: 'TRACTION_STAGE',
+          type: 'MULTIPLE_CHOICE',
+          prompt: 'Current Venture / Prototype Maturity Stage: Select the current status of your project.',
+          options: JSON.stringify([
+            'Concept & Technical Discovery Stage',
+            'Early Prototype / Proof of Concept Built',
+            'Functional MVP with Active Users or Pilot Testing',
+            'Deployed / Market-Ready / Commercializing',
+          ]),
+          correctAnswer: 'Functional MVP with Active Users or Pilot Testing',
+          points: 10,
+        },
+        {
+          order: 6,
+          category: 'LAB_SUPPORT_GOALS',
+          type: 'SHORT_ANSWER',
+          prompt: 'Team & Innovation Lab Objectives: Are you a solo builder or squad team? What specific resources do you require from the STEMPACT Innovation Lab (e.g., hardware lab, cloud compute, mentor matching, seed grant access, hackathon representation)?',
+          options: JSON.stringify([]),
+          correctAnswer: 'SUBMISSION_EVALUATION',
+          points: 10,
+        },
+      ];
+
+      const createdQuestions = [];
+      for (const q of dossierQuestions) {
+        const created = await prisma.assessmentQuestion.create({
+          data: {
+            assessmentId: newAssessment.id,
+            assessmentVersionId: newVersion.id,
+            category: q.category,
+            type: q.type,
+            prompt: q.prompt,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            points: q.points,
+            order: q.order,
+          },
+        });
+        createdQuestions.push(created);
+      }
+
+      return {
+        assessment: newAssessment,
+        currentVersion: newVersion,
+        questions: createdQuestions,
+        isInnovationLab: true,
+      };
+    } catch (err) {
+      console.error('[AssessmentService.getOrCreateInnovationVentureDossier error]:', err);
       return null;
     }
   }

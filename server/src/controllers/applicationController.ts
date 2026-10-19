@@ -7,6 +7,7 @@ import { emailService } from '../services/emailService.js';
 import { getJwtSecret, JWT_EXPIRES_IN } from '../config/jwt.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { identifierService } from '../services/identifierService.js';
+import { isInnovationLabSchool } from '../utils/schoolClassifier.js';
 
 export const submitApplication = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -139,7 +140,9 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
       },
     });
 
-    // Send application confirmation email with direct assessment link via Resend
+    const isInnovation = isInnovationLabSchool(application.program?.school);
+
+    // Send application confirmation email with direct assessment / venture dossier link via Resend
     if (application.email) {
       emailService.sendApplicationReceivedEmail({
         to: application.email,
@@ -148,6 +151,7 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
         programName: application.program?.name || 'STEMPACT Program',
         programId: application.programId,
         applicationId: application.id,
+        isInnovationLab: isInnovation,
       }).catch(err => console.error('Failed to send application email:', err));
     }
 
@@ -170,11 +174,19 @@ export const submitApplication = async (req: Request, res: Response): Promise<vo
         lastName: user.lastName,
         role: user.role,
       },
-      nextSteps: {
-        action: 'PROCEED_TO_ASSESSMENT',
-        message: 'Complete the online STEM readiness and placement assessment to determine your starting level.',
-        assessmentUrl: `/assessment?appId=${application.id}`,
-      },
+      nextSteps: isInnovation
+        ? {
+            action: 'SUBMIT_VENTURE_PITCH',
+            isInnovationLab: true,
+            message: 'Submit your Venture & Innovation Portfolio Dossier (pitch deck, prototype demo, and innovation thesis) for the Innovation Board.',
+            assessmentUrl: `/assessment?appId=${application.id}&track=innovation`,
+          }
+        : {
+            action: 'PROCEED_TO_ASSESSMENT',
+            isInnovationLab: false,
+            message: 'Complete the online STEM readiness and placement assessment to determine your starting level.',
+            assessmentUrl: `/assessment?appId=${application.id}`,
+          },
       application,
     });
   } catch (error: any) {

@@ -34,7 +34,9 @@ import {
   Percent,
   Coins,
   Copy,
+  Rocket,
 } from 'lucide-react';
+import { isInnovationLabSchool, isInnovationLabProgram } from '../../utils/schoolClassifier';
 
 export const ApplicantDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -435,25 +437,33 @@ export const ApplicantDashboardPage: React.FC = () => {
   const invoice = dashboardData?.invoice;
   const attempt = dashboardData?.assessmentAttempt;
 
+  const isInnovation = isInnovationLabSchool(app?.program?.school) ||
+    isInnovationLabProgram(app?.program) ||
+    (app?.programName && app.programName.toLowerCase().includes('lab'));
+
   const isReassessmentRequired = placement?.status === 'RETURNED_FOR_REASSESSMENT';
 
   const stages = [
     { key: 'APPLICATION', title: 'Application', desc: 'Application profile submitted', done: true },
     {
       key: 'ASSESSMENT',
-      title: 'Assessment',
+      title: isInnovation ? 'Venture Dossier' : 'Assessment',
       desc: isReassessmentRequired
         ? 'Reassessment requested by Board'
         : attempt
-        ? 'Diagnostic assessment completed'
-        : 'Diagnostic assessment pending',
+        ? (isInnovation ? 'Venture dossier submitted' : 'Diagnostic assessment completed')
+        : (isInnovation ? 'Venture pitch pending' : 'Diagnostic assessment pending'),
       done: !!attempt && !isReassessmentRequired,
       warning: isReassessmentRequired,
     },
     {
       key: 'PLACEMENT',
-      title: 'Placement / Decision',
-      desc: isReassessmentRequired ? 'Awaiting test retake' : 'Track verified by Academic Board',
+      title: isInnovation ? 'Innovation Review' : 'Placement / Decision',
+      desc: isReassessmentRequired
+        ? 'Awaiting test retake'
+        : (placement?.status === 'APPROVED' || placement?.status === 'MODIFIED' || !!admission)
+        ? (isInnovation ? 'Venture evaluated & ratified' : 'Track verified by Academic Board')
+        : (isInnovation ? 'Under Innovation Board review' : 'Awaiting Board verification'),
       done: !isReassessmentRequired && (placement?.status === 'APPROVED' || placement?.status === 'MODIFIED' || !!admission),
     },
     { key: 'ADMISSION_OFFER', title: 'Admission Offer', desc: 'Provisional offer issued', done: !!admission },
@@ -594,7 +604,7 @@ export const ApplicantDashboardPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Diagnostic Assessment
+            {isInnovation ? 'Venture & Pitch Portfolio' : 'Diagnostic Assessment'}
           </button>
           <button
             type="button"
@@ -807,13 +817,29 @@ export const ApplicantDashboardPage: React.FC = () => {
 
               {(!attempt || isReassessmentRequired) && (
                 <Link
-                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
+                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}${isInnovation ? '&track=innovation' : ''}`}
                   className={`w-full py-3 px-4 ${
-                    isReassessmentRequired ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'
+                    isReassessmentRequired
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : isInnovation
+                      ? 'bg-sky-600 hover:bg-sky-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
                   } text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 text-center`}
                 >
-                  {isReassessmentRequired ? <RotateCcw className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                  <span>{isReassessmentRequired ? 'Retake Diagnostic Assessment' : 'Launch Diagnostic Test'}</span>
+                  {isReassessmentRequired ? (
+                    <RotateCcw className="w-4 h-4" />
+                  ) : isInnovation ? (
+                    <Rocket className="w-4 h-4" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span>
+                    {isReassessmentRequired
+                      ? 'Retake Diagnostic Assessment'
+                      : isInnovation
+                      ? 'Submit Venture Pitch & Prototype'
+                      : 'Launch Diagnostic Test'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               )}
@@ -936,8 +962,14 @@ export const ApplicantDashboardPage: React.FC = () => {
           <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
             <div className="flex items-center justify-between border-b pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Diagnostic Placement Assessment</h3>
-                <p className="text-xs text-slate-500">Evaluates your baseline competency for optimal cohort allocation.</p>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {isInnovation ? 'Venture & Pitch Portfolio Review' : 'Diagnostic Placement Assessment'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {isInnovation
+                    ? 'Evaluates your project prototype, code repository, pitch deck, and venture goals.'
+                    : 'Evaluates your baseline competency for optimal cohort allocation.'}
+                </p>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                 isReassessmentRequired
@@ -1035,15 +1067,21 @@ export const ApplicantDashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                  <Sparkles className="w-6 h-6" />
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto ${isInnovation ? 'bg-sky-50 text-sky-600' : 'bg-blue-50 text-blue-600'}`}>
+                  {isInnovation ? <Rocket className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
                 </div>
                 <div>
                   <h4 className="text-base font-bold text-slate-900">
-                    {app ? `Diagnostic Placement Assessment for ${app.programName || 'Your Specialization'}` : 'Diagnostic Placement Assessment'}
+                    {isInnovation
+                      ? `Venture & Pitch Portfolio Submission for ${app?.programName || 'Your Track'}`
+                      : app
+                      ? `Diagnostic Placement Assessment for ${app.programName || 'Your Specialization'}`
+                      : 'Diagnostic Placement Assessment'}
                   </h4>
                   <p className="text-xs text-slate-500 max-w-lg mx-auto mt-1 leading-relaxed">
-                    This comprehensive diagnostic placement assessment evaluates your baseline competency: <strong>30% general foundational principles</strong> (digital literacy, logic, systems thinking) and <strong>70% program-specific</strong> technical problems in {app?.programName || 'your applied specialization'}.
+                    {isInnovation
+                      ? 'For the STEMPACT Innovation & Startup Lab, incubator admission, cohort placement, and lab workstations are allocated based on your venture problem statement, solution architecture, working prototype demo or repository, and pitch deck.'
+                      : `This comprehensive diagnostic placement assessment evaluates your baseline competency: 30% general foundational principles (digital literacy, logic, systems thinking) and 70% program-specific technical problems in ${app?.programName || 'your applied specialization'}.`}
                   </p>
                   {app?.intendedLevel && (
                     <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200">
@@ -1055,10 +1093,12 @@ export const ApplicantDashboardPage: React.FC = () => {
 
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
-                    to={`/portal/applicant/assessment?appId=${app?.id || ''}&programId=${app?.programId || ''}`}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
+                    to={`/portal/applicant/assessment?appId=${app?.id || ''}&programId=${app?.programId || ''}${isInnovation ? '&track=innovation' : ''}`}
+                    className={`px-6 py-3 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 ${
+                      isInnovation ? 'bg-sky-600 hover:bg-sky-700' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
-                    <span>Launch Diagnostic Test Now</span>
+                    <span>{isInnovation ? 'Submit Venture Pitch & Prototype Now' : 'Launch Diagnostic Test Now'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   {!app && (

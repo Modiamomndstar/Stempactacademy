@@ -31,7 +31,9 @@ import {
   Laptop,
   CheckCircle,
   Layers,
+  Rocket,
 } from 'lucide-react';
+import { isInnovationLabSchool } from '../../utils/schoolClassifier';
 
 export const ApplicationWizardPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -269,23 +271,37 @@ export const ApplicationWizardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Mandatory Next Step Prompt */}
-          <div className="p-6 rounded-2xl bg-blue-50 border border-blue-200 text-left space-y-3">
-            <h3 className="font-bold text-sm text-blue-950 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span>Mandatory Next Step: Complete Diagnostic Placement Test</span>
-            </h3>
-            <p className="text-xs text-blue-900 leading-relaxed">
-              To determine your optimal curriculum starting track (Foundation, Intermediate, or Specialist) and allow the Academic Board to evaluate your placement, please complete the diagnostic test now.
-            </p>
-          </div>
+          {/* Next Step Prompt */}
+          {successData.nextSteps?.isInnovationLab ? (
+            <div className="p-6 rounded-2xl bg-sky-50 border border-sky-200 text-left space-y-3">
+              <h3 className="font-bold text-sm text-sky-950 flex items-center gap-2">
+                <Rocket className="w-4 h-4 text-sky-600" />
+                <span>Next Step: Submit Your Venture Pitch & Project Dossier</span>
+              </h3>
+              <p className="text-xs text-sky-900 leading-relaxed">
+                For the STEMPACT Innovation & Startup Lab, admissions and incubator placement are evaluated through your venture thesis, pitch deck link, and working prototype demo rather than an academic diagnostic quiz.
+              </p>
+            </div>
+          ) : (
+            <div className="p-6 rounded-2xl bg-blue-50 border border-blue-200 text-left space-y-3">
+              <h3 className="font-bold text-sm text-blue-950 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Mandatory Next Step: Complete Diagnostic Placement Test</span>
+              </h3>
+              <p className="text-xs text-blue-900 leading-relaxed">
+                To determine your optimal curriculum starting track (Foundation, Intermediate, or Specialist) and allow the Academic Board to evaluate your placement, please complete the diagnostic test now.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-4 pt-2">
             <Link
-              to={`/assessment?appId=${successData.applicationId}&programId=${formData.programId}`}
-              className="flex-1 py-3.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center gap-2"
+              to={successData.nextSteps?.assessmentUrl || `/assessment?appId=${successData.applicationId}&programId=${formData.programId}`}
+              className={`flex-1 py-3.5 px-6 rounded-xl text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center gap-2 ${
+                successData.nextSteps?.isInnovationLab ? 'bg-sky-600 hover:bg-sky-700' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              <span>Take Diagnostic Placement Test Now</span>
+              <span>{successData.nextSteps?.isInnovationLab ? 'Submit Venture Pitch & Prototype Now' : 'Take Diagnostic Placement Test Now'}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link

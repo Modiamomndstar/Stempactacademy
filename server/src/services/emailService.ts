@@ -140,7 +140,7 @@ class EmailService {
   }
 
   /**
-   * 1. Application Received & Diagnostic Assessment Link
+   * 1. Application Received & Diagnostic Assessment / Venture Dossier Link
    */
   async sendApplicationReceivedEmail(params: {
     to: string;
@@ -149,10 +149,30 @@ class EmailService {
     programName: string;
     programId: string;
     applicationId: string;
+    isInnovationLab?: boolean;
   }) {
-    const assessmentUrl = `${this.getClientUrl()}/assessment?programId=${params.programId}&applicationId=${params.applicationId}`;
-    const subject = `Application Received: ${params.programName} [${params.applicationNumber}]`;
-    const content = `
+    const isLab = Boolean(params.isInnovationLab);
+    const assessmentUrl = `${this.getClientUrl()}/assessment?programId=${params.programId}&applicationId=${params.applicationId}${isLab ? '&track=innovation' : ''}`;
+    const subject = isLab
+      ? `Innovation & Startup Lab Application Received: ${params.programName} [${params.applicationNumber}]`
+      : `Application Received: ${params.programName} [${params.applicationNumber}]`;
+
+    const content = isLab
+      ? `
+      <p>Dear <strong>${params.fullName}</strong>,</p>
+      <p>Thank you for applying to the <strong>STEMPACT Innovation & Startup Lab</strong> for <strong>${params.programName}</strong>.</p>
+      <div class="callout">
+        <p style="margin: 0; font-size: 14px; color: #64748b;">Official Application Number:</p>
+        <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #0284c7;">${params.applicationNumber}</p>
+      </div>
+      <h3>Next Step: Submit Your Venture & Pitch Portfolio Dossier</h3>
+      <p>For our multidisciplinary incubator and venture tracks, placement is evaluated through your <strong>problem statement, working prototype / repository link, pitch deck, and lab goals</strong> rather than a multiple-choice academic quiz.</p>
+      <div style="text-align: center;">
+        <a href="${assessmentUrl}" class="btn" style="background-color: #0284c7;">Submit Venture Pitch & Prototype Now &rarr;</a>
+      </div>
+      <p style="font-size: 13px; color: #64748b;">Or copy this link to your browser: <br><a href="${assessmentUrl}">${assessmentUrl}</a></p>
+    `
+      : `
       <p>Dear <strong>${params.fullName}</strong>,</p>
       <p>Thank you for applying to <strong>STEMPACT Academy</strong> for the <strong>${params.programName}</strong> program.</p>
       <div class="callout">
@@ -160,13 +180,13 @@ class EmailService {
         <p style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #0f172a;">${params.applicationNumber}</p>
       </div>
       <h3>Next Step: Dynamic Diagnostic Assessment</h3>
-      <p>To ensure you are placed in the cohort and curriculum level that matches your experience, please complete our 15-question dynamic assessment. It takes approximately 20–30 minutes.</p>
+      <p>To ensure you are placed in the cohort and curriculum level that matches your experience, please complete our dynamic diagnostic assessment. It takes approximately 20–30 minutes.</p>
       <div style="text-align: center;">
         <a href="${assessmentUrl}" class="btn">Take Diagnostic Assessment Now &rarr;</a>
       </div>
       <p style="font-size: 13px; color: #64748b;">Or copy this link to your browser: <br><a href="${assessmentUrl}">${assessmentUrl}</a></p>
     `;
-    return this.send({ to: params.to, subject, html: this.wrapTemplate('Application Received', content) });
+    return this.send({ to: params.to, subject, html: this.wrapTemplate(isLab ? 'Venture Lab Application Received' : 'Application Received', content) });
   }
 
   /**
@@ -179,9 +199,27 @@ class EmailService {
     score: number;
     recommendedLevel: string;
     recommendationReason: string;
+    isInnovationLab?: boolean;
   }) {
-    const subject = `Diagnostic Assessment Results: ${params.programName}`;
-    const content = `
+    const isLab = Boolean(params.isInnovationLab);
+    const subject = isLab
+      ? `Venture & Pitch Portfolio Received: ${params.programName}`
+      : `Diagnostic Assessment Results: ${params.programName}`;
+
+    const content = isLab
+      ? `
+      <p>Dear <strong>${params.fullName}</strong>,</p>
+      <p>Your Venture & Pitch Portfolio for <strong>${params.programName}</strong> has been successfully received by the <strong>STEMPACT Innovation Review Board</strong>.</p>
+      <div class="callout" style="border-left-color: #0284c7;">
+        <p style="margin: 0; font-size: 14px; color: #64748b;">Dossier Status:</p>
+        <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: #0284c7;">SUBMISSION COMPLETE &bull; UNDER REVIEW</p>
+        <p style="margin: 8px 0 0 0; font-size: 15px; font-weight: 600; color: #0f172a;">Track Pathway: ${params.recommendedLevel}</p>
+      </div>
+      <p><strong>Innovation Review Note:</strong></p>
+      <p>${params.recommendationReason}</p>
+      <p>Our Innovation Managers, startup mentors, and technical lab leads are reviewing your project prototype and pitch deck. You will receive next-step details regarding incubator matching and cohort scheduling shortly.</p>
+    `
+      : `
       <p>Dear <strong>${params.fullName}</strong>,</p>
       <p>Congratulations on completing your diagnostic assessment for <strong>${params.programName}</strong>.</p>
       <div class="callout">
@@ -193,7 +231,7 @@ class EmailService {
       <p>${params.recommendationReason}</p>
       <p>Our Academic Board is currently ratifying your placement and preparing your official Admission Offer Letter. You will receive your admission pack shortly.</p>
     `;
-    return this.send({ to: params.to, subject, html: this.wrapTemplate('Assessment Results', content) });
+    return this.send({ to: params.to, subject, html: this.wrapTemplate(isLab ? 'Venture Dossier Received' : 'Assessment Results', content) });
   }
 
   /**
