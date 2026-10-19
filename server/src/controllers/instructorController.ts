@@ -68,11 +68,21 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
           },
         },
         studentProfiles: {
-          include: { user: true },
+          include: {
+            user: true,
+            lessonProgress: { where: { status: 'COMPLETED' } },
+          },
         },
         enrollments: {
           where: { status: { in: ['ENROLLED', 'ACTIVE'] } },
-          include: { student: { include: { user: true } } },
+          include: {
+            student: {
+              include: {
+                user: true,
+                lessonProgress: { where: { status: 'COMPLETED' } },
+              },
+            },
+          },
         },
         assignments: {
           include: { submissions: true },
@@ -89,21 +99,17 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
       },
     });
 
-    // Ensure all cohorts have their courses populated even if curriculumVersionId was null
+    // Ensure all cohorts have their level-scoped UoPeople courses populated
     const enhancedCohorts = await Promise.all(
       activeCohorts.map(async (cohort) => {
-        let courses = cohort.curriculumVersion?.courses || [];
-        if (courses.length === 0 && cohort.programId) {
-          courses = await prisma.course.findMany({
-            where: { programId: cohort.programId },
-            include: {
-              modules: {
-                include: { lessons: { orderBy: { order: 'asc' } } },
-                orderBy: { order: 'asc' },
-              },
-            },
-            orderBy: { order: 'asc' },
-          });
+        const levelCode = String(cohort.levelCode || 'LEVEL_1_FOUNDATION');
+        let courses: any[] = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
+          cohort.programId,
+          levelCode,
+          cohort.curriculumVersionId
+        );
+        if (courses.length === 0) {
+          courses = cohort.curriculumVersion?.courses || [];
         }
         return {
           ...cohort,
@@ -132,7 +138,7 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
         cohortId: { in: activeCohortIds },
       },
       include: {
-        cohort: { select: { id: true, name: true, cohortCode: true, level: true } },
+        cohort: { select: { id: true, name: true, cohortCode: true, level: true, levelCode: true } },
         program: { select: { id: true, name: true } },
         members: { include: { student: { include: { user: true } } } },
       },
@@ -208,18 +214,14 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    let courses = cohort.curriculumVersion?.courses || [];
-    if (courses.length === 0 && cohort.programId) {
-      courses = await prisma.course.findMany({
-        where: { programId: cohort.programId },
-        include: {
-          modules: {
-            include: { lessons: { orderBy: { order: 'asc' } } },
-            orderBy: { order: 'asc' },
-          },
-        },
-        orderBy: { order: 'asc' },
-      });
+    const levelCode = String(cohort.levelCode || 'LEVEL_1_FOUNDATION');
+    let courses: any[] = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
+      cohort.programId,
+      levelCode,
+      cohort.curriculumVersionId
+    );
+    if (courses.length === 0) {
+      courses = cohort.curriculumVersion?.courses || [];
     }
 
     const enhancedCohort = {

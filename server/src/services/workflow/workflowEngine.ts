@@ -164,54 +164,68 @@ export class WorkflowEngine {
         },
       });
 
-      // Clear previous courses/competencies on re-publishing to prevent key collisions
-      await tx.course.deleteMany({ where: { programId: program.id } });
-      await tx.competency.deleteMany({ where: { programId: program.id } });
-      await tx.capstoneProject.deleteMany({ where: { programId: program.id } });
-
-      // Determine courses to create
+      // Determine courses to create (ensuring UoPeople Course Introduction + Weekly Units + Final Project structure)
+      const defaultUoPeopleCourses = buildDomainProgramCourses(name, school.code, durationWeeks, level, description);
       const coursesToCreate = (rawData.courses && Array.isArray(rawData.courses) && rawData.courses.length > 0)
-        ? rawData.courses
-        : (rawData.modules && Array.isArray(rawData.modules) && rawData.modules.length > 0)
-          ? [
-              {
-                code: `${code}-101`,
-                title: `${name} — Core Curriculum Modules`,
-                description: description || 'Comprehensive practical learning progression.',
-                credits: Math.min(6, Math.max(3, durationWeeks)),
-                order: 1,
-                level,
-                modules: rawData.modules.map((m: any, idx: number) => ({
-                  title: m.title || `Module ${idx + 1}`,
-                  description: m.description || '',
-                  durationHours: m.durationHours || 12,
-                  order: m.weekNumber || m.order || idx + 1,
-                  assessmentQuiz: m.assessmentQuiz,
-                  assignmentTitle: m.assignmentTitle,
-                  lessons: (m.lessons && Array.isArray(m.lessons) && m.lessons.length > 0)
-                    ? m.lessons
-                    : (m.learningObjectives || ['Core Lesson & Lab']).map((obj: string) => ({
-                        title: obj,
-                        contentSummary: obj,
-                        content: `Instructional lesson overview and guided walkthrough for ${obj}.`,
-                        practicalActivities: m.practicalProjects || ['Practical Lab Sprint'],
-                      })),
-                })),
+        ? rawData.courses.map((c: any) => {
+            const hasIntro = Array.isArray(c.modules) && c.modules.some((m: any) => String(m.title || '').toLowerCase().includes('course introduction'));
+            return hasIntro ? c : defaultUoPeopleCourses[0];
+          })
+        : defaultUoPeopleCourses;
+
+      // NON-DESTRUCTIVE PUBLISHING:
+      // Only remove previous draft/unprogressed courses for the specific target level(s) that have ZERO student lesson progress.
+      // Never delete courses from other levels (Level 1..4) or courses where students have recorded progress!
+      const targetLevels: AcademicLevel[] = Array.from(
+        new Set<AcademicLevel>(
+          coursesToCreate.map((c: any) => (c.level ? resolveAcademicLevel(c.level) : level))
+        )
+      );
+
+      for (const targetLvl of targetLevels) {
+        const existingCoursesForLevel = await tx.course.findMany({
+          where: { programId: program.id, level: targetLvl },
+          include: {
+            modules: {
+              include: {
+                lessons: {
+                  include: {
+                    _count: { select: { studentProgress: true } },
+                  },
+                },
               },
-            ]
-          : buildDomainProgramCourses(name, school.code, durationWeeks, level, description);
+            },
+          },
+        });
+
+        for (const oldCourse of existingCoursesForLevel) {
+          const hasStudentHistory = oldCourse.modules.some((m: any) =>
+            m.lessons.some((l: any) => (l._count?.studentProgress || 0) > 0)
+          );
+          if (!hasStudentHistory) {
+            await tx.course.delete({ where: { id: oldCourse.id } });
+          }
+        }
+      }
+
+      // Only delete competencies that have no student evaluation records attached
+      await tx.competency.deleteMany({
+        where: { programId: program.id, studentRecords: { none: {} } },
+      });
+      await tx.capstoneProject.deleteMany({ where: { programId: program.id } });
 
       const createdCourses = [];
       for (const courseData of coursesToCreate) {
+        const resolvedCourseLevel = courseData.level ? resolveAcademicLevel(courseData.level) : level;
         const course = await tx.course.create({
           data: {
             programId: program.id,
-            code: courseData.code || `${code}-CRS`,
-            title: courseData.title || `${name} Course`,
+            code: courseData.code || `${code}-${resolvedCourseLevel.includes('1') ? '101' : resolvedCourseLevel.includes('2') ? '201' : resolvedCourseLevel.includes('3') ? '301' : '401'}`,
+            title: courseData.title || `${name} (${resolvedCourseLevel.replace(/_/g, ' ')})`,
             description: courseData.description || '',
             credits: courseData.credits || 3,
             order: courseData.order || 1,
-            level: (courseData.level ? resolveAcademicLevel(courseData.level) : level),
+            level: resolvedCourseLevel,
           },
         });
         createdCourses.push(course);
@@ -223,7 +237,7 @@ export class WorkflowEngine {
               title: moduleData.title || 'Curriculum Module',
               description: moduleData.description || '',
               durationHours: moduleData.durationHours || 12,
-              order: moduleData.order || 1,
+              order: moduleData.order !== undefined ? moduleData.order : 1,
             },
           });
 
@@ -238,8 +252,10 @@ export class WorkflowEngine {
                 title: lessonData.title || `Lesson ${idx + 1}`,
                 content: lessonContent,
                 videoUrl: lessonData.videoUrl || undefined,
-                videoDurationMin: lessonData.videoDurationMin || 20,
+                videoDurationMin: lessonData.videoDurationMin || undefined,
                 videoSummary: lessonData.videoSummary || undefined,
+                interactiveLabType: lessonData.interactiveLabType || undefined,
+                resources: lessonData.resources || undefined,
                 order: idx + 1,
               },
             });
@@ -250,8 +266,8 @@ export class WorkflowEngine {
                   moduleId: mod.id,
                   title: `${lessonData.title} — Practical Lab`,
                   description: practical,
-                  objectives: 'Hands-on practical mastery and code synthesis.',
-                  requiredTools: tools.split(',').slice(0, 3).join(', ') || 'VS Code',
+                  objectives: 'Hands-on practical mastery and engineering verification.',
+                  requiredTools: tools.split(',').slice(0, 3).join(', ') || 'Industry Toolchain',
                   estimatedDurationMin: 90,
                 },
               });

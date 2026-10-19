@@ -678,18 +678,6 @@ export const getProgramCurriculumMatrix = async (req: Request, res: Response): P
       },
       include: {
         school: true,
-        courses: {
-          include: {
-            modules: {
-              include: {
-                lessons: true,
-                practicalActivities: true,
-              },
-              orderBy: { order: 'asc' },
-            },
-          },
-          orderBy: { order: 'asc' },
-        },
       },
     });
 
@@ -697,6 +685,8 @@ export const getProgramCurriculumMatrix = async (req: Request, res: Response): P
       res.status(404).json({ message: 'Program not found.' });
       return;
     }
+
+    const { academicDeliveryService } = await import('../services/academicDeliveryService.js');
 
     // Group courses & modules by Academic Level
     const levels = [
@@ -706,27 +696,29 @@ export const getProgramCurriculumMatrix = async (req: Request, res: Response): P
       { code: 'LEVEL_4_SPECIALIST', label: 'Level 4: Specialist / Mastery', badge: 'Venture & Production' },
     ];
 
-    const matrix = levels.map((lvl) => {
-      // Courses matching this level
-      const matchingCourses = program.courses.filter(
-        (c) => c.level === lvl.code || (lvl.code === 'LEVEL_1_FOUNDATION' && !c.level)
+    const matrix = [];
+    for (const lvl of levels) {
+      const matchingCourses = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
+        program.id,
+        lvl.code
       );
 
-      const totalModules = matchingCourses.reduce((acc, c) => acc + c.modules.length, 0);
+      const totalModules = matchingCourses.reduce((acc, c: any) => acc + (c.modules?.length || 0), 0);
       const totalLessons = matchingCourses.reduce(
-        (acc, c) => acc + c.modules.reduce((mAcc, m) => mAcc + m.lessons.length, 0),
+        (acc, c: any) =>
+          acc + (c.modules || []).reduce((mAcc: number, m: any) => mAcc + (m.lessons?.length || 0), 0),
         0
       );
 
-      return {
+      matrix.push({
         ...lvl,
         hasContent: matchingCourses.length > 0 && totalModules > 0,
         coursesCount: matchingCourses.length,
         modulesCount: totalModules,
         lessonsCount: totalLessons,
         courses: matchingCourses,
-      };
-    });
+      });
+    }
 
     res.status(200).json({
       program: {

@@ -60,7 +60,9 @@ router.put('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN, Role
 router.delete('/admin/programs/:id', authenticate, authorize(Role.SUPER_ADMIN), programController.deleteProgram);
 router.patch('/programs/:id/status', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), programController.updateProgramStatus);
 router.post('/admin/programs/:id/curate-videos', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.curateVideos);
-router.patch('/admin/lessons/:lessonId/video', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.updateLessonVideo);
+router.post('/admin/programs/:id/upgrade-uopeople', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.upgradeProgramCurriculumToUoPeople);
+router.patch('/admin/lessons/:lessonId/video', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER, Role.INSTRUCTOR), programController.updateLessonVideo);
+router.patch('/admin/lessons/:lessonId', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER, Role.INSTRUCTOR), programController.updateLessonVideo);
 router.post('/admin/lessons/:lessonId/curate-video', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.CONTENT_MANAGER), programController.curateSingleLessonVideo);
 
 // 2.2 Learning Centers (Multi-Center & Multi-Campus)
@@ -116,6 +118,7 @@ router.get('/student/dashboard', authenticate, studentController.getStudentDashb
 router.get('/student/curriculum', authenticate, studentController.getStudentCurriculum);
 router.post('/student/lessons/:lessonId/progress', authenticate, studentController.recordLessonProgress);
 router.get('/student/completion-readiness', authenticate, studentController.getCompletionReadiness);
+router.post('/student/claim-level-certificate', authenticate, studentController.claimLevelCertificate);
 router.get('/parent/dashboard', authenticate, parentController.getParentDashboard);
 router.post('/parent/wards', authenticate, authorize(Role.SUPER_ADMIN, Role.PARENT), parentController.registerWard);
 router.get('/parent/wards/:studentId/academic-records', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PARENT), parentController.getWardAcademicRecords);

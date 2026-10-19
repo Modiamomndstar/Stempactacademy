@@ -1,7 +1,9 @@
 import { Response } from 'express';
+import { Role } from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { academicDeliveryService } from '../services/academicDeliveryService.js';
+import { progressionService } from '../services/progressionService.js';
 
 export const getStudentDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -35,12 +37,17 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
           include: { payments: true },
           orderBy: { createdAt: 'desc' },
         },
-        certificates: true,
+        certificates: {
+          orderBy: { issueDate: 'desc' },
+        },
         competencies: {
           include: { competency: true },
         },
         projectMembers: {
           include: { project: true },
+        },
+        lessonProgress: {
+          where: { status: 'COMPLETED' },
         },
       },
     });
@@ -94,9 +101,13 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
         program: studentProfile.cohort?.program,
         curriculum: {
           versionNumber: academicContext.curriculumVersionNumber,
+          levelCode: academicContext.levelCode,
+          levelDisplayName: academicContext.levelDisplayName,
           courses: curriculumData.courses,
           competencies: curriculumData.competencies,
         },
+        completedLessonIds: studentProfile.lessonProgress.map((lp) => lp.lessonId),
+        lessonProgress: studentProfile.lessonProgress,
         metrics: {
           progressPercentage: metrics.completionRate,
           attendanceRate: metrics.attendanceRate,
@@ -232,3 +243,80 @@ export const getCompletionReadiness = async (req: AuthRequest, res: Response): P
     res.status(500).json({ message: error.message || 'Failed to evaluate completion readiness.' });
   }
 };
+
+export const claimLevelCertificate = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const student = await prisma.studentProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { certificates: true },
+    });
+
+    if (!student) {
+      res.status(404).json({ message: 'Student profile not found.' });
+      return;
+    }
+
+    const context = await academicDeliveryService.getStudentAcademicContext(student.id);
+    const report = await academicDeliveryService.evaluateCompletionReadiness(student.id);
+
+    // Check if certificate already issued for this level & program
+    const existingCert = student.certificates.find(
+      (c) =>
+        c.levelCode === context.levelCode &&
+        c.programName.toLowerCase().includes(context.programName.toLowerCase())
+    );
+
+    if (existingCert) {
+      res.status(200).json({
+        message: `Your Certificate of Completion for ${context.programName} (${context.levelDisplayName}) has already been issued.`,
+        alreadyIssued: true,
+        certificate: existingCert,
+        report,
+      });
+      return;
+    }
+
+    if (!report.evaluation.isPolicyMet) {
+      res.status(400).json({
+        message:
+          report.evaluation.deficits.join(' ') ||
+          'You have not yet met all academic completion requirements for this level.',
+        deficits: report.evaluation.deficits,
+        report,
+      });
+      return;
+    }
+
+    // Issue the verifiable Level Certificate of Completion & unlock next-level Progression Eligibility
+    const result = await progressionService.evaluateLevelCompletion({
+      studentId: student.id,
+      cohortId: context.cohortId,
+      staffUser: {
+        id: req.user.id,
+        role: Role.ACADEMIC_ADMIN,
+        name: 'STEMPACT Automated Level Completion Terminal',
+      },
+      overrideCriteria: true,
+      notes: `Verified 100% UoPeople Level Completion (${report.academicEvidence.completedLessons}/${report.academicEvidence.totalLessons} lessons, ${report.academicEvidence.attendanceRate}% attendance).`,
+    });
+
+    res.status(200).json({
+      message: `Congratulations! Your official Certificate of Completion for ${context.programName} (${context.levelDisplayName}) has been generated!`,
+      certificate: result.certificate,
+      trackDiploma: result.trackDiploma || null,
+      progressionEligibility: result.progressionEligibility || null,
+      report,
+    });
+  } catch (error: any) {
+    console.error('claimLevelCertificate error:', error);
+    res.status(500).json({
+      message: error.message || 'Failed to generate Level Certificate of Completion.',
+    });
+  }
+};
+

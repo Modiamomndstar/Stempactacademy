@@ -132,16 +132,21 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Video Inspection, Playback & Manual Embed Editor State
+  // Video Inspection, Playback & Manual Lesson/Embed Editor State
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
   const [videoEditForm, setVideoEditForm] = useState<{
+    title: string;
+    content: string;
+    learningObjectives: string;
     videoUrl: string;
     videoDurationMin: number | '';
     videoSummary: string;
-  }>({ videoUrl: '', videoDurationMin: 15, videoSummary: '' });
+  }>({ title: '', content: '', learningObjectives: '', videoUrl: '', videoDurationMin: 15, videoSummary: '' });
   const [savingVideo, setSavingVideo] = useState(false);
   const [curatingAllVideos, setCuratingAllVideos] = useState(false);
+  const [upgradingUoPeople, setUpgradingUoPeople] = useState(false);
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>('ALL');
   const [curatingLessonId, setCuratingLessonId] = useState<string | null>(null);
   const [curateSuccessMessage, setCurateSuccessMessage] = useState<string>('');
 
@@ -252,6 +257,9 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
   const handleOpenVideoEditor = (lesson: any) => {
     setEditingLesson(lesson);
     setVideoEditForm({
+      title: lesson.title || '',
+      content: lesson.content || '',
+      learningObjectives: lesson.learningObjectives || '',
       videoUrl: lesson.videoUrl || '',
       videoDurationMin: lesson.videoDurationMin || 15,
       videoSummary: lesson.videoSummary || '',
@@ -269,31 +277,37 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
         : (videoEditForm.videoUrl ? videoEditForm.videoUrl.trim() : null);
 
       await api.updateLessonVideo(editingLesson.id, {
+        title: videoEditForm.title.trim() || editingLesson.title,
+        content: videoEditForm.content.trim() || editingLesson.content,
+        learningObjectives: videoEditForm.learningObjectives.trim() || undefined,
         videoUrl: cleanUrl,
         videoDurationMin: videoEditForm.videoDurationMin ? Number(videoEditForm.videoDurationMin) : null,
         videoSummary: videoEditForm.videoSummary ? videoEditForm.videoSummary.trim() : null,
       });
 
-      updateLessonInLocalState(editingLesson.id, {
+      const updatedFields = {
+        title: videoEditForm.title.trim() || editingLesson.title,
+        content: videoEditForm.content.trim() || editingLesson.content,
+        learningObjectives: videoEditForm.learningObjectives.trim() || null,
         videoUrl: cleanUrl,
         videoDurationMin: videoEditForm.videoDurationMin ? Number(videoEditForm.videoDurationMin) : null,
         videoSummary: videoEditForm.videoSummary,
-      });
+      };
+
+      updateLessonInLocalState(editingLesson.id, updatedFields);
 
       if (previewLesson && previewLesson.id === editingLesson.id) {
         setPreviewLesson((prev: any) => prev ? {
           ...prev,
-          videoUrl: cleanUrl,
-          videoDurationMin: videoEditForm.videoDurationMin,
-          videoSummary: videoEditForm.videoSummary,
+          ...updatedFields,
         } : null);
       }
 
-      setCurateSuccessMessage(`Video tutorial embed updated for "${editingLesson.title}".`);
+      setCurateSuccessMessage(`Lesson content & video updated for "${updatedFields.title}".`);
       setTimeout(() => setCurateSuccessMessage(''), 4000);
       setEditingLesson(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to update lesson video embed');
+      alert(err.message || 'Failed to update lesson content & video embed');
     } finally {
       setSavingVideo(false);
     }
@@ -338,6 +352,24 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
       alert(err.message || 'Batch video curation failed');
     } finally {
       setCuratingAllVideos(false);
+    }
+  };
+
+  const handleUpgradeToUoPeople = async () => {
+    if (!program?.id) return;
+    setUpgradingUoPeople(true);
+    try {
+      await api.upgradeProgramToUoPeople(program.id, { forceRegenerate: true });
+      setCurateSuccessMessage(
+        'Upgraded all 4 Academic Levels (Level 1 Foundation → Level 4 Specialist) to the standardized UoPeople-inspired Unit & Lesson structure with domain-verified videos!'
+      );
+      await loadProgramDetail();
+      if (onProgramUpdated) onProgramUpdated();
+      setTimeout(() => setCurateSuccessMessage(''), 6000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to upgrade program curriculum structure');
+    } finally {
+      setUpgradingUoPeople(false);
     }
   };
 
@@ -504,25 +536,25 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                     </div>
                   )}
 
-                  {/* Syllabus Tree Toolbar: Video Curation & Coverage */}
-                  {courses.length > 0 && (() => {
-                    const allLessons = courses.flatMap((c: any) => (c.modules || []).flatMap((m: any) => m.lessons || []));
-                    const lessonsWithVideos = allLessons.filter((l: any) => !!l.videoUrl);
-                    const coveragePct = allLessons.length > 0 ? Math.round((lessonsWithVideos.length / allLessons.length) * 100) : 0;
+                  {/* Syllabus Tree Toolbar: UoPeople Structure Sync, Level Filter & Video Coverage */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm border border-slate-800">
+                    {(() => {
+                      const allLessons = courses.flatMap((c: any) => (c.modules || []).flatMap((m: any) => m.lessons || []));
+                      const lessonsWithVideos = allLessons.filter((l: any) => !!l.videoUrl);
+                      const coveragePct = allLessons.length > 0 ? Math.round((lessonsWithVideos.length / allLessons.length) * 100) : 0;
 
-                    return (
-                      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm border border-slate-800">
+                      return (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                              Digital Lecture Coverage
+                              UoPeople Unit Architecture & Video Coverage
                             </span>
                             <span className="text-xs text-slate-300 font-mono">
-                              {lessonsWithVideos.length} / {allLessons.length} Lessons ({coveragePct}%)
+                              {lessonsWithVideos.length} / {allLessons.length} Lessons with Videos ({coveragePct}%)
                             </span>
                           </div>
                           <p className="text-xs text-slate-300">
-                            Verified educational video tutorials are embedded directly into student lesson players.
+                            Course Introduction (Orientation & Syllabus) → Weekly Learning Units (Overview, Watch Lectures, Physical Class, Assignment, Quiz) → Final Level Project & Certificate Issuance.
                           </p>
                           <div className="w-full sm:w-64 h-1.5 rounded-full bg-white/10 overflow-hidden mt-1.5">
                             <div
@@ -531,30 +563,61 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                             />
                           </div>
                         </div>
+                      );
+                    })()}
 
-                        {isAcademicOrSuperAdmin && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              disabled={curatingAllVideos || loading}
-                              onClick={handleCurateAllVideos}
-                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
-                            >
-                              <Sparkles className={`w-3.5 h-3.5 ${curatingAllVideos ? 'animate-spin' : ''}`} />
-                              <span>{curatingAllVideos ? 'Curating All Videos...' : coveragePct === 100 ? 'Re-Curate All Videos' : 'AI Curate All Program Videos'}</span>
-                            </button>
-                          </div>
-                        )}
+                    {isAcademicOrSuperAdmin && (
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          disabled={upgradingUoPeople || loading}
+                          onClick={handleUpgradeToUoPeople}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                          title="Generate or synchronize Course Introduction, Weekly Learning Units, and Final Level Project across all 4 Academic Levels"
+                        >
+                          <RotateCw className={`w-3.5 h-3.5 ${upgradingUoPeople ? 'animate-spin' : ''}`} />
+                          <span>{upgradingUoPeople ? 'Syncing 4 Levels...' : 'Sync 4-Level UoPeople Units'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={curatingAllVideos || loading}
+                          onClick={handleCurateAllVideos}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${curatingAllVideos ? 'animate-spin' : ''}`} />
+                          <span>{curatingAllVideos ? 'Curating All Videos...' : 'AI Curate Videos'}</span>
+                        </button>
                       </div>
-                    );
-                  })()}
+                    )}
+                  </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span className="font-semibold">
-                      Full Academic Syllabus Tree (Course → Modules → Lessons & Practicals)
-                    </span>
-                    <span className="font-mono">
-                      {courses.reduce((acc: number, c: any) => acc + (c.modules?.length || 0), 0)} Modules Total
+                  {/* Academic Level Filter Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-bold text-slate-600 dark:text-slate-300 mr-1">Academic Level:</span>
+                      {[
+                        { code: 'ALL', label: 'All 4 Levels' },
+                        { code: 'LEVEL_1_FOUNDATION', label: 'Level 1 • Foundation' },
+                        { code: 'LEVEL_2_INTERMEDIATE', label: 'Level 2 • Intermediate' },
+                        { code: 'LEVEL_3_ADVANCED', label: 'Level 3 • Advanced' },
+                        { code: 'LEVEL_4_SPECIALIST', label: 'Level 4 • Specialist' },
+                      ].map((lvl) => (
+                        <button
+                          key={lvl.code}
+                          type="button"
+                          onClick={() => setSelectedLevelFilter(lvl.code)}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                            selectedLevelFilter === lvl.code
+                              ? 'bg-blue-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {lvl.label}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="font-mono text-[11px] text-slate-500">
+                      {courses.reduce((acc: number, c: any) => acc + (c.modules?.length || 0), 0)} Units Total
                     </span>
                   </div>
 
@@ -562,10 +625,19 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                     <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-500 text-xs space-y-2">
                       <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
                       <p className="font-semibold text-slate-700">No canonical courses linked to this program yet.</p>
-                      <p className="text-[11px]">Use the AI Curriculum Architect to draft structured course syllabi.</p>
+                      <p className="text-[11px]">Click &quot;Sync 4-Level UoPeople Units&quot; above to build structured courses across all 4 academic levels.</p>
                     </div>
                   ) : (
-                    courses.map((course: any, cIdx: number) => {
+                    courses
+                      .filter((course: any) => {
+                        if (selectedLevelFilter === 'ALL') return true;
+                        const cLvl = String(course.level || '').toUpperCase();
+                        if (selectedLevelFilter === 'LEVEL_4_SPECIALIST') {
+                          return cLvl === 'LEVEL_4_SPECIALIST' || cLvl === 'LEVEL_4_MASTERY';
+                        }
+                        return cLvl === selectedLevelFilter;
+                      })
+                      .map((course: any, cIdx: number) => {
                       const courseId = course.id || `course-${cIdx}`;
                       const isCourseOpen = !!expandedCourses[courseId];
                       const modules = course.modules || [];
@@ -586,10 +658,17 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                                 {cIdx + 1}
                               </span>
                               <div>
-                                <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
-                                  {course.code || `COURSE-${cIdx + 1}`}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                                    {course.code || `COURSE-${cIdx + 1}`}
+                                  </span>
+                                  {course.level && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                      {String(course.level).replace(/_/g, ' ')}
+                                    </span>
+                                  )}
                                 </div>
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                                   {course.title}
                                 </h3>
                               </div>
@@ -597,7 +676,7 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
 
                             <div className="flex items-center gap-3">
                               <span className="text-[10px] font-bold text-slate-500 bg-white dark:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-600">
-                                {modules.length} {modules.length === 1 ? 'Module' : 'Modules'}
+                                {modules.length} {modules.length === 1 ? 'Unit' : 'Units'}
                               </span>
                               {course.credits && (
                                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
@@ -741,10 +820,10 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                                                               type="button"
                                                               onClick={() => handleOpenVideoEditor(lesson)}
                                                               className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
-                                                              title={hasVideo ? 'Edit YouTube URL, duration, or summary' : 'Manually embed YouTube video link'}
+                                                              title="Edit lesson title, overview/content, learning objectives, or video embed"
                                                             >
-                                                              <Link2 className="w-3 h-3 text-blue-600" />
-                                                              <span>{hasVideo ? 'Edit Video' : 'Embed Video'}</span>
+                                                              <Edit2 className="w-3 h-3 text-blue-600" />
+                                                              <span>Edit Lesson & Video</span>
                                                             </button>
 
                                                             <button
@@ -1156,19 +1235,19 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
         </div>
       )}
 
-      {/* MANUAL LESSON VIDEO EMBED EDITOR MODAL */}
+      {/* MANUAL LESSON CONTENT, OBJECTIVES & VIDEO EMBED EDITOR MODAL */}
       {editingLesson && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
             {/* Header */}
             <div className="p-5 bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0">
-                  <Link2 className="w-4 h-4" />
+                  <Edit2 className="w-4 h-4" />
                 </div>
                 <div className="truncate">
                   <h3 className="font-bold text-sm text-white truncate">
-                    Manual Video Embed & Curation
+                    Edit Lesson Content, Learning Objectives & Video Curation
                   </h3>
                   <p className="text-[11px] text-slate-300 truncate">
                     Lesson: {editingLesson.title}
@@ -1188,8 +1267,48 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
             {/* Form */}
             <form onSubmit={handleSaveLessonVideo} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="space-y-1.5">
+                <label className="font-bold text-slate-800 dark:text-slate-200">
+                  Lesson Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={videoEditForm.title}
+                  onChange={(e) => setVideoEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800 dark:text-slate-200">
+                  Learning Objectives (Bullet points or outcomes)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="• Outcome 1... • Outcome 2..."
+                  value={videoEditForm.learningObjectives}
+                  onChange={(e) => setVideoEditForm((prev) => ({ ...prev, learningObjectives: e.target.value }))}
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800 dark:text-slate-200">
+                  Lesson Reading / Course Overview Content *
+                </label>
+                <textarea
+                  rows={6}
+                  required
+                  placeholder="Full instructional lesson text, course overview, or lab instructions..."
+                  value={videoEditForm.content}
+                  onChange={(e) => setVideoEditForm((prev) => ({ ...prev, content: e.target.value }))}
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono leading-relaxed focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                  <span>Video Source URL (YouTube, Google Drive, Cloudflare R2 / MP4, Vimeo) *</span>
+                  <span>Video Source URL (YouTube, Google Drive, Cloudflare R2 / MP4, Vimeo)</span>
                   <span className="text-[10px] text-slate-400 font-normal">Supports YouTube, Drive preview, Vimeo & MP4</span>
                 </label>
                 <input
@@ -1255,7 +1374,7 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-800 dark:text-slate-200">
-                    Estimated Duration (Minutes)
+                    Estimated Video Duration (Minutes)
                   </label>
                   <input
                     type="number"
@@ -1282,11 +1401,11 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
 
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-800 dark:text-slate-200">
-                  Video Summary & Key Concepts
+                  Video Summary & What Student Will Learn
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Summary of skills and hands-on exercises demonstrated in this video lecture..."
+                  placeholder="Summary of skills, learning expectations, and hands-on exercises demonstrated in this video lecture..."
                   value={videoEditForm.videoSummary}
                   onChange={(e) => setVideoEditForm((prev) => ({ ...prev, videoSummary: e.target.value }))}
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500"
@@ -1307,7 +1426,7 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                   disabled={savingVideo}
                   className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition disabled:opacity-50 cursor-pointer"
                 >
-                  {savingVideo ? 'Saving Embed...' : 'Save Video Embed'}
+                  {savingVideo ? 'Saving Lesson...' : 'Save Lesson & Video'}
                 </button>
               </div>
             </form>

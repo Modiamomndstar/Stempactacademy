@@ -125,8 +125,24 @@ export const StudentDashboardPage: React.FC = () => {
   // UoPeople-inspired Dual-Pane Curriculum Studio State
   const [curriculumSearch, setCurriculumSearch] = useState<string>('');
   const [expandedUnitIds, setExpandedUnitIds] = useState<Set<string>>(new Set());
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({});
+  const [claimingCertificate, setClaimingCertificate] = useState<boolean>(false);
+  const [claimedCertificateResult, setClaimedCertificateResult] = useState<any | null>(null);
 
   const coursesList = curriculumData?.courses || data?.curriculum?.courses || [];
+
+  // Parse structured UoPeople metadata from selectedLesson.resources
+  const parsedLessonResources = useMemo(() => {
+    if (!selectedLesson?.resources) return null;
+    try {
+      return typeof selectedLesson.resources === 'string'
+        ? JSON.parse(selectedLesson.resources)
+        : selectedLesson.resources;
+    } catch {
+      return null;
+    }
+  }, [selectedLesson]);
 
   // Flattened lesson list for sequential UoPeople-style navigation
   const flatLessonsList = useMemo(() => {
@@ -139,6 +155,7 @@ export const StudentDashboardPage: React.FC = () => {
             courseTitle: course.title,
             courseCode: course.code,
             moduleTitle: mod.title,
+            moduleOrder: mod.order ?? mIdx,
             moduleId: mod.id || `mod-${mIdx}`,
             unitNumber: mIdx + 1,
             lessonNumber: lIdx + 1,
@@ -196,6 +213,9 @@ export const StudentDashboardPage: React.FC = () => {
       setLoading(true);
       const res = await api.getStudentDashboard();
       setData(res.dashboard);
+      if (Array.isArray(res.dashboard?.completedLessonIds)) {
+        setCompletedLessonIds(new Set(res.dashboard.completedLessonIds));
+      }
 
       // Load active payment gateways and transfer settings
       try {
@@ -301,10 +321,39 @@ export const StudentDashboardPage: React.FC = () => {
       // Refresh dashboard metrics
       const res = await api.getStudentDashboard();
       setData(res.dashboard);
+      if (Array.isArray(res.dashboard?.completedLessonIds)) {
+        setCompletedLessonIds(new Set(res.dashboard.completedLessonIds));
+      }
     } catch (err: any) {
       setActionError(err.message || 'Failed to record lesson progress.');
     } finally {
       setCompletingLesson(false);
+    }
+  };
+
+  // Claim Level Certificate of Completion from Final Unit Gate
+  const handleClaimLevelCertificate = async () => {
+    setClaimingCertificate(true);
+    setActionError('');
+    try {
+      // Ensure the Certificate Gate lesson itself is marked completed if all other lessons are done
+      if (selectedLesson?.id && !completedLessonIds.has(selectedLesson.id)) {
+        await api.recordLessonProgress(selectedLesson.id, {
+          status: 'COMPLETED',
+          timeSpentMinutes: 15,
+          notes: 'Completed Final Level Certificate Gate',
+        });
+        setCompletedLessonIds((prev) => new Set(prev).add(selectedLesson.id));
+      }
+      const res = await api.claimLevelCertificate();
+      setClaimedCertificateResult(res.certificate);
+      setActionSuccess(res.message || 'Official Level Certificate of Completion generated successfully!');
+      const dashRes = await api.getStudentDashboard();
+      setData(dashRes.dashboard);
+    } catch (err: any) {
+      setActionError(err.message || 'Requirements not yet met to generate Level Certificate.');
+    } finally {
+      setClaimingCertificate(false);
     }
   };
 
@@ -1063,13 +1112,14 @@ export const StudentDashboardPage: React.FC = () => {
                   </div>
 
                   {/* Modules Accordion List */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100 max-h-[720px] overflow-y-auto">
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100 max-h-[760px] overflow-y-auto">
                     {coursesList.map((course: any, cIdx: number) => {
+                      const totalMods = (course.modules || []).length;
                       return (course.modules || []).map((mod: any, mIdx: number) => {
                         const unitId = mod.id || `unit-${cIdx}-${mIdx}`;
                         const isExpanded =
                           expandedUnitIds.has(unitId) ||
-                          (curriculumSearch.trim().length > 0) ||
+                          curriculumSearch.trim().length > 0 ||
                           selectedLesson?.moduleId === mod.id;
 
                         const lessonsInMod = mod.lessons || [];
@@ -1093,6 +1143,20 @@ export const StudentDashboardPage: React.FC = () => {
                         }
 
                         const isAllCompleted = lessonsInMod.length > 0 && completedCount === lessonsInMod.length;
+                        const isIntroUnit = mod.order === 0 || /course\s*introduction/i.test(mod.title);
+                        const isFinalProjectUnit =
+                          /final\s*level\s*project|certificate\s*issuance/i.test(mod.title) ||
+                          lessonsInMod.some((l: any) => l.interactiveLabType === 'CERTIFICATE_GATE');
+                        const unitProgressPct =
+                          lessonsInMod.length > 0
+                            ? Math.round((completedCount / lessonsInMod.length) * 100)
+                            : 0;
+
+                        const unitLabelBadge = isIntroUnit
+                          ? 'Course Introduction • Orientation'
+                          : isFinalProjectUnit
+                          ? `Final Unit (${totalMods > 1 ? totalMods - 1 : mIdx + 1}) • Project & Certificate`
+                          : `Learning Unit ${mod.order ?? mIdx}`;
 
                         return (
                           <div key={unitId} className="group">
@@ -1111,28 +1175,44 @@ export const StudentDashboardPage: React.FC = () => {
                                 });
                               }}
                               className={`w-full p-4 text-left flex items-start justify-between gap-3 transition-colors cursor-pointer ${
-                                isExpanded ? 'bg-slate-50/80' : 'hover:bg-slate-50/50'
+                                isExpanded ? 'bg-slate-50/90' : 'hover:bg-slate-50/50'
                               }`}
                             >
-                              <div className="space-y-1 min-w-0 pr-2">
+                              <div className="space-y-1.5 min-w-0 pr-2 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                                    Unit {mIdx + 1}
+                                  <span
+                                    className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                      isIntroUnit
+                                        ? 'bg-indigo-100 text-indigo-800'
+                                        : isFinalProjectUnit
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-blue-50 text-blue-700'
+                                    }`}
+                                  >
+                                    {unitLabelBadge}
                                   </span>
                                   {isAllCompleted ? (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 flex items-center gap-1">
                                       <CheckCircle2 className="w-3 h-3" />
-                                      <span>Completed</span>
+                                      <span>Completed ✓</span>
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] font-semibold text-slate-400">
+                                    <span className="text-[10px] font-semibold text-slate-500">
                                       {completedCount}/{lessonsInMod.length} Completed
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="font-bold text-xs text-slate-900 leading-snug truncate">
+                                <h4 className="font-bold text-xs text-slate-900 leading-snug">
                                   {mod.title}
                                 </h4>
+                                <div className="w-full bg-slate-200/70 h-1.5 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-300 ${
+                                      isAllCompleted ? 'bg-emerald-500' : 'bg-blue-600'
+                                    }`}
+                                    style={{ width: `${unitProgressPct}%` }}
+                                  />
+                                </div>
                               </div>
 
                               <div className="text-slate-400 group-hover:text-slate-600 shrink-0 mt-1">
@@ -1146,12 +1226,43 @@ export const StudentDashboardPage: React.FC = () => {
 
                             {/* Unit Items (Lessons & Activities) */}
                             {isExpanded && (
-                              <div className="bg-slate-50/40 px-2 py-1.5 space-y-1 border-t border-slate-100">
+                              <div className="bg-slate-50/50 px-2.5 py-2 space-y-1.5 border-t border-slate-100">
                                 {displayedLessons.map((lesson: any, lIdx: number) => {
                                   const isSelected = selectedLesson?.id === lesson.id;
                                   const isDone =
                                     completedLessonIds.has(lesson.id) ||
                                     lesson.progress?.status === 'COMPLETED';
+                                  const labType = lesson.interactiveLabType || '';
+
+                                  const getLessonIcon = () => {
+                                    if (labType === 'CERTIFICATE_GATE') return <Award className="w-3.5 h-3.5" />;
+                                    if (labType === 'UNIT_QUIZ') return <HelpCircle className="w-3.5 h-3.5" />;
+                                    if (labType === 'UNIT_ASSIGNMENT' || labType === 'FINAL_PROJECT_SUBMISSION')
+                                      return <FileText className="w-3.5 h-3.5" />;
+                                    if (labType === 'PHYSICAL_CLASS_GUIDE') return <Calendar className="w-3.5 h-3.5" />;
+                                    if (lesson.videoUrl) return <Play className="w-3.5 h-3.5 fill-current" />;
+                                    return <BookOpen className="w-3.5 h-3.5" />;
+                                  };
+
+                                  const getLessonTypeTag = () => {
+                                    if (labType === 'COURSE_WELCOME') return 'Welcome';
+                                    if (labType === 'COURSE_OVERVIEW') return 'Course Overview';
+                                    if (labType === 'COURSE_SYLLABUS') return 'Syllabus & Schedule';
+                                    if (labType === 'COURSE_ASSESSMENT_POLICY') return 'Grading Policy';
+                                    if (labType === 'COURSE_RESOURCES') return 'Lab Toolkit';
+                                    if (labType === 'COURSE_NAVIGATION') return 'Studio Guide';
+                                    if (labType === 'UNIT_OVERVIEW') return 'Unit Overview';
+                                    if (labType === 'CORE_LESSON') return 'Watch & Read';
+                                    if (labType === 'PHYSICAL_CLASS_GUIDE') return 'Physical Class';
+                                    if (labType === 'UNIT_ASSIGNMENT') return 'Unit Assignment';
+                                    if (labType === 'UNIT_QUIZ') return 'Self-Quiz';
+                                    if (labType === 'UNIT_CONCLUSION') return 'Conclusion';
+                                    if (labType === 'FINAL_PROJECT_OVERVIEW') return 'Project Brief';
+                                    if (labType === 'FINAL_PROJECT_SPEC') return 'Project Rubric';
+                                    if (labType === 'FINAL_PROJECT_SUBMISSION') return 'Project Submission';
+                                    if (labType === 'CERTIFICATE_GATE') return 'Certificate Gate';
+                                    return lesson.videoUrl ? 'Video Lecture' : 'Reading';
+                                  };
 
                                   return (
                                     <button
@@ -1165,6 +1276,8 @@ export const StudentDashboardPage: React.FC = () => {
                                       className={`w-full p-3 rounded-xl text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
                                         isSelected
                                           ? 'bg-blue-600 text-white font-bold shadow-sm'
+                                          : labType === 'CERTIFICATE_GATE'
+                                          ? 'bg-amber-50/80 hover:bg-amber-100/70 text-amber-950 border border-amber-200'
                                           : 'bg-white hover:bg-slate-100/80 text-slate-700 border border-slate-200/60'
                                       }`}
                                     >
@@ -1175,23 +1288,23 @@ export const StudentDashboardPage: React.FC = () => {
                                               ? 'bg-white/20 text-white'
                                               : isDone
                                               ? 'bg-emerald-100 text-emerald-700'
+                                              : labType === 'CERTIFICATE_GATE'
+                                              ? 'bg-amber-200 text-amber-900'
                                               : 'bg-slate-100 text-slate-500'
                                           }`}
                                         >
-                                          {lesson.videoUrl ? (
-                                            <Play className="w-3.5 h-3.5 fill-current" />
-                                          ) : (
-                                            <BookOpen className="w-3.5 h-3.5" />
-                                          )}
+                                          {getLessonIcon()}
                                         </div>
 
                                         <div className="min-w-0">
                                           <div
-                                            className={`text-[10px] leading-tight truncate ${
+                                            className={`text-[10px] leading-tight truncate flex items-center gap-1.5 ${
                                               isSelected ? 'text-blue-100' : 'text-slate-400'
                                             }`}
                                           >
-                                            {mIdx + 1}.{lIdx + 1} • {lesson.durationMinutes || 30} mins
+                                            <span className="font-semibold">{getLessonTypeTag()}</span>
+                                            <span>•</span>
+                                            <span>{lesson.videoDurationMin || lesson.durationMinutes || 25} mins</span>
                                           </div>
                                           <div className="text-xs font-semibold truncate mt-0.5">
                                             {lesson.title}
@@ -1256,7 +1369,10 @@ export const StudentDashboardPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               if (nextLesson) {
-                                if (!completedLessonIds.has(selectedLesson.id)) {
+                                if (
+                                  !completedLessonIds.has(selectedLesson.id) &&
+                                  selectedLesson.interactiveLabType !== 'CERTIFICATE_GATE'
+                                ) {
                                   handleRecordLessonProgress(selectedLesson.id);
                                 }
                                 setSelectedLesson(nextLesson);
@@ -1287,23 +1403,131 @@ export const StudentDashboardPage: React.FC = () => {
 
                       {/* Main Reading / Media Content */}
                       <div className="p-6 sm:p-8 space-y-6">
-                        {/* Video Player */}
+                        {/* Lesson Meta Header */}
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 flex-wrap gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {academicLevelLabel}
+                              </span>
+                              {selectedLesson.interactiveLabType && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-700">
+                                  {selectedLesson.interactiveLabType.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900 mt-1">{selectedLesson.title}</h2>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                              <span>
+                                Estimated Study Time:{' '}
+                                <strong>{selectedLesson.videoDurationMin || selectedLesson.durationMinutes || 35} mins</strong>
+                              </span>
+                              <span>•</span>
+                              <span>
+                                Unit Item: <strong>{selectedLesson.order || 1}</strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {completedLessonIds.has(selectedLesson.id) ||
+                            selectedLesson.progress?.status === 'COMPLETED' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Completed ✓</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRecordLessonProgress(selectedLesson.id)}
+                                disabled={completingLesson}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition cursor-pointer"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{completingLesson ? 'Saving...' : 'Mark Complete'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Learning Objectives & Key Concepts Callout */}
+                        {(selectedLesson.learningObjectives || selectedLesson.objectives || selectedLesson.keyConcepts) && (
+                          <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 text-indigo-950 space-y-2.5">
+                            <h4 className="font-black text-xs uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Unit & Lesson Learning Objectives</span>
+                            </h4>
+                            {(selectedLesson.learningObjectives || selectedLesson.objectives) && (
+                              <p className="text-xs leading-relaxed text-indigo-900">
+                                {selectedLesson.learningObjectives || selectedLesson.objectives}
+                              </p>
+                            )}
+                            {selectedLesson.keyConcepts && (
+                              <div className="pt-1 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-bold uppercase text-indigo-700">Key Concepts:</span>
+                                {String(selectedLesson.keyConcepts)
+                                  .split(',')
+                                  .map((kc: string, i: number) => (
+                                    <span
+                                      key={i}
+                                      className="px-2 py-0.5 rounded-md bg-white text-indigo-800 border border-indigo-200 text-[10px] font-semibold"
+                                    >
+                                      {kc.trim()}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* UOPEOPLE-INSPIRED "WATCH:" CURATED VIDEO LECTURE & EXPECTATION GUIDE */}
                         {selectedLesson.videoUrl && (() => {
                           const playerInfo = getVideoPlayerInfo(selectedLesson.videoUrl);
+                          const citation =
+                            parsedLessonResources?.videoCitation ||
+                            `${selectedLesson.title} [Video]. Curated STEMPACT Academic Media.`;
+                          const expectations =
+                            parsedLessonResources?.videoLearningExpectations ||
+                            selectedLesson.videoSummary ||
+                            `Watch this curated video lecture and take structured engineering notes on how the demonstrated workflows apply to ${selectedModuleTitle || 'this unit'}.`;
+
                           return (
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                                <div className="flex items-center gap-2">
-                                  <Play className="w-4 h-4 text-rose-600 fill-rose-600" />
-                                  <span>Video Lecture Presentation</span>
+                            <div className="rounded-2xl border-2 border-slate-200 bg-slate-50/70 overflow-hidden space-y-4 p-4 sm:p-5">
+                              {/* UoPeople Watch Header & Citation */}
+                              <div className="space-y-2 border-b border-slate-200/80 pb-3">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+                                      <Play className="w-3 h-3 fill-current" />
+                                      <span>Watch</span>
+                                    </span>
+                                    <span className="text-xs font-black text-slate-900">
+                                      Curated Video Lecture & Practical Demonstration
+                                    </span>
+                                  </div>
+                                  {selectedLesson.videoDurationMin && (
+                                    <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold">
+                                      Duration: {selectedLesson.videoDurationMin} mins
+                                    </span>
+                                  )}
                                 </div>
-                                {selectedLesson.videoDurationMin && (
-                                  <span className="text-slate-400 font-normal">
-                                    {selectedLesson.videoDurationMin} mins
-                                  </span>
-                                )}
+                                <p className="text-xs text-slate-700 font-medium italic">
+                                  {citation}
+                                </p>
                               </div>
 
+                              {/* What Students Expect to Learn From This Video */}
+                              <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-xs space-y-1.5">
+                                <div className="font-black text-amber-950 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                                  <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>What You Will Learn & How This Video Aligns With Unit Outcomes</span>
+                                </div>
+                                <p className="text-amber-900 leading-relaxed text-[11px]">
+                                  {expectations}
+                                </p>
+                              </div>
+
+                              {/* Embedded Player */}
                               {playerInfo?.isDirectVideo ? (
                                 <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-md border border-slate-200 aspect-video">
                                   <video
@@ -1315,7 +1539,10 @@ export const StudentDashboardPage: React.FC = () => {
                                     Your browser does not support the video tag.
                                   </video>
                                 </div>
-                              ) : playerInfo && (playerInfo.type === 'youtube' || playerInfo.type === 'gdrive' || playerInfo.type === 'vimeo') ? (
+                              ) : playerInfo &&
+                                (playerInfo.type === 'youtube' ||
+                                  playerInfo.type === 'gdrive' ||
+                                  playerInfo.type === 'vimeo') ? (
                                 <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-black aspect-video">
                                   <iframe
                                     src={playerInfo.embedUrl}
@@ -1338,62 +1565,515 @@ export const StudentDashboardPage: React.FC = () => {
                               )}
 
                               {selectedLesson.videoSummary && (
-                                <p className="text-[11px] text-slate-500 leading-relaxed p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                                  <strong className="text-slate-700">Video Abstract:</strong> {selectedLesson.videoSummary}
+                                <p className="text-[11px] text-slate-600 leading-relaxed p-3 rounded-xl bg-white border border-slate-200/80">
+                                  <strong className="text-slate-800">Technical Abstract:</strong>{' '}
+                                  {selectedLesson.videoSummary}
                                 </p>
                               )}
                             </div>
                           );
                         })()}
 
-                        {/* Lesson Meta Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 flex-wrap gap-2">
-                          <div className="space-y-1">
-                            <h2 className="text-xl font-black text-slate-900">{selectedLesson.title}</h2>
-                            <div className="flex items-center gap-3 text-xs text-slate-500">
-                              <span>Estimated time: <strong>{selectedLesson.durationMinutes || 45} mins</strong></span>
-                              <span>•</span>
-                              <span>Milestone: <strong>{selectedLesson.order || 1}</strong></span>
-                            </div>
-                          </div>
-
-                          <div>
-                            {completedLessonIds.has(selectedLesson.id) || selectedLesson.progress?.status === 'COMPLETED' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>Lesson Completed</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
-                                <Clock className="w-4 h-4" />
-                                <span>In Progress</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
                         {/* Lesson Content / Reading Text */}
                         <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
                           {selectedLesson.content ? (
-                            <div className="prose prose-sm max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed">
+                            <div className="prose prose-sm max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-5 rounded-2xl border border-slate-100">
                               {selectedLesson.content}
                             </div>
                           ) : (
                             <p className="text-slate-500 italic">
-                              Review the lecture video and practice the hands-on lab exercises provided in this milestone.
+                              Review the lecture video and complete the practical exercises in this unit.
                             </p>
                           )}
                         </div>
 
-                        {/* Objectives Box */}
-                        {selectedLesson.objectives && (
-                          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-blue-900 space-y-2">
-                            <h4 className="font-bold text-xs uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Learning Competencies & Mastery Outcomes</span>
+                        {/* SPECIAL INTERACTIVE PANEL 1: WEEKLY PHYSICAL CLASS & LAB SESSION SCHEDULE */}
+                        {selectedLesson.interactiveLabType === 'PHYSICAL_CLASS_GUIDE' && (
+                          <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 space-y-4">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-5 h-5 text-blue-600" />
+                                <h4 className="font-black text-sm text-slate-900">
+                                  Cohort Weekly Physical / Hybrid Class Schedule
+                                </h4>
+                              </div>
+                              <Badge variant="blue">{cohort?.mode || 'Hybrid Delivery'}</Badge>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                              <div className="p-3 rounded-xl bg-white border border-blue-100">
+                                <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                                  Weekly Schedule
+                                </span>
+                                <strong className="text-slate-800">
+                                  {cohort?.schedule || 'Saturdays 10:00 AM – 2:00 PM'}
+                                </strong>
+                              </div>
+                              <div className="p-3 rounded-xl bg-white border border-blue-100">
+                                <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                                  Physical Lab / Hub
+                                </span>
+                                <strong className="text-slate-800">
+                                  {(cohort as any)?.learningCenter?.name || cohort?.location || 'STEMPACT Innovation Hub'}
+                                </strong>
+                              </div>
+                              <div className="p-3 rounded-xl bg-white border border-blue-100">
+                                <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                                  Lead Instructor
+                                </span>
+                                <strong className="text-slate-800">
+                                  {cohort?.instructorName || 'Assigned Faculty Lead'}
+                                </strong>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-[11px] text-blue-800 font-medium">
+                                Your current cohort attendance rate: <strong>{metrics?.attendanceRate ?? 100}%</strong> (Minimum 75% required for Level Certificate)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleTabChange('attendance')}
+                                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer"
+                              >
+                                View Attendance Register
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* SPECIAL INTERACTIVE PANEL 2: UNIT GRADED ASSIGNMENT & INSTRUCTOR ASSIGNMENTS */}
+                        {(selectedLesson.interactiveLabType === 'UNIT_ASSIGNMENT' ||
+                          selectedLesson.interactiveLabType === 'FINAL_PROJECT_SUBMISSION') && (
+                          <div className="p-5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-4">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-purple-600" />
+                                <h4 className="font-black text-sm text-slate-900">
+                                  {selectedLesson.interactiveLabType === 'FINAL_PROJECT_SUBMISSION'
+                                    ? 'Final Level Project Portfolio & Evidence Submission'
+                                    : 'Unit Graded Assignment & Practical Deliverable'}
+                                </h4>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {selectedLesson.interactiveLabType === 'FINAL_PROJECT_SUBMISSION' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowCreateProjectModal(true)}
+                                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Submit Final Level Project</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleTabChange('assignments')}
+                                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  Open Assignments Portal ({assignments?.length || 0})
+                                </button>
+                              </div>
+                            </div>
+
+                            {assignments && assignments.length > 0 ? (
+                              <div className="space-y-2">
+                                <span className="text-[11px] font-bold text-purple-900 block">
+                                  Active Instructor-Assigned Tasks for Your Cohort:
+                                </span>
+                                {assignments.slice(0, 3).map((ass: any) => {
+                                  const sub = submissions?.find((s: any) => s.assignmentId === ass.id);
+                                  return (
+                                    <div
+                                      key={ass.id}
+                                      className="p-3.5 rounded-xl bg-white border border-purple-200/80 flex items-center justify-between gap-3 text-xs"
+                                    >
+                                      <div>
+                                        <span className="font-bold text-slate-900 block">{ass.title}</span>
+                                        <span className="text-[11px] text-slate-500">
+                                          Max Score: {ass.maxPoints} pts •{' '}
+                                          {sub
+                                            ? `Submitted (${sub.grade !== null ? `Graded: ${sub.grade}/${ass.maxPoints}` : 'Awaiting Grade'})`
+                                            : 'Pending Submission'}
+                                        </span>
+                                      </div>
+                                      {!sub && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedAssignment(ass)}
+                                          className="px-3 py-1.5 rounded-lg bg-purple-600 text-white font-bold text-[11px] cursor-pointer"
+                                        >
+                                          Submit Work
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-purple-800">
+                                Complete the Unit Assignment deliverable described above and mark this unit item complete once your documentation/repository is ready.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* SPECIAL INTERACTIVE PANEL 3: UOPEOPLE UNIT SELF-QUIZ RUNNER */}
+                        {selectedLesson.interactiveLabType === 'UNIT_QUIZ' &&
+                          Array.isArray(parsedLessonResources?.quizQuestions) &&
+                          parsedLessonResources.quizQuestions.length > 0 && (() => {
+                            const questions = parsedLessonResources.quizQuestions;
+                            const lessonKey = selectedLesson.id || 'quiz';
+                            const isSubmitted = Boolean(quizSubmitted[lessonKey]);
+                            const passingScore = parsedLessonResources.passingScorePercent || 75;
+
+                            let correctCount = 0;
+                            questions.forEach((q: any, qIdx: number) => {
+                              const ansKey = `${lessonKey}-${q.id || qIdx}`;
+                              if (quizAnswers[ansKey] === q.correctIndex) {
+                                correctCount++;
+                              }
+                            });
+                            const scorePct = Math.round((correctCount / questions.length) * 100);
+                            const passed = scorePct >= passingScore;
+
+                            return (
+                              <div className="p-5 sm:p-6 rounded-2xl bg-slate-900 text-white space-y-5 border border-slate-800">
+                                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-800 pb-4">
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                                      Interactive Unit Assessment • Passing Threshold: {passingScore}%
+                                    </span>
+                                    <h4 className="text-base font-black text-white mt-0.5">
+                                      Self-Quiz — Verify Your Unit Mastery
+                                    </h4>
+                                  </div>
+                                  {isSubmitted && (
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-xs font-black ${
+                                        passed
+                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                      }`}
+                                    >
+                                      Score: {correctCount}/{questions.length} ({scorePct}%) —{' '}
+                                      {passed ? 'PASSED ✓' : 'REVIEW & RETRY'}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="space-y-4">
+                                  {questions.map((q: any, qIdx: number) => {
+                                    const ansKey = `${lessonKey}-${q.id || qIdx}`;
+                                    const selectedOpt = quizAnswers[ansKey];
+
+                                    return (
+                                      <div
+                                        key={q.id || qIdx}
+                                        className="p-4 rounded-xl bg-slate-800/90 border border-slate-700 space-y-3"
+                                      >
+                                        <div className="text-xs font-bold text-white">
+                                          {qIdx + 1}. {q.question}
+                                        </div>
+                                        <div className="space-y-2">
+                                          {(q.options || []).map((opt: string, oIdx: number) => {
+                                            const isChosen = selectedOpt === oIdx;
+                                            const isCorrectOption = q.correctIndex === oIdx;
+                                            let optStyle =
+                                              'bg-slate-900/70 border-slate-700 text-slate-200 hover:border-blue-400';
+                                            if (isSubmitted) {
+                                              if (isCorrectOption) {
+                                                optStyle =
+                                                  'bg-emerald-950/90 border-emerald-500 text-emerald-200 font-bold';
+                                              } else if (isChosen && !isCorrectOption) {
+                                                optStyle =
+                                                  'bg-rose-950/90 border-rose-500 text-rose-200';
+                                              }
+                                            } else if (isChosen) {
+                                              optStyle =
+                                                'bg-blue-600/30 border-blue-400 text-white font-bold';
+                                            }
+
+                                            return (
+                                              <button
+                                                key={oIdx}
+                                                type="button"
+                                                onClick={() => {
+                                                  if (isSubmitted) return;
+                                                  setQuizAnswers((prev) => ({
+                                                    ...prev,
+                                                    [ansKey]: oIdx,
+                                                  }));
+                                                }}
+                                                className={`w-full p-3 rounded-xl border text-left text-xs transition flex items-center justify-between gap-2 cursor-pointer ${optStyle}`}
+                                              >
+                                                <span>{opt}</span>
+                                                {isSubmitted && isCorrectOption && (
+                                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                                )}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                        {isSubmitted && q.explanation && (
+                                          <div className="p-3 rounded-lg bg-slate-900/90 border border-slate-700 text-[11px] text-slate-300">
+                                            <strong className="text-emerald-400">Explanation:</strong>{' '}
+                                            {q.explanation}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                  {!isSubmitted ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setQuizSubmitted((prev) => ({ ...prev, [lessonKey]: true }));
+                                        let corr = 0;
+                                        questions.forEach((q: any, qIdx: number) => {
+                                          if (quizAnswers[`${lessonKey}-${q.id || qIdx}`] === q.correctIndex) {
+                                            corr++;
+                                          }
+                                        });
+                                        const pct = Math.round((corr / questions.length) * 100);
+                                        if (pct >= passingScore && !completedLessonIds.has(selectedLesson.id)) {
+                                          handleRecordLessonProgress(selectedLesson.id);
+                                        }
+                                      }}
+                                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition cursor-pointer shadow-md"
+                                    >
+                                      Submit & Grade Self-Quiz
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setQuizSubmitted((prev) => ({ ...prev, [lessonKey]: false }))
+                                      }
+                                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition cursor-pointer"
+                                    >
+                                      Reset & Retake Quiz
+                                    </button>
+                                  )}
+                                  <span className="text-[11px] text-slate-400">
+                                    Passing this quiz automatically marks the unit assessment complete.
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                        {/* SPECIAL INTERACTIVE PANEL 4: FINAL UNIT — LEVEL CERTIFICATE OF COMPLETION ISSUANCE GATE */}
+                        {selectedLesson.interactiveLabType === 'CERTIFICATE_GATE' && (() => {
+                          const totalCourseLessons = flatLessonsList.length;
+                          const priorLessonsCompleted = flatLessonsList
+                            .filter((l: any) => l.id !== selectedLesson.id)
+                            .filter((l: any) => completedLessonIds.has(l.id)).length;
+                          const requiredPriorLessons = Math.max(1, totalCourseLessons - 1);
+                          const lessonsPct = Math.min(
+                            100,
+                            Math.round((priorLessonsCompleted / requiredPriorLessons) * 100)
+                          );
+                          const lessonsMet = lessonsPct >= 90;
+                          const attendanceRateVal = metrics?.attendanceRate ?? 100;
+                          const attendanceMet = attendanceRateVal >= 75;
+                          const totalAss = metrics?.totalAssignmentsCount || 0;
+                          const compAss = metrics?.completedAssignmentsCount || 0;
+                          const assignmentsMet = totalAss === 0 || compAss >= Math.ceil(totalAss * 0.7);
+                          const allCriteriaMet = lessonsMet && attendanceMet && assignmentsMet;
+
+                          const existingLevelCert =
+                            claimedCertificateResult ||
+                            (certificates || []).find(
+                              (c: any) =>
+                                c.levelCode === (cohort?.levelCode || data?.curriculum?.levelCode) ||
+                                c.programName?.toLowerCase().includes((program?.name || '').toLowerCase())
+                            );
+
+                          return (
+                            <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white space-y-6 border-2 border-amber-400/40 shadow-xl">
+                              <div className="flex items-start justify-between gap-4 flex-wrap border-b border-white/10 pb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0">
+                                    <Award className="w-6 h-6" />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 font-bold">
+                                      Official STEMPACT Credential Issuance Terminal
+                                    </span>
+                                    <h3 className="text-lg font-black text-white">
+                                      {program?.name} — {academicLevelLabel}
+                                    </h3>
+                                    <p className="text-xs text-slate-300">
+                                      Candidate: <strong>{profile.fullName}</strong> ({profile.studentIdNumber}) • Cohort: <strong>{cohort?.name}</strong>
+                                    </p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-black ${
+                                    existingLevelCert
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                                      : allCriteriaMet
+                                      ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                                      : 'bg-white/10 text-slate-300'
+                                  }`}
+                                >
+                                  {existingLevelCert
+                                    ? 'CERTIFICATE ISSUED ✓'
+                                    : allCriteriaMet
+                                    ? 'ELIGIBLE FOR ISSUANCE'
+                                    : 'REQUIREMENTS IN PROGRESS'}
+                                </span>
+                              </div>
+
+                              {/* Live Completion Requirements Checklist */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div
+                                  className={`p-4 rounded-2xl border ${
+                                    lessonsMet
+                                      ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-100'
+                                      : 'bg-white/5 border-white/10 text-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between font-bold mb-1">
+                                    <span>1. Units & Lessons</span>
+                                    {lessonsMet ? (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                    ) : (
+                                      <Clock className="w-4 h-4 text-amber-400" />
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-black">
+                                    {priorLessonsCompleted}/{requiredPriorLessons} ({lessonsPct}%)
+                                  </div>
+                                  <div className="text-[10px] opacity-75 mt-0.5">
+                                    Minimum 90% unit lessons completed
+                                  </div>
+                                </div>
+
+                                <div
+                                  className={`p-4 rounded-2xl border ${
+                                    attendanceMet
+                                      ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-100'
+                                      : 'bg-white/5 border-white/10 text-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between font-bold mb-1">
+                                    <span>2. Class Attendance</span>
+                                    {attendanceMet ? (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                    ) : (
+                                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-black">{attendanceRateVal}%</div>
+                                  <div className="text-[10px] opacity-75 mt-0.5">
+                                    Minimum 75% cohort attendance
+                                  </div>
+                                </div>
+
+                                <div
+                                  className={`p-4 rounded-2xl border ${
+                                    assignmentsMet
+                                      ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-100'
+                                      : 'bg-white/5 border-white/10 text-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between font-bold mb-1">
+                                    <span>3. Assignments & Project</span>
+                                    {assignmentsMet ? (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                    ) : (
+                                      <Clock className="w-4 h-4 text-amber-400" />
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-black">
+                                    {totalAss === 0 ? 'Verified in Unit' : `${compAss}/${totalAss} Submitted`}
+                                  </div>
+                                  <div className="text-[10px] opacity-75 mt-0.5">
+                                    Unit deliverables & Final Level Project
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Certificate Display or Generation Action */}
+                              {existingLevelCert ? (
+                                <div className="p-5 rounded-2xl bg-emerald-950/80 border border-emerald-400/50 space-y-3">
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div>
+                                      <span className="text-[10px] font-mono uppercase text-emerald-300 font-bold">
+                                        Official Credential Minted & Verified
+                                      </span>
+                                      <h4 className="text-base font-black text-white">
+                                        {existingLevelCert.programName}
+                                      </h4>
+                                    </div>
+                                    <span className="font-mono text-xs font-bold px-3 py-1 rounded-lg bg-emerald-900 text-emerald-200 border border-emerald-600">
+                                      {existingLevelCert.certificateNumber}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-emerald-100 leading-relaxed">
+                                    {existingLevelCert.achievement}
+                                  </p>
+                                  <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+                                    <span className="text-[11px] font-mono text-emerald-300">
+                                      Verification Code: <strong>{existingLevelCert.verificationCode}</strong>
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTabChange('certificates')}
+                                        className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <Award className="w-4 h-4" />
+                                        <span>View & Print Official Certificate</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleTabChange('progression')}
+                                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
+                                      >
+                                        Next Level Progression →
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-white/10">
+                                  <p className="text-xs text-slate-300 max-w-md leading-relaxed">
+                                    {allCriteriaMet
+                                      ? 'You have satisfied all academic requirements for this level! Click the button to generate your verifiable Certificate of Completion and unlock the next academic level.'
+                                      : 'Complete all prior unit lessons, self-quizzes, and the final level project to unlock your Certificate of Completion.'}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={handleClaimLevelCertificate}
+                                    disabled={claimingCertificate || !allCriteriaMet}
+                                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs shadow-lg transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
+                                  >
+                                    <Award className="w-4 h-4" />
+                                    <span>
+                                      {claimingCertificate
+                                        ? 'Generating Verifiable Certificate...'
+                                        : `Generate ${academicLevelLabel} Certificate`}
+                                    </span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Reflection Prompt Box */}
+                        {selectedLesson.reflectionPrompt && (
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 space-y-1.5">
+                            <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Engineering Reflection & Discussion Prompt</span>
                             </h4>
-                            <p className="text-xs leading-relaxed text-blue-800">
-                              {selectedLesson.objectives}
+                            <p className="text-xs leading-relaxed text-slate-600 italic">
+                              "{selectedLesson.reflectionPrompt}"
                             </p>
                           </div>
                         )}
@@ -1420,7 +2100,10 @@ export const StudentDashboardPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                if (!completedLessonIds.has(selectedLesson.id)) {
+                                if (
+                                  !completedLessonIds.has(selectedLesson.id) &&
+                                  selectedLesson.interactiveLabType !== 'CERTIFICATE_GATE'
+                                ) {
                                   handleRecordLessonProgress(selectedLesson.id);
                                 }
                                 setSelectedLesson(nextLesson);
@@ -1429,7 +2112,7 @@ export const StudentDashboardPage: React.FC = () => {
                               }}
                               className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
                             >
-                              <span>Next Lesson ({nextLesson.title.slice(0, 24)}...)</span>
+                              <span>Next Lesson ({nextLesson.title.slice(0, 28)}...)</span>
                               <ChevronRight className="w-4 h-4" />
                             </button>
                           )}

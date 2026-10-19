@@ -149,6 +149,7 @@ export const ProgramGenerationSchema = z.object({
         description: z.preprocess((d) => String(d || 'Course foundational concepts and outcomes.'), z.string()),
         credits: z.preprocess((cr) => extractNumber(cr, 3), z.number().default(3)),
         order: z.preprocess((o) => extractNumber(o, 1), z.number().default(1)),
+        level: z.preprocess((lv) => (lv ? normalizeAcademicLevel(lv) : undefined), z.string().optional()),
         modules: z.preprocess(
           (m) => (Array.isArray(m) && m.length > 0 ? m : [
             {
@@ -179,6 +180,8 @@ export const ProgramGenerationSchema = z.object({
                     videoUrl: z.preprocess((vu) => (vu ? String(vu) : undefined), z.string().optional()),
                     videoDurationMin: z.preprocess((vdm) => (vdm ? extractNumber(vdm, 20) : undefined), z.number().optional()),
                     videoSummary: z.preprocess((vs) => (vs ? String(vs) : undefined), z.string().optional()),
+                    interactiveLabType: z.preprocess((ilt) => (ilt ? String(ilt) : undefined), z.string().optional()),
+                    resources: z.preprocess((res) => (res ? String(res) : undefined), z.string().optional()),
                     practicalActivities: z.preprocess(
                       (pa) => (Array.isArray(pa) ? pa.map(String) : [String(pa || 'Hands-on practical sprint')]),
                       z.array(z.string())

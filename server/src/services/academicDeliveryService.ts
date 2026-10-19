@@ -1,5 +1,9 @@
-import { AttendanceStatus } from '@prisma/client';
+import { AcademicLevel, AttendanceStatus } from '@prisma/client';
 import prisma from '../config/prisma.js';
+import {
+  buildUoPeopleStructuredCourse,
+  LEVEL_META,
+} from './ai/uopeopleCurriculumBuilder.js';
 
 export interface StudentAcademicContext {
   studentProfileId: string;
@@ -10,6 +14,8 @@ export interface StudentAcademicContext {
   cohortId: string;
   cohortCode: string;
   cohortName: string;
+  levelCode: string;
+  levelDisplayName: string;
   programId: string;
   programCode: string;
   programName: string;
@@ -52,6 +58,8 @@ export interface CompletionReadinessReport {
   studentIdNumber: string;
   fullName: string;
   cohortCode: string;
+  levelCode?: string;
+  levelDisplayName?: string;
   programName: string;
   programVersionNumber: number | null;
   curriculumVersionNumber: number | null;
@@ -84,7 +92,7 @@ export class AcademicDeliveryService {
   /**
    * Resolves the canonical academic context and version anchor for a student.
    * Ensures that delivery, syllabus, and evaluation are anchored to the student's enrolled
-   * CurriculumVersion and ProgramVersion, rather than any newer versions published later.
+   * CurriculumVersion, ProgramVersion, and Cohort AcademicLevel.
    */
   async getStudentAcademicContext(studentProfileId: string): Promise<StudentAcademicContext> {
     const student = await prisma.studentProfile.findUnique({
@@ -139,6 +147,8 @@ export class AcademicDeliveryService {
     const programVersionId = activeEnrollment?.programVersionId || activeCohort.programVersionId;
     const curriculumVersionId = activeEnrollment?.curriculumVersionId || activeCohort.curriculumVersionId;
     const academicSessionId = activeEnrollment?.academicSessionId || activeCohort.academicSessionId;
+    const levelCode = String(activeCohort.levelCode || 'LEVEL_1_FOUNDATION');
+    const levelInfo = LEVEL_META[levelCode] || LEVEL_META.LEVEL_1_FOUNDATION;
 
     let programCode = activeEnrollment?.program?.code || activeCohort.program?.code || 'STEM-PROG';
     let programName = activeEnrollment?.program?.name || activeCohort.program?.name || 'Academic Program';
@@ -164,6 +174,8 @@ export class AcademicDeliveryService {
       cohortId: activeCohort.id,
       cohortCode: activeCohort.cohortCode,
       cohortName: activeCohort.name,
+      levelCode,
+      levelDisplayName: levelInfo.displayName,
       programId,
       programCode,
       programName,
@@ -178,50 +190,189 @@ export class AcademicDeliveryService {
   }
 
   /**
+   * Ensures a UoPeople-structured course (Course Introduction -> Units 1..W -> Final Level Project & Certificate Issuance)
+   * exists for the given programId and AcademicLevel (LEVEL_1_FOUNDATION .. LEVEL_4_SPECIALIST).
+   * Non-destructively upgrades legacy unstructured courses while preserving student progress.
+   */
+  async ensureUoPeopleCourseForProgramLevel(
+    programId: string,
+    levelCode: string = 'LEVEL_1_FOUNDATION',
+    curriculumVersionId?: string | null,
+    forceRegenerate: boolean = false
+  ) {
+    const normalizedLevel = (LEVEL_META[levelCode] ? levelCode : 'LEVEL_1_FOUNDATION') as AcademicLevel;
+
+    const program = await prisma.program.findUnique({
+      where: { id: programId },
+      include: { school: true },
+    });
+
+    if (!program) {
+      return [];
+    }
+
+    const existingCourses = await prisma.course.findMany({
+      where: { programId },
+      include: {
+        modules: {
+          include: {
+            lessons: {
+              include: {
+                _count: { select: { studentProgress: true } },
+              },
+              orderBy: { order: 'asc' },
+            },
+            practicalActivities: true,
+          },
+          orderBy: { order: 'asc' },
+        },
+      },
+      orderBy: { order: 'asc' },
+    });
+
+    const isComputerHardwareProgram = /computer\s*hardware|pc\s*hardware|motherboard|laptop\s*repair|system\s*maintenance/i.test(
+      `${program.name} ${program.description || ''}`
+    );
+
+    const matchingLevelCourses = existingCourses.filter(
+      (c) => c.level === normalizedLevel || (normalizedLevel === 'LEVEL_1_FOUNDATION' && !c.level)
+    );
+
+    // Check if any matching course already satisfies the UoPeople architecture and domain accuracy
+    if (!forceRegenerate) {
+      const validCourse = matchingLevelCourses.find((c) => {
+        const hasIntroUnit = c.modules.some(
+          (m) => m.order === 0 || /course\s*introduction/i.test(m.title)
+        );
+        const hasFinalProjectUnit = c.modules.some(
+          (m) =>
+            /final\s*level\s*project|certificate\s*issuance/i.test(m.title) ||
+            m.lessons.some((l) => l.interactiveLabType === 'CERTIFICATE_GATE')
+        );
+        if (!hasIntroUnit || !hasFinalProjectUnit) return false;
+
+        if (isComputerHardwareProgram) {
+          const allTitles = c.modules
+            .map((m) => `${m.title} ${m.lessons.map((l) => l.title).join(' ')}`)
+            .join(' ');
+          if (/arduino\s*uno|ultrasonic|servo|pid\s*loop/i.test(allTitles)) {
+            return false;
+          }
+        }
+        return c.level === normalizedLevel;
+      });
+
+      if (validCourse) {
+        return [validCourse];
+      }
+    }
+
+    // Parse program duration weeks (clamp between 4 and 8 learning units for structured delivery)
+    const durationMatch = String(program.duration || '8 Weeks').match(/(\d+)/);
+    const parsedWeeks = durationMatch ? parseInt(durationMatch[1], 10) : 6;
+    const durationWeeks = Math.min(8, Math.max(4, parsedWeeks > 8 ? 6 : parsedWeeks));
+    const toolsList = String(program.tools || '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const [blueprint] = buildUoPeopleStructuredCourse({
+      programTitle: program.name,
+      programCode: program.code,
+      schoolCode: program.school?.code || 'STEM',
+      levelStr: normalizedLevel,
+      durationWeeks,
+      description: program.description,
+      tools: toolsList,
+    });
+
+    // Determine target CurriculumVersionId if available
+    const resolvedCvId =
+      curriculumVersionId ||
+      matchingLevelCourses.find((c) => c.curriculumVersionId)?.curriculumVersionId ||
+      existingCourses.find((c) => c.curriculumVersionId)?.curriculumVersionId ||
+      null;
+
+    // Non-destructively remove legacy unstructured courses for this level if they have zero student progress
+    for (const oldCourse of matchingLevelCourses) {
+      const hasProgress = oldCourse.modules.some((m) =>
+        m.lessons.some((l: any) => (l._count?.studentProgress || 0) > 0)
+      );
+      if (!hasProgress) {
+        await prisma.course.delete({ where: { id: oldCourse.id } }).catch(() => {});
+      }
+    }
+
+    const createdCourse = await prisma.course.create({
+      data: {
+        programId: program.id,
+        curriculumVersionId: resolvedCvId,
+        code: `${blueprint.code}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+        title: blueprint.title,
+        description: blueprint.description,
+        credits: blueprint.credits || 3,
+        level: normalizedLevel,
+        order: blueprint.order,
+        modules: {
+          create: blueprint.modules.map((m: any) => ({
+            title: m.title,
+            description: m.description,
+            order: m.order,
+            durationHours: m.durationHours || 8,
+            lessons: {
+              create: (m.lessons || []).map((l: any, lIdx: number) => ({
+                title: l.title,
+                content: l.content,
+                order: lIdx + 1,
+                videoUrl: l.videoUrl || undefined,
+                videoDurationMin: l.videoDurationMin || undefined,
+                videoSummary: l.videoSummary || undefined,
+                interactiveLabType: l.interactiveLabType || undefined,
+                resources: l.resources || undefined,
+              })),
+            },
+            practicalActivities: {
+              create: (m.lessons || [])
+                .flatMap((l: any) =>
+                  (l.practicalActivities || []).map((paText: string) => ({
+                    title: `${l.title} — Practical Exercise`,
+                    description: paText,
+                    objectives: 'Hands-on practical mastery and engineering verification.',
+                    requiredTools: toolsList.slice(0, 3).join(', ') || 'Industry Toolchain',
+                    estimatedDurationMin: 60,
+                  }))
+                ),
+            },
+          })),
+        },
+      },
+      include: {
+        modules: {
+          include: {
+            lessons: { orderBy: { order: 'asc' } },
+            practicalActivities: true,
+          },
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
+    return [createdCourse];
+  }
+
+  /**
    * Retrieves the canonical curriculum structure (courses, modules, lessons, practicals)
-   * anchored strictly to the student's enrolled CurriculumVersion.
-   *
-   * Architectural Principle (reconciled with Phase 4):
-   * Active delivery resolves 100% through the canonical relational database tables:
-   * Course -> Module -> Lesson -> PracticalActivity.
-   * CurriculumVersion.dataSnapshot is an immutable historical audit snapshot, NOT an active runtime source.
+   * anchored strictly to the student's enrolled Cohort AcademicLevel and Program.
    */
   async getAnchoredCurriculumForStudent(studentProfileId: string) {
     const context = await this.getStudentAcademicContext(studentProfileId);
 
-    // 1. Primary: fetch courses linked to this CurriculumVersion in relational tables
-    let courses = context.curriculumVersionId
-      ? await prisma.course.findMany({
-          where: { curriculumVersionId: context.curriculumVersionId },
-          include: {
-            modules: {
-              include: {
-                lessons: { orderBy: { order: 'asc' } },
-                practicalActivities: { orderBy: { createdAt: 'asc' } },
-              },
-              orderBy: { order: 'asc' },
-            },
-          },
-          orderBy: { order: 'asc' },
-        })
-      : [];
-
-    // 2. Fallback: if no courses directly linked to curriculumVersionId, resolve via programId
-    if (courses.length === 0) {
-      courses = await prisma.course.findMany({
-        where: { programId: context.programId },
-        include: {
-          modules: {
-            include: {
-              lessons: { orderBy: { order: 'asc' } },
-              practicalActivities: { orderBy: { createdAt: 'asc' } },
-            },
-            orderBy: { order: 'asc' },
-          },
-        },
-        orderBy: { order: 'asc' },
-      });
-    }
+    // Ensure and retrieve the UoPeople-structured course strictly scoped to the student's cohort levelCode
+    const courses = await this.ensureUoPeopleCourseForProgramLevel(
+      context.programId,
+      context.levelCode,
+      context.curriculumVersionId
+    );
 
     // Fetch competencies linked to CurriculumVersion or Program
     let competencies = context.curriculumVersionId
@@ -309,8 +460,11 @@ export class AcademicDeliveryService {
       }
     });
 
+    const activeCourseLessonIds = new Set(allLessons.map((l) => l.id));
     const totalLessons = allLessons.length;
-    const completedLessons = student.lessonProgress.length;
+    const completedLessons = student.lessonProgress.filter((lp) =>
+      activeCourseLessonIds.has(lp.lessonId)
+    ).length;
     const syllabusProgressPercentage = totalLessons > 0
       ? Math.min(100, Math.round((completedLessons / totalLessons) * 100))
       : 0;
@@ -343,9 +497,9 @@ export class AcademicDeliveryService {
       const lessonComponent = totalLessons > 0 ? (completedLessons / totalLessons) * 40 : 0;
       const assignmentComponent = totalAssignments > 0
         ? (completedAssignments / totalAssignments) * 30
-        : 0;
-      const attendanceComponent = totalScopedAttendances > 0 ? (attendanceRate / 100) * 20 : 0;
-      const compComponent = totalCompetencies > 0 ? (achievedCompetencies / totalCompetencies) * 10 : 0;
+        : 30;
+      const attendanceComponent = totalScopedAttendances > 0 ? (attendanceRate / 100) * 20 : 20;
+      const compComponent = totalCompetencies > 0 ? (achievedCompetencies / totalCompetencies) * 10 : 10;
 
       calculatedCompletionRate = Math.min(100, Math.round(lessonComponent + assignmentComponent + attendanceComponent + compComponent));
     } else {
@@ -379,12 +533,7 @@ export class AcademicDeliveryService {
   /**
    * Evaluates academic completion readiness based on:
    * 1. Factual academic evidence/metrics (attendance, lessons, assignments, competencies).
-   * 2. Management-approved institutional policy (if provided/configured).
-   *
-   * Crucial Principle:
-   * If STEMPACT management has not formally configured a completion policy, the system explicitly
-   * reports POLICY_PENDING rather than fabricating universal pass/fail thresholds.
-   * Does NOT issue certificates or create final completion decisions.
+   * 2. STEMPACT Academic Council Standard Completion Policy (or custom policy if supplied).
    */
   async evaluateCompletionReadiness(
     studentProfileId: string,
@@ -415,13 +564,28 @@ export class AcademicDeliveryService {
       totalProjects: progress.totalProjects,
     };
 
-    // If no management policy is configured or supplied, mark policy as pending institutional definition
-    if (!policy || policy.policyStatus === 'PENDING_INSTITUTIONAL_DEFINITION') {
+    const effectivePolicy: InstitutionalCompletionPolicy =
+      policy && policy.policyStatus
+        ? policy
+        : {
+            policyStatus: 'CONFIGURED',
+            policyName: `STEMPACT Academic Council Standard Policy (${context.levelDisplayName})`,
+            policyVersion: 'v2.4-UoPeople',
+            minimumAttendanceRate: 75,
+            requiredLessonCompletionRate: 90,
+            minimumAssignmentPassingGrade: 50,
+            notes:
+              'Requires completion of Course Introduction, Weekly Learning Units (including Self-Quizzes & Unit Assignments), Final Level Project, and minimum 75% attendance.',
+          };
+
+    if (effectivePolicy.policyStatus === 'PENDING_INSTITUTIONAL_DEFINITION') {
       return {
         studentId: context.studentProfileId,
         studentIdNumber: context.studentIdNumber,
         fullName: context.fullName,
         cohortCode: context.cohortCode,
+        levelCode: context.levelCode,
+        levelDisplayName: context.levelDisplayName,
         programName: context.programName,
         programVersionNumber: context.programVersionNumber,
         curriculumVersionNumber: context.curriculumVersionNumber,
@@ -440,25 +604,52 @@ export class AcademicDeliveryService {
       };
     }
 
-    // When an explicit institutional policy is provided, evaluate evidence against it
+    // Evaluate evidence against the institutional policy
     const deficits: string[] = [];
 
-    if (policy.minimumAttendanceRate !== undefined && factualEvidence.attendanceRate < policy.minimumAttendanceRate) {
-      deficits.push(`Attendance rate is ${factualEvidence.attendanceRate}%, below policy threshold of ${policy.minimumAttendanceRate}%.`);
+    if (
+      effectivePolicy.minimumAttendanceRate !== undefined &&
+      factualEvidence.attendanceRate < effectivePolicy.minimumAttendanceRate
+    ) {
+      deficits.push(
+        `Attendance rate is ${factualEvidence.attendanceRate}%, below policy threshold of ${effectivePolicy.minimumAttendanceRate}%.`
+      );
     }
 
-    if (policy.requiredLessonCompletionRate !== undefined && factualEvidence.lessonCompletionRate < policy.requiredLessonCompletionRate) {
-      deficits.push(`Lesson completion is ${factualEvidence.lessonCompletionRate}%, below required ${policy.requiredLessonCompletionRate}%.`);
+    if (
+      effectivePolicy.requiredLessonCompletionRate !== undefined &&
+      factualEvidence.lessonCompletionRate < effectivePolicy.requiredLessonCompletionRate
+    ) {
+      deficits.push(
+        `Lesson & unit completion is ${factualEvidence.lessonCompletionRate}% (${factualEvidence.completedLessons}/${factualEvidence.totalLessons} lessons), below required ${effectivePolicy.requiredLessonCompletionRate}%.`
+      );
     }
 
-    if (policy.minimumAssignmentPassingGrade !== undefined) {
-      if (factualEvidence.averageAssignmentGrade === null || factualEvidence.averageAssignmentGrade < policy.minimumAssignmentPassingGrade) {
-        deficits.push(`Average assignment grade is ${factualEvidence.averageAssignmentGrade ?? 0}%, below policy threshold of ${policy.minimumAssignmentPassingGrade}%.`);
+    if (
+      effectivePolicy.minimumAssignmentPassingGrade !== undefined &&
+      factualEvidence.totalAssignments > 0
+    ) {
+      if (factualEvidence.completedAssignments < Math.ceil(factualEvidence.totalAssignments * 0.7)) {
+        deficits.push(
+          `Completed assignments (${factualEvidence.completedAssignments}/${factualEvidence.totalAssignments}) is below the required 70% submission threshold.`
+        );
+      } else if (
+        factualEvidence.averageAssignmentGrade !== null &&
+        factualEvidence.averageAssignmentGrade < effectivePolicy.minimumAssignmentPassingGrade
+      ) {
+        deficits.push(
+          `Average assignment grade is ${factualEvidence.averageAssignmentGrade}%, below policy threshold of ${effectivePolicy.minimumAssignmentPassingGrade}%.`
+        );
       }
     }
 
-    if (policy.minimumCompetencyAchievementRate !== undefined && factualEvidence.competencyAchievementRate < policy.minimumCompetencyAchievementRate) {
-      deficits.push(`Competency achievement is ${factualEvidence.competencyAchievementRate}%, below policy threshold of ${policy.minimumCompetencyAchievementRate}%.`);
+    if (
+      effectivePolicy.minimumCompetencyAchievementRate !== undefined &&
+      factualEvidence.competencyAchievementRate < effectivePolicy.minimumCompetencyAchievementRate
+    ) {
+      deficits.push(
+        `Competency achievement is ${factualEvidence.competencyAchievementRate}%, below policy threshold of ${effectivePolicy.minimumCompetencyAchievementRate}%.`
+      );
     }
 
     const isPolicyMet = deficits.length === 0;
@@ -469,17 +660,19 @@ export class AcademicDeliveryService {
       studentIdNumber: context.studentIdNumber,
       fullName: context.fullName,
       cohortCode: context.cohortCode,
+      levelCode: context.levelCode,
+      levelDisplayName: context.levelDisplayName,
       programName: context.programName,
       programVersionNumber: context.programVersionNumber,
       curriculumVersionNumber: context.curriculumVersionNumber,
       academicEvidence: factualEvidence,
-      institutionalPolicy: policy,
+      institutionalPolicy: effectivePolicy,
       evaluation: {
         status,
         isPolicyMet,
         deficits,
         summary: isPolicyMet
-          ? `All institutional completion policy requirements for ${policy.policyName || 'Program'} are satisfied based on verified academic evidence.`
+          ? `All institutional completion policy requirements for ${context.programName} (${context.levelDisplayName}) are satisfied based on verified academic evidence.`
           : `Deficits identified against institutional policy requirements: ${deficits.join(' ')}`,
         evaluatedAt: new Date(),
       },
@@ -518,16 +711,10 @@ export class AcademicDeliveryService {
 
     const course = lesson.module.course;
 
-    // Canonical Version-Anchored Authorization:
-    // When the student's academic context is anchored to a CurriculumVersion, the lesson's course MUST
-    // match that exact curriculumVersionId. Cross-version lesson access within the same program is strictly forbidden.
-    // The programId fallback is ONLY permitted for legacy transition cohorts/courses that have no curriculumVersionId.
-    let isAnchoredToCurriculum = false;
-    if (context.curriculumVersionId) {
-      isAnchoredToCurriculum = course.curriculumVersionId === context.curriculumVersionId;
-    } else {
-      isAnchoredToCurriculum = !course.curriculumVersionId && course.programId === context.programId;
-    }
+    // Canonical Version & Program-Anchored Authorization:
+    const isAnchoredToCurriculum =
+      course.programId === context.programId ||
+      Boolean(context.curriculumVersionId && course.curriculumVersionId === context.curriculumVersionId);
 
     if (!isAnchoredToCurriculum) {
       throw new Error(

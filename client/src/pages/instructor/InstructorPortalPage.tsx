@@ -1025,6 +1025,7 @@ export const InstructorPortalPage: React.FC = () => {
                         <th className="py-2.5 px-3">Student ID</th>
                         <th className="py-2.5 px-3">Full Name</th>
                         <th className="py-2.5 px-3">Email</th>
+                        <th className="py-2.5 px-3">Lessons Completed</th>
                         <th className="py-2.5 px-3">Attendance Rate</th>
                         <th className="py-2.5 px-3">Completion Rate</th>
                         <th className="py-2.5 px-3 text-right">Action</th>
@@ -1036,6 +1037,13 @@ export const InstructorPortalPage: React.FC = () => {
                           ? currentCohort.studentProfiles
                           : (currentCohort.enrollments || []).map((e: any) => e.student).filter(Boolean)
                         ) || [];
+                        const cohortLessonIds = new Set<string>(
+                          (currentCohort.curriculumVersion?.courses || []).flatMap((c: any) =>
+                            (c.modules || []).flatMap((m: any) => (m.lessons || []).map((l: any) => l.id))
+                          )
+                        );
+                        const totalCohortLessons = cohortLessonIds.size;
+
                         const filteredProfiles = rawProfiles.filter((sp: any) => {
                           if (!rosterSearch) return true;
                           const q = rosterSearch.toLowerCase();
@@ -1050,7 +1058,7 @@ export const InstructorPortalPage: React.FC = () => {
                         if (filteredProfiles.length === 0) {
                           return (
                             <tr>
-                              <td colSpan={6} className="py-12 text-center text-slate-400">
+                              <td colSpan={7} className="py-12 text-center text-slate-400">
                                 <div className="flex flex-col items-center justify-center gap-2">
                                   <Users className="w-8 h-8 text-slate-300" />
                                   <p className="text-xs font-bold text-slate-600">
@@ -1065,35 +1073,50 @@ export const InstructorPortalPage: React.FC = () => {
                           );
                         }
 
-                        return filteredProfiles.map((sp: any) => (
-                          <tr key={sp.id} className="hover:bg-slate-50/60">
-                            <td className="py-3 px-3 font-mono font-bold text-slate-500">
-                              {sp.studentIdNumber || 'STP-ID'}
-                            </td>
-                            <td className="py-3 px-3 font-bold text-slate-900">
-                              {sp.user?.firstName} {sp.user?.lastName}
-                            </td>
-                            <td className="py-3 px-3 text-slate-500">{sp.user?.email}</td>
-                            <td className="py-3 px-3">
-                              <span className="font-bold text-emerald-700">{sp.attendanceRate || 100}%</span>
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="font-bold text-blue-700">{sp.completionRate || 0}%</span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEvalStudentId(sp.id);
-                                  handleTabChange('competencies');
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
-                              >
-                                Evaluate Skills
-                              </button>
-                            </td>
-                          </tr>
-                        ));
+                        return filteredProfiles.map((sp: any) => {
+                          const completedInCohort = (sp.lessonProgress || []).filter(
+                            (lp: any) => lp.status === 'COMPLETED' && (cohortLessonIds.size === 0 || cohortLessonIds.has(lp.lessonId))
+                          ).length;
+                          const dynamicCompletionPct =
+                            totalCohortLessons > 0
+                              ? Math.min(100, Math.round((completedInCohort / totalCohortLessons) * 100))
+                              : sp.completionRate || 0;
+
+                          return (
+                            <tr key={sp.id} className="hover:bg-slate-50/60">
+                              <td className="py-3 px-3 font-mono font-bold text-slate-500">
+                                {sp.studentIdNumber || 'STP-ID'}
+                              </td>
+                              <td className="py-3 px-3 font-bold text-slate-900">
+                                {sp.user?.firstName} {sp.user?.lastName}
+                              </td>
+                              <td className="py-3 px-3 text-slate-500">{sp.user?.email}</td>
+                              <td className="py-3 px-3">
+                                <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 text-[11px]">
+                                  {completedInCohort} / {totalCohortLessons || '—'} Lessons
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-emerald-700">{sp.attendanceRate || 100}%</span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="font-bold text-blue-700">{Math.max(sp.completionRate || 0, dynamicCompletionPct)}%</span>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEvalStudentId(sp.id);
+                                    handleTabChange('competencies');
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
+                                >
+                                  Evaluate Skills
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
                       })()}
                     </tbody>
                   </table>
@@ -1694,38 +1717,113 @@ export const InstructorPortalPage: React.FC = () => {
 
             {currentCohort?.curriculumVersion?.courses && currentCohort.curriculumVersion.courses.length > 0 ? (
               <div className="space-y-6">
-                {currentCohort.curriculumVersion.courses.map((course: any, cIdx: number) => (
+                {currentCohort.curriculumVersion.courses.map((course: any, cIdx: number) => {
+                  const cohortStudents = (currentCohort.studentProfiles?.length > 0
+                    ? currentCohort.studentProfiles
+                    : (currentCohort.enrollments || []).map((e: any) => e.student).filter(Boolean)
+                  ) || [];
+
+                  return (
                   <div key={course.id || cIdx} className="p-6 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
                     <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                       <div>
-                        <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                          {course.code || `CRS-${cIdx + 1}`}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            {course.code || `CRS-${cIdx + 1}`}
+                          </span>
+                          {course.level && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                              {String(course.level).replace(/_/g, ' ')}
+                            </span>
+                          )}
+                        </div>
                         <h4 className="text-base font-black text-slate-900 mt-1">{course.title}</h4>
                         <p className="text-xs text-slate-500">{course.description}</p>
                       </div>
                       <span className="text-xs font-bold text-slate-400 shrink-0">
-                        {course.modules?.length || 0} Modules
+                        {course.modules?.length || 0} Units
                       </span>
                     </div>
 
                     <div className="space-y-4 pt-2">
-                      {course.modules?.map((mod: any, mIdx: number) => (
+                      {course.modules?.map((mod: any, mIdx: number) => {
+                        const modTitleLower = String(mod.title || '').toLowerCase();
+                        const isIntroUnit = modTitleLower.includes('course introduction') || mod.order === 0;
+                        const isFinalProjectUnit =
+                          modTitleLower.includes('final level project') ||
+                          modTitleLower.includes('certificate issuance') ||
+                          (mod.lessons || []).some((l: any) => l.interactiveLabType === 'CERTIFICATE_GATE');
+                        const modLessonIds = new Set<string>((mod.lessons || []).map((l: any) => l.id));
+                        const studentsCompletedUnit = cohortStudents.filter((sp: any) => {
+                          if (modLessonIds.size === 0) return false;
+                          const doneIds = new Set(
+                            (sp.lessonProgress || [])
+                              .filter((lp: any) => lp.status === 'COMPLETED')
+                              .map((lp: any) => lp.lessonId)
+                          );
+                          let count = 0;
+                          modLessonIds.forEach((id) => {
+                            if (doneIds.has(id)) count++;
+                          });
+                          return count === modLessonIds.size;
+                        }).length;
+
+                        return (
                         <div key={mod.id || mIdx} className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-                                {mIdx + 1}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className={`w-7 h-7 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 ${
+                                  isIntroUnit
+                                    ? 'bg-emerald-600'
+                                    : isFinalProjectUnit
+                                    ? 'bg-amber-600'
+                                    : 'bg-blue-600'
+                                }`}
+                              >
+                                {isIntroUnit ? '★' : isFinalProjectUnit ? '🎓' : mIdx}
                               </span>
                               <div>
-                                <h5 className="font-bold text-slate-900 text-xs">{mod.title}</h5>
-                                <p className="text-[10px] text-slate-400">{mod.durationHours || 12} contact hours</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span
+                                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                      isIntroUnit
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : isFinalProjectUnit
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-blue-100 text-blue-800'
+                                    }`}
+                                  >
+                                    {isIntroUnit
+                                      ? 'Course Introduction • Orientation'
+                                      : isFinalProjectUnit
+                                      ? 'Final Unit • Project & Certificate'
+                                      : `Learning Unit ${mIdx}`}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">{mod.durationHours || 8} contact hours</span>
+                                </div>
+                                <h5 className="font-bold text-slate-900 text-xs mt-0.5">{mod.title}</h5>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">
+                                {studentsCompletedUnit} / {cohortStudents.length} Students Completed Unit
+                              </span>
                               <span className="text-[10px] font-semibold text-slate-500">
                                 {mod.lessons?.length || 0} Lessons
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSessionTitle(`${mod.title} — Physical Lab & Workshop`);
+                                  setSessionTopic(mod.description || mod.title);
+                                  setShowNewSessionModal(true);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <Calendar className="w-3 h-3" />
+                                <span>Schedule Class</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => openCreateAssignmentForModule(currentCohort.id, course.id, mod.id, mod.title)}
@@ -1749,7 +1847,7 @@ export const InstructorPortalPage: React.FC = () => {
                                       <span className="font-bold text-slate-800 truncate">{les.title}</span>
                                       {les.videoUrl && (
                                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-200 flex items-center gap-1">
-                                          <Play className="w-2.5 h-2.5" /> Video
+                                          <Play className="w-2.5 h-2.5" /> Watch
                                         </span>
                                       )}
                                       {les.interactiveLabType && (
@@ -1824,10 +1922,12 @@ export const InstructorPortalPage: React.FC = () => {
                             );
                           })()}
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : (
               <div className="p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-3 bg-white">

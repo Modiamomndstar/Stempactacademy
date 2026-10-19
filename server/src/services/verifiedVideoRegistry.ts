@@ -16,6 +16,31 @@ export interface VerifiedVideo {
   durationMin: number;
   summary: string;
   tags: string[];
+  learningExpectations?: string;
+  citation?: string;
+}
+
+/**
+ * Builds a UoPeople-style formal video citation and learning alignment summary
+ */
+export function enrichVerifiedVideo(
+  vid: VerifiedVideo,
+  context?: { unitTitle?: string; lessonTitle?: string; levelLabel?: string; programName?: string }
+): VerifiedVideo {
+  const year = new Date().getFullYear() - 1;
+  const citation = `${vid.channel}. (${year}). *${vid.title}* [Video]. YouTube. (${vid.durationMin} mins).`;
+  const unitRef = context?.unitTitle || 'this learning unit';
+  const lessonRef = context?.lessonTitle || vid.title;
+  const levelRef = context?.levelLabel ? ` (${context.levelLabel})` : '';
+  const learningExpectations =
+    vid.learningExpectations ||
+    `In this curated instructional video for "${lessonRef}"${levelRef}, you will observe practical demonstrations of ${vid.summary.charAt(0).toLowerCase() + vid.summary.slice(1)} As you watch, pay close attention to the step-by-step workflow, technical terminology, and operational standards demonstrated—they directly reinforce the learning objectives of ${unitRef} and prepare you for the unit's practical lab assignment and self-quiz.`;
+
+  return {
+    ...vid,
+    citation,
+    learningExpectations,
+  };
 }
 
 export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
@@ -654,7 +679,8 @@ export async function validateYouTubeVideo(videoId: string): Promise<boolean> {
 }
 
 /**
- * Categorizes a program and lesson to return the most relevant, verified educational video.
+ * Categorizes a program, academic level, and lesson to return the most relevant, verified educational video
+ * with full UoPeople-style citation and learning expectation alignment.
  */
 export function getCuratedVideoForLesson(params: {
   programName?: string;
@@ -662,6 +688,7 @@ export function getCuratedVideoForLesson(params: {
   schoolCode?: string;
   moduleTitle?: string;
   lessonTitle?: string;
+  level?: string;
   weekIdx?: number;
   lessonIdx?: number;
 }): VerifiedVideo {
@@ -671,11 +698,35 @@ export function getCuratedVideoForLesson(params: {
     schoolCode = '',
     moduleTitle = '',
     lessonTitle = '',
+    level = '',
     weekIdx = 0,
     lessonIdx = 0,
   } = params;
 
   const combinedText = `${programName} ${programCode} ${schoolCode} ${moduleTitle} ${lessonTitle}`.toLowerCase();
+  const lvlUpper = String(level).toUpperCase();
+  const levelOffset = lvlUpper.includes('4') || lvlUpper.includes('SPEC') || lvlUpper.includes('MASTERY')
+    ? 6
+    : lvlUpper.includes('3') || lvlUpper.includes('ADVANC')
+      ? 4
+      : lvlUpper.includes('2') || lvlUpper.includes('INTER')
+        ? 2
+        : 0;
+  const levelLabel = lvlUpper.includes('4') || lvlUpper.includes('SPEC')
+    ? 'Level 4 — Specialist / Mastery'
+    : lvlUpper.includes('3') || lvlUpper.includes('ADVANC')
+      ? 'Level 3 — Advanced'
+      : lvlUpper.includes('2') || lvlUpper.includes('INTER')
+        ? 'Level 2 — Intermediate'
+        : 'Level 1 — Foundation';
+
+  const wrap = (v: VerifiedVideo): VerifiedVideo =>
+    enrichVerifiedVideo(v, {
+      unitTitle: moduleTitle,
+      lessonTitle,
+      levelLabel,
+      programName,
+    });
 
   // 1. Check for 3D Design, CAD, 3D Printing & Digital Fabrication
   if (
@@ -691,32 +742,28 @@ export function getCuratedVideoForLesson(params: {
     programCode.includes('RIOTH-06')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.cad_3d_fabrication;
-    // Contextual match by subtopic
     if (combinedText.includes('print') || combinedText.includes('bed') || combinedText.includes('level') || combinedText.includes('layer')) {
-      const pVid = vids.find((v) => v.tags.includes('bed leveling')) || vids[3];
-      return pVid;
+      return wrap(vids.find((v) => v.tags.includes('bed leveling')) || vids[3]);
     }
     if (combinedText.includes('toleran') || combinedText.includes('dimension') || combinedText.includes('clearance')) {
-      const tVid = vids.find((v) => v.tags.includes('tolerances')) || vids[5];
-      return tVid;
+      return wrap(vids.find((v) => v.tags.includes('tolerances')) || vids[5]);
     }
     if (combinedText.includes('export') || combinedText.includes('stl') || combinedText.includes('mesh')) {
-      const eVid = vids.find((v) => v.tags.includes('export')) || vids[1];
-      return eVid;
+      return wrap(vids.find((v) => v.tags.includes('export')) || vids[1]);
     }
     if (combinedText.includes('assembly') || combinedText.includes('part') || combinedText.includes('fillet')) {
-      const aVid = vids.find((v) => v.tags.includes('assembly')) || vids[2];
-      return aVid;
+      return wrap(vids.find((v) => v.tags.includes('assembly')) || vids[2]);
     }
-    // Sequential distribution by week and lesson
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
-  // 2. Computer Hardware Engineering & Diagnostics
+  // 2. Computer Hardware Engineering, PC Architecture, Board-Level Repair & Diagnostics
+  // Checked strictly BEFORE robotics so Computer Hardware never defaults to Arduino!
   if (
     combinedText.includes('computer hardware') ||
     combinedText.includes('hardware engineering') ||
+    (combinedText.includes('hardware') && !combinedText.includes('arduino') && !combinedText.includes('robot')) ||
     combinedText.includes('motherboard') ||
     combinedText.includes('esd') ||
     combinedText.includes('multimeter') ||
@@ -729,22 +776,25 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('crimping') ||
     combinedText.includes('storage') ||
     combinedText.includes('pc build') ||
-    combinedText.includes('bios')
+    combinedText.includes('bios') ||
+    combinedText.includes('vrm') ||
+    combinedText.includes('solder')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.computer_hardware;
-    if (combinedText.includes('motherboard') || combinedText.includes('chipset')) return vids[1];
-    if (combinedText.includes('ram') || combinedText.includes('memory')) return vids[2];
-    if (combinedText.includes('power') || combinedText.includes('voltage') || combinedText.includes('psu')) return vids[3];
-    if (combinedText.includes('storage') || combinedText.includes('ssd') || combinedText.includes('nvme')) return vids[4];
-    if (combinedText.includes('assembly') || combinedText.includes('build') || combinedText.includes('bench')) return vids[5];
-    if (combinedText.includes('bios') || combinedText.includes('uefi') || combinedText.includes('firmware')) return vids[6];
-    if (combinedText.includes('diagnostic') || combinedText.includes('post card') || combinedText.includes('beep')) return vids[7];
-    if (combinedText.includes('multimeter') || combinedText.includes('continuity')) return vids[8];
-    if (combinedText.includes('solder') || combinedText.includes('capacitor') || combinedText.includes('repair')) return vids[9];
-    if (combinedText.includes('network') || combinedText.includes('cabling') || combinedText.includes('rj45') || combinedText.includes('crimping')) return vids[10];
-    if (combinedText.includes('esd') || combinedText.includes('safety') || combinedText.includes('workbench')) return vids[0];
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const lessonLower = `${moduleTitle} ${lessonTitle}`.toLowerCase();
+    if (lessonLower.includes('solder') || lessonLower.includes('capacitor') || lessonLower.includes('rework') || lessonLower.includes('smd')) return wrap(vids[9]);
+    if (lessonLower.includes('multimeter') || lessonLower.includes('continuity') || lessonLower.includes('rail') || lessonLower.includes('vrm')) return wrap(vids[8]);
+    if (lessonLower.includes('diagnostic') || lessonLower.includes('post card') || lessonLower.includes('beep') || lessonLower.includes('fault')) return wrap(vids[7]);
+    if (lessonLower.includes('bios') || lessonLower.includes('uefi') || lessonLower.includes('firmware') || lessonLower.includes('eeprom')) return wrap(vids[6]);
+    if (lessonLower.includes('network') || lessonLower.includes('cabling') || lessonLower.includes('rj45') || lessonLower.includes('crimping') || lessonLower.includes('server')) return wrap(vids[10]);
+    if (lessonLower.includes('assembly') || lessonLower.includes('build') || lessonLower.includes('bench')) return wrap(vids[5]);
+    if (lessonLower.includes('storage') || lessonLower.includes('ssd') || lessonLower.includes('nvme') || lessonLower.includes('raid')) return wrap(vids[4]);
+    if (lessonLower.includes('power') || lessonLower.includes('voltage') || lessonLower.includes('psu')) return wrap(vids[3]);
+    if (lessonLower.includes('ram') || lessonLower.includes('memory')) return wrap(vids[2]);
+    if (lessonLower.includes('motherboard') || lessonLower.includes('chipset')) return wrap(vids[1]);
+    if (lessonLower.includes('esd') || lessonLower.includes('safety') || lessonLower.includes('workbench')) return wrap(vids[0]);
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % (vids.length - 1); // exclude index 11 (microcontroller) unless explicitly requested
+    return wrap(vids[idx]);
   }
 
   // 2a. Robotics, Embedded Systems, IoT & Arduino
@@ -759,8 +809,8 @@ export function getCuratedVideoForLesson(params: {
     programCode.toUpperCase().startsWith('RIOTH')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.robotics_hardware;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 2b. Electronics & Electrical Engineering
@@ -775,8 +825,8 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('current')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.electronics_engineering;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 2c. Mathematics & Applied Industrial Mathematics
@@ -795,8 +845,8 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('discrete')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.mathematics_applied;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 2d. Physics & Applied Physical Systems
@@ -810,8 +860,8 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('thermodynamic')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.physics_applied;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 2e. Chemistry & Materials Science
@@ -824,8 +874,8 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('materials science')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.chemistry_science;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 3. Renewable Energy & Solar Tech
@@ -839,8 +889,8 @@ export function getCuratedVideoForLesson(params: {
     programCode.toUpperCase().startsWith('RETE')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.solar_energy;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 4. Kids & Teens Track
@@ -853,7 +903,7 @@ export function getCuratedVideoForLesson(params: {
     programCode.toUpperCase().startsWith('SKT')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.kids_stem;
-    return vids[(weekIdx * 3 + lessonIdx) % vids.length];
+    return wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % vids.length]);
   }
 
   // 5. Cybersecurity & Cloud/DevOps
@@ -867,8 +917,8 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('devops')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.cyber_cloud;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 6. AI, Machine Learning, Deep Learning & Generative Media
@@ -887,8 +937,8 @@ export function getCuratedVideoForLesson(params: {
     programCode.toUpperCase().startsWith('DMAP')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.ai_machine_learning;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 7. Business, Startup, Venture & Entrepreneurship
@@ -904,7 +954,7 @@ export function getCuratedVideoForLesson(params: {
     programCode.toUpperCase().startsWith('ISL')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.business_innovation;
-    return vids[(weekIdx * 3 + lessonIdx) % vids.length];
+    return wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % vids.length]);
   }
 
   // 8. Python & Data Science
@@ -916,19 +966,19 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('database')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.python_data;
-    const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-    return vids[idx];
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
   }
 
   // 9. Default Web & Software Engineering
   const vids = VERIFIED_VIDEO_CATALOG.web_software;
-  // Specific web sub-matchers
-  if (combinedText.includes('html')) return vids[0];
-  if (combinedText.includes('css')) return vids[1];
-  if (combinedText.includes('react')) return vids[3];
-  if (combinedText.includes('node') || combinedText.includes('api') || combinedText.includes('backend')) return vids[5];
-  if (combinedText.includes('flutter') || combinedText.includes('mobile')) return vids[6];
+  if (combinedText.includes('html')) return wrap(vids[0]);
+  if (combinedText.includes('css')) return wrap(vids[1]);
+  if (combinedText.includes('react')) return wrap(vids[3]);
+  if (combinedText.includes('node') || combinedText.includes('api') || combinedText.includes('backend')) return wrap(vids[5]);
+  if (combinedText.includes('flutter') || combinedText.includes('mobile')) return wrap(vids[6]);
 
-  const idx = (weekIdx * 3 + lessonIdx) % vids.length;
-  return vids[idx];
+  const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+  return wrap(vids[idx]);
 }
+

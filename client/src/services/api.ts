@@ -77,8 +77,22 @@ export const api = {
   updateProgramStatus: (id: string, data: any) => apiRequest(`/programs/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
   curateProgramVideos: (id: string, data: { overwrite?: boolean } = {}) =>
     apiRequest(`/admin/programs/${id}/curate-videos`, { method: 'POST', body: JSON.stringify(data) }),
-  updateLessonVideo: (lessonId: string, data: { videoUrl?: string | null; videoDurationMin?: number | null; videoSummary?: string | null }) =>
-    apiRequest(`/admin/lessons/${lessonId}/video`, { method: 'PATCH', body: JSON.stringify(data) }),
+  upgradeProgramToUoPeople: (id: string, data: { levelCode?: string; forceRegenerate?: boolean } = {}) =>
+    apiRequest(`/admin/programs/${id}/upgrade-uopeople`, { method: 'POST', body: JSON.stringify(data) }),
+  updateLessonVideo: (
+    lessonId: string,
+    data: {
+      title?: string;
+      content?: string;
+      learningObjectives?: string;
+      keyConcepts?: string;
+      reflectionPrompt?: string;
+      videoUrl?: string | null;
+      videoDurationMin?: number | null;
+      videoSummary?: string | null;
+      resources?: any;
+    }
+  ) => apiRequest(`/admin/lessons/${lessonId}/video`, { method: 'PATCH', body: JSON.stringify(data) }),
   curateSingleLessonVideo: (lessonId: string) =>
     apiRequest(`/admin/lessons/${lessonId}/curate-video`, { method: 'POST' }),
 
@@ -169,6 +183,8 @@ export const api = {
     apiRequest(`/student/lessons/${lessonId}/progress`, { method: 'POST', body: JSON.stringify(data) }),
   getCompletionReadiness: (studentId?: string) =>
     apiRequest(`/student/completion-readiness${studentId ? `?studentId=${studentId}` : ''}`),
+  claimLevelCertificate: () =>
+    apiRequest('/student/claim-level-certificate', { method: 'POST' }),
   getParentDashboard: () => apiRequest('/parent/dashboard'),
   registerWard: (data: any) => apiRequest('/parent/wards', { method: 'POST', body: JSON.stringify(data) }),
   getWardAcademicRecords: (studentId: string) =>

@@ -344,21 +344,78 @@ export const curateVideos = async (req: Request, res: Response): Promise<void> =
 export const updateLessonVideo = async (req: Request, res: Response): Promise<void> => {
   try {
     const { lessonId } = req.params;
-    const { videoUrl, videoDurationMin, videoSummary } = req.body;
+    const {
+      title,
+      content,
+      learningObjectives,
+      keyConcepts,
+      reflectionPrompt,
+      videoUrl,
+      videoDurationMin,
+      videoSummary,
+      resources,
+    } = req.body;
 
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
       data: {
+        ...(title !== undefined && { title: String(title).trim() }),
+        ...(content !== undefined && { content: String(content) }),
+        ...(learningObjectives !== undefined && { learningObjectives: String(learningObjectives) }),
+        ...(keyConcepts !== undefined && { keyConcepts: String(keyConcepts) }),
+        ...(reflectionPrompt !== undefined && { reflectionPrompt: String(reflectionPrompt) }),
         ...(videoUrl !== undefined && { videoUrl: videoUrl ? String(videoUrl).trim() : null }),
         ...(videoDurationMin !== undefined && { videoDurationMin: videoDurationMin ? Number(videoDurationMin) : null }),
         ...(videoSummary !== undefined && { videoSummary: videoSummary ? String(videoSummary).trim() : null }),
+        ...(resources !== undefined && {
+          resources: typeof resources === 'string' ? resources : JSON.stringify(resources),
+        }),
       },
     });
 
-    res.status(200).json({ message: 'Lesson video updated successfully', lesson });
+    res.status(200).json({ message: 'Lesson updated successfully', lesson });
   } catch (error: any) {
     console.error('updateLessonVideo error:', error);
-    res.status(500).json({ message: error.message || 'Failed to update lesson video' });
+    res.status(500).json({ message: error.message || 'Failed to update lesson' });
+  }
+};
+
+export const upgradeProgramCurriculumToUoPeople = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { levelCode, forceRegenerate } = req.body || {};
+    const { academicDeliveryService } = await import('../services/academicDeliveryService.js');
+
+    const targetLevels = levelCode
+      ? [String(levelCode)]
+      : [
+          'LEVEL_1_FOUNDATION',
+          'LEVEL_2_INTERMEDIATE',
+          'LEVEL_3_ADVANCED',
+          'LEVEL_4_SPECIALIST',
+        ];
+
+    const upgradedCourses: any[] = [];
+    for (const lvl of targetLevels) {
+      const courses = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
+        id,
+        lvl,
+        null,
+        Boolean(forceRegenerate)
+      );
+      upgradedCourses.push(...courses);
+    }
+
+    res.status(200).json({
+      message: `Successfully synchronized UoPeople-structured curriculum across ${targetLevels.length} academic level(s).`,
+      coursesCount: upgradedCourses.length,
+      courses: upgradedCourses,
+    });
+  } catch (error: any) {
+    console.error('upgradeProgramCurriculumToUoPeople error:', error);
+    res.status(500).json({
+      message: error.message || 'Failed to upgrade program curriculum to UoPeople structure',
+    });
   }
 };
 
@@ -401,4 +458,5 @@ export const curateSingleLessonVideo = async (req: Request, res: Response): Prom
     res.status(500).json({ message: error.message || 'Failed to curate video for lesson' });
   }
 };
+
 
