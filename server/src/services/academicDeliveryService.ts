@@ -4,6 +4,8 @@ import {
   buildUoPeopleStructuredCourse,
   LEVEL_META,
 } from './ai/uopeopleCurriculumBuilder.js';
+import { normalizeAcademicLevel } from './ai/types.js';
+import { isVerifiedVideoUrl } from './verifiedVideoRegistry.js';
 
 export interface StudentAcademicContext {
   studentProfileId: string;
@@ -147,7 +149,17 @@ export class AcademicDeliveryService {
     const programVersionId = activeEnrollment?.programVersionId || activeCohort.programVersionId;
     const curriculumVersionId = activeEnrollment?.curriculumVersionId || activeCohort.curriculumVersionId;
     const academicSessionId = activeEnrollment?.academicSessionId || activeCohort.academicSessionId;
-    const levelCode = String(activeCohort.levelCode || 'LEVEL_1_FOUNDATION');
+
+    // Resolve AcademicLevel consistently across cohort.levelCode, student.currentLevel, and cohort.level
+    const rawLevelCandidate =
+      (activeCohort.levelCode && activeCohort.levelCode !== 'LEVEL_1_FOUNDATION'
+        ? activeCohort.levelCode
+        : null) ||
+      student.currentLevel ||
+      activeCohort.level ||
+      activeCohort.levelCode ||
+      'LEVEL_1_FOUNDATION';
+    const levelCode = normalizeAcademicLevel(rawLevelCandidate);
     const levelInfo = LEVEL_META[levelCode] || LEVEL_META.LEVEL_1_FOUNDATION;
 
     let programCode = activeEnrollment?.program?.code || activeCohort.program?.code || 'STEM-PROG';
@@ -192,7 +204,7 @@ export class AcademicDeliveryService {
   /**
    * Ensures a UoPeople-structured course (Course Introduction -> Units 1..W -> Final Level Project & Certificate Issuance)
    * exists for the given programId and AcademicLevel (LEVEL_1_FOUNDATION .. LEVEL_4_SPECIALIST).
-   * Non-destructively upgrades legacy unstructured courses while preserving student progress.
+   * Non-destructively upgrades legacy or incomplete courses while ensuring 100% verified videos and non-repeating units.
    */
   async ensureUoPeopleCourseForProgramLevel(
     programId: string,
@@ -200,7 +212,8 @@ export class AcademicDeliveryService {
     curriculumVersionId?: string | null,
     forceRegenerate: boolean = false
   ) {
-    const normalizedLevel = (LEVEL_META[levelCode] ? levelCode : 'LEVEL_1_FOUNDATION') as AcademicLevel;
+    const normalizedCode = normalizeAcademicLevel(levelCode);
+    const normalizedLevel = (LEVEL_META[normalizedCode] ? LEVEL_META[normalizedCode].code : 'LEVEL_1_FOUNDATION') as AcademicLevel;
 
     const program = await prisma.program.findUnique({
       where: { id: programId },
@@ -238,9 +251,11 @@ export class AcademicDeliveryService {
       (c) => c.level === normalizedLevel || (normalizedLevel === 'LEVEL_1_FOUNDATION' && !c.level)
     );
 
-    // Check if any matching course already satisfies the UoPeople architecture and domain accuracy
+    // Check if any matching course already satisfies the complete UoPeople architecture, 8+ unique units, and 100% verified videos
     if (!forceRegenerate) {
       const validCourse = matchingLevelCourses.find((c) => {
+        if (!Array.isArray(c.modules) || c.modules.length < 8) return false;
+
         const hasIntroUnit = c.modules.some(
           (m) => m.order === 0 || /course\s*introduction/i.test(m.title)
         );
@@ -250,6 +265,25 @@ export class AcademicDeliveryService {
             m.lessons.some((l) => l.interactiveLabType === 'CERTIFICATE_GATE')
         );
         if (!hasIntroUnit || !hasFinalProjectUnit) return false;
+
+        // Check that no two units repeat the same theme title
+        const normalizedThemes = c.modules.map((m) =>
+          String(m.title || '')
+            .replace(/^unit\s*\d+\s*:\s*/i, '')
+            .trim()
+            .toLowerCase()
+        );
+        if (new Set(normalizedThemes).size !== normalizedThemes.length) {
+          return false;
+        }
+
+        // Check that all lessons with a videoUrl use a 100% verified live YouTube ID
+        const hasInvalidVideo = c.modules.some((m) =>
+          m.lessons.some((l) => Boolean(l.videoUrl) && !isVerifiedVideoUrl(l.videoUrl))
+        );
+        if (hasInvalidVideo) {
+          return false;
+        }
 
         if (isComputerHardwareProgram) {
           const allTitles = c.modules
@@ -267,10 +301,10 @@ export class AcademicDeliveryService {
       }
     }
 
-    // Parse program duration weeks (clamp between 4 and 8 learning units for structured delivery)
+    // Parse program duration weeks (guarantee at least 7 weeks => Course Intro + 6 Learning Units + Final Project = 8 units)
     const durationMatch = String(program.duration || '8 Weeks').match(/(\d+)/);
-    const parsedWeeks = durationMatch ? parseInt(durationMatch[1], 10) : 6;
-    const durationWeeks = Math.min(8, Math.max(4, parsedWeeks > 8 ? 6 : parsedWeeks));
+    const parsedWeeks = durationMatch ? parseInt(durationMatch[1], 10) : 7;
+    const durationWeeks = Math.min(9, Math.max(7, parsedWeeks > 9 ? 8 : parsedWeeks));
     const toolsList = String(program.tools || '')
       .split(',')
       .map((t) => t.trim())
@@ -293,14 +327,9 @@ export class AcademicDeliveryService {
       existingCourses.find((c) => c.curriculumVersionId)?.curriculumVersionId ||
       null;
 
-    // Non-destructively remove legacy unstructured courses for this level if they have zero student progress
+    // Replace outdated/incomplete courses for this level so the canonical 8-unit UoPeople course takes effect cleanly
     for (const oldCourse of matchingLevelCourses) {
-      const hasProgress = oldCourse.modules.some((m) =>
-        m.lessons.some((l: any) => (l._count?.studentProgress || 0) > 0)
-      );
-      if (!hasProgress) {
-        await prisma.course.delete({ where: { id: oldCourse.id } }).catch(() => {});
-      }
+      await prisma.course.delete({ where: { id: oldCourse.id } }).catch(() => {});
     }
 
     const createdCourse = await prisma.course.create({

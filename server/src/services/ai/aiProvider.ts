@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { IAIProvider, AIOptions, AIGenerationResult, normalizeAcademicLevel } from './types.js';
-import { getCuratedVideoForLesson } from '../verifiedVideoRegistry.js';
+import { getCuratedVideoForLesson, isVerifiedVideoUrl } from '../verifiedVideoRegistry.js';
 import { buildUoPeopleStructuredCourse } from './uopeopleCurriculumBuilder.js';
 
 // ---------------------------------------------------------------------------
@@ -107,9 +107,9 @@ export function repairStructuredFields(obj: any, prompt: string): any {
           Array.isArray(c.modules) &&
           c.modules.some((m: any) => String(m.title || '').toLowerCase().includes('final level project'));
 
-        // If the AI returned raw unstructured modules without Course Introduction or Final Project Unit,
-        // upgrade to the complete UoPeople-structured module sequence while preserving any custom AI lesson text
-        if (!Array.isArray(c.modules) || c.modules.length === 0 || !hasCourseIntro || !hasFinalProjectUnit) {
+        // If the AI returned raw unstructured modules without Course Introduction, Final Project Unit, or fewer than 7 total units,
+        // upgrade to the complete UoPeople-structured module sequence
+        if (!Array.isArray(c.modules) || c.modules.length < 7 || !hasCourseIntro || !hasFinalProjectUnit) {
           c.modules = refCourse.modules;
         } else {
           for (let mIdx = 0; mIdx < c.modules.length; mIdx++) {
@@ -134,7 +134,11 @@ export function repairStructuredFields(obj: any, prompt: string): any {
                 if (!l.resources && refLesson?.resources) {
                   l.resources = refLesson.resources;
                 }
-                if (!l.videoUrl && (!l.interactiveLabType || l.interactiveLabType === 'CORE_LESSON' || l.interactiveLabType === 'COURSE_WELCOME')) {
+                const needsVideo =
+                  !l.interactiveLabType ||
+                  l.interactiveLabType === 'CORE_LESSON' ||
+                  l.interactiveLabType === 'COURSE_WELCOME';
+                if (needsVideo && (!l.videoUrl || !isVerifiedVideoUrl(l.videoUrl))) {
                   const curatedVid = getCuratedVideoForLesson({
                     programName: obj.name,
                     programCode: obj.code,

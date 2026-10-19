@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
 import { PageHeader } from '../../components/PageHeader';
+import { FormattedAcademicContent } from '../../components/FormattedAcademicContent';
 import {
   Users,
   Calendar,
@@ -2394,8 +2395,10 @@ export const InstructorPortalPage: React.FC = () => {
             {/* Instructional Content */}
             <div className="space-y-2">
               <span className="text-[10px] font-bold uppercase text-slate-400">Lesson Content / Overview:</span>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap">
-                {previewLesson.content || 'Content guidelines available in syllabus.'}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 max-h-64 overflow-y-auto">
+                <FormattedAcademicContent
+                  content={previewLesson.content || 'Content guidelines available in syllabus.'}
+                />
               </div>
             </div>
 

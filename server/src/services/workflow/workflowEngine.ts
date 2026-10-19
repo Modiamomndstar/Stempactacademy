@@ -165,10 +165,13 @@ export class WorkflowEngine {
       });
 
       // Determine courses to create (ensuring UoPeople Course Introduction + Weekly Units + Final Project structure)
-      const defaultUoPeopleCourses = buildDomainProgramCourses(name, school.code, durationWeeks, level, description);
+      const defaultUoPeopleCourses = buildDomainProgramCourses(name, school.code, Math.max(7, durationWeeks), level, description);
       const coursesToCreate = (rawData.courses && Array.isArray(rawData.courses) && rawData.courses.length > 0)
         ? rawData.courses.map((c: any) => {
-            const hasIntro = Array.isArray(c.modules) && c.modules.some((m: any) => String(m.title || '').toLowerCase().includes('course introduction'));
+            const hasIntro =
+              Array.isArray(c.modules) &&
+              c.modules.length >= 7 &&
+              c.modules.some((m: any) => String(m.title || '').toLowerCase().includes('course introduction'));
             return hasIntro ? c : defaultUoPeopleCourses[0];
           })
         : defaultUoPeopleCourses;

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge, Card, LoadingSpinner } from '../../components/UIElements';
 import { PortalLayout } from '../../components/PortalLayout';
 import { PageHeader } from '../../components/PageHeader';
+import { FormattedAcademicContent } from '../../components/FormattedAcademicContent';
 import {
   BookOpen,
   Calendar,
@@ -193,6 +194,13 @@ export const StudentDashboardPage: React.FC = () => {
       }
     }
   }, [activeTab, flatLessonsList, selectedLesson, completedLessonIds]);
+
+  // Expand unit when navigating to a lesson in a different unit
+  useEffect(() => {
+    if (selectedLesson?.moduleId) {
+      setExpandedUnitIds((prev) => new Set([...prev, selectedLesson.moduleId]));
+    }
+  }, [selectedLesson?.moduleId]);
 
   // Synchronize Tab with URL
   const handleTabChange = (tabId: string) => {
@@ -567,7 +575,14 @@ export const StudentDashboardPage: React.FC = () => {
     announcements,
   } = data;
 
-  const academicLevelLabel = profile?.currentLevel || cohort?.levelCode?.replace(/_/g, ' ') || cohort?.level || 'Level 1 Foundation';
+  const academicLevelLabel =
+    curriculumData?.context?.levelDisplayName ||
+    data?.academicContext?.levelDisplayName ||
+    data?.curriculum?.levelDisplayName ||
+    profile?.currentLevel ||
+    cohort?.levelCode?.replace(/_/g, ' ') ||
+    cohort?.level ||
+    'Level 1 — Foundation Bootcamp';
   const cohortSectionLabel = cohort?.cohortCode ? `${cohort.name} (${cohort.cohortCode})` : cohort?.name || 'Class Batch';
 
   const getPageHeaderConfig = () => {
@@ -1111,16 +1126,46 @@ export const StudentDashboardPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Unit Count & Expand/Collapse All Bar */}
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>
+                        Course Units (
+                        {coursesList.reduce((acc: number, c: any) => acc + (c.modules?.length || 0), 0)}{' '}
+                        Units Total)
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allIds: string[] = [];
+                        coursesList.forEach((c: any, cIdx: number) =>
+                          (c.modules || []).forEach((m: any, mIdx: number) =>
+                            allIds.push(m.id || `unit-${cIdx}-${mIdx}`)
+                          )
+                        );
+                        if (expandedUnitIds.size > 0) {
+                          setExpandedUnitIds(new Set());
+                        } else {
+                          setExpandedUnitIds(new Set(allIds));
+                        }
+                      }}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer transition"
+                    >
+                      {expandedUnitIds.size > 0 ? 'Collapse All Units' : 'Expand All Units'}
+                    </button>
+                  </div>
+
                   {/* Modules Accordion List */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100 max-h-[760px] overflow-y-auto">
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden divide-y divide-slate-100 max-h-[820px] overflow-y-auto">
                     {coursesList.map((course: any, cIdx: number) => {
                       const totalMods = (course.modules || []).length;
                       return (course.modules || []).map((mod: any, mIdx: number) => {
                         const unitId = mod.id || `unit-${cIdx}-${mIdx}`;
                         const isExpanded =
                           expandedUnitIds.has(unitId) ||
-                          curriculumSearch.trim().length > 0 ||
-                          selectedLesson?.moduleId === mod.id;
+                          curriculumSearch.trim().length > 0;
 
                         const lessonsInMod = mod.lessons || [];
                         const completedCount = lessonsInMod.filter(
@@ -1577,8 +1622,8 @@ export const StudentDashboardPage: React.FC = () => {
                         {/* Lesson Content / Reading Text */}
                         <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
                           {selectedLesson.content ? (
-                            <div className="prose prose-sm max-w-none text-slate-800 whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-5 rounded-2xl border border-slate-100">
-                              {selectedLesson.content}
+                            <div className="bg-slate-50/50 p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs">
+                              <FormattedAcademicContent content={selectedLesson.content} />
                             </div>
                           ) : (
                             <p className="text-slate-500 italic">
@@ -2935,14 +2980,18 @@ export const StudentDashboardPage: React.FC = () => {
             })()}
 
             <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-200 pb-2">
                   <BookOpen className="w-4 h-4 text-blue-600" />
                   <span>Instructional Lesson Reading & Study Guide:</span>
                 </div>
-                <div className="text-slate-700 leading-relaxed whitespace-pre-wrap text-xs space-y-2">
-                  {selectedLesson.content || selectedLesson.summary || 'In this lesson, you will master baseline conceptual principles, review architectural patterns, and implement hands-on practical exercises guided by your faculty mentor.'}
-                </div>
+                <FormattedAcademicContent
+                  content={
+                    selectedLesson.content ||
+                    selectedLesson.summary ||
+                    'In this lesson, you will master baseline conceptual principles, review architectural patterns, and implement hands-on practical exercises guided by your faculty mentor.'
+                  }
+                />
               </div>
 
               {selectedLesson.learningObjectives && (

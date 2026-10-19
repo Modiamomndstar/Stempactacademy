@@ -97,6 +97,15 @@ export const LEVEL_META: Record<
     prerequisitesText: 'Successful completion of Level 3 Advanced Certificate and faculty clearance for Specialist Mastery.',
     projectComplexity: 'Enterprise-ready flagship capstone solution with full commercial specification, live defense, and industry SLA compliance',
   },
+  LEVEL_4_MASTERY: {
+    code: 'LEVEL_4_SPECIALIST',
+    shortLabel: 'Level 4 — Specialist / Mastery',
+    displayName: 'Level 4 — Specialist & Production Mastery',
+    courseCodeSuffix: '401',
+    pedagogicalDepth: 'Enterprise-grade engineering mastery, specialist precision rework/deployment, SLA governance, and commercial defense',
+    prerequisitesText: 'Successful completion of Level 3 Advanced Certificate and faculty clearance for Specialist Mastery.',
+    projectComplexity: 'Enterprise-ready flagship capstone solution with full commercial specification, live defense, and industry SLA compliance',
+  },
   LEVEL_5_INNOVATION: {
     code: 'LEVEL_5_INNOVATION',
     shortLabel: 'Venture Lab — R&D Innovation',
@@ -557,29 +566,82 @@ function getDomainLevelUnitBlueprints(
   };
 
   const selectedDomain = domainThemes[domainKey];
-  const levelTemplates = selectedDomain ? selectedDomain[lvlNum] || selectedDomain[1] : null;
+  const primaryTemplates = selectedDomain ? selectedDomain[lvlNum] || selectedDomain[1] || [] : [];
+  const nextTierTemplates = selectedDomain
+    ? [
+        ...(selectedDomain[lvlNum < 4 ? lvlNum + 1 : 3] || []),
+        ...(selectedDomain[lvlNum < 3 ? lvlNum + 2 : 2] || []),
+        ...(selectedDomain[lvlNum === 1 ? 4 : 1] || []),
+      ]
+    : [];
+
+  // Deduplicate templates by theme so no two units in the same course ever repeat a title
+  const seenThemes = new Set<string>();
+  const uniqueTemplates: Array<{ theme: string; l1: string; l2: string; deliverable: string }> = [];
+  for (const item of [...primaryTemplates, ...nextTierTemplates]) {
+    if (item && !seenThemes.has(item.theme)) {
+      seenThemes.add(item.theme);
+      uniqueTemplates.push(item);
+    }
+  }
+
+  const progressiveFallbackThemes = [
+    {
+      theme: `${programTitle} Foundations, Architecture & Toolchain Setup`,
+      l1: `Core Principles, Industry Standards & System Architecture of ${programTitle}`,
+      l2: `Workstation Setup, Safety Guardrails & Baseline Practical Verification`,
+      deliverable: `Baseline Architecture Diagram & Environment Verification Report`,
+    },
+    {
+      theme: `Core Subsystem Implementation, Data/Signal Flow & Component Integration`,
+      l1: `Designing and Implementing Core Functional Modules in ${programTitle}`,
+      l2: `Interfacing Subsystems, Signal/Data Validation & Guided Laboratory Build`,
+      deliverable: `Working Core Subsystem Prototype & Integration Test Log`,
+    },
+    {
+      theme: `Diagnostic Instrumentation, Debugging Workflows & Performance Measurement`,
+      l1: `Systematic Fault Isolation, Instrumentation Probing & Error Tracing`,
+      l2: `Stress-Testing, Telemetry Capture & Bottleneck Resolution`,
+      deliverable: `Diagnostic Root-Cause Analysis Report & Calibrated Measurement Log`,
+    },
+    {
+      theme: `Advanced Multi-Module Integration, Automation & Reliability Engineering`,
+      l1: `Orchestrating Multi-Component Workflows & Automated Quality Gates`,
+      l2: `Fault-Tolerant Design Patterns, Redundancy & Edge-Case Handling`,
+      deliverable: `Integrated Multi-Module System & Automated Verification Suite`,
+    },
+    {
+      theme: `Security Hardening, Preventive Maintenance & Operational Governance`,
+      l1: `Vulnerability Auditing, Safety Compliance & Preventive Maintenance Protocols`,
+      l2: `Standard Operating Procedures (SOPs), Service Level Agreements & Documentation`,
+      deliverable: `Security & Compliance Audit Checklist and Preventive Maintenance SOP`,
+    },
+    {
+      theme: `Production Optimization, Commercial Packaging & Pre-Capstone Synthesis`,
+      l1: `End-to-End Performance Tuning, Cost/Efficiency Optimization & Packaging`,
+      l2: `Pre-Capstone System Integration, Peer Design Review & Defense Preparation`,
+      deliverable: `Production-Optimized System Package & Pre-Capstone Readiness Brief`,
+    },
+    {
+      theme: `Enterprise Scaling, Field Deployment & Industry Case Study Analysis`,
+      l1: `Deploying Systems at Scale in Nigerian and Global Enterprise Environments`,
+      l2: `Post-Deployment Telemetry Monitoring, Incident Response & Lifecycle Management`,
+      deliverable: `Enterprise Field Deployment Blueprint & Lifecycle Operations Plan`,
+    },
+  ];
 
   const blueprints: UnitBlueprint[] = [];
 
   for (let u = 1; u <= unitCount; u++) {
-    const tpl = levelTemplates ? levelTemplates[(u - 1) % levelTemplates.length] : null;
+    const tpl =
+      uniqueTemplates[u - 1] ||
+      progressiveFallbackThemes[(u - 1) % progressiveFallbackThemes.length];
     const levelBadge = LEVEL_META[levelCode]?.shortLabel || 'Level 1 — Foundation';
 
-    const unitTheme = tpl
-      ? tpl.theme
-      : `Unit ${u}: ${programTitle} — ${levelBadge} Systems & Applied Implementation (Part ${u})`;
-
-    const l1Title = tpl
-      ? tpl.l1
-      : `${programTitle} Core Architecture, Principles & ${levelBadge} Methodology (Unit ${u}.1)`;
-
-    const l2Title = tpl
-      ? tpl.l2
-      : `Hands-On Engineering Walkthrough, Toolchains & Quality Verification (Unit ${u}.2)`;
-
-    const deliverable = tpl
-      ? tpl.deliverable
-      : `Unit ${u} Practical Engineering Implementation, Test Evidence & Technical Documentation (${levelBadge})`;
+    const unitTheme = tpl.theme;
+    const l1Title = tpl.l1;
+    const l2Title = tpl.l2;
+    const deliverable = tpl.deliverable;
 
     blueprints.push({
       unitTheme,
@@ -668,7 +730,7 @@ export function buildUoPeopleStructuredCourse(params: {
     programTitle,
     programCode = 'STP-PRG',
     schoolCode = 'SCSE',
-    durationWeeks = 3,
+    durationWeeks = 7,
     levelStr = 'LEVEL_1_FOUNDATION',
     keywords = '',
     description = '',
@@ -679,9 +741,9 @@ export function buildUoPeopleStructuredCourse(params: {
   const lvlMeta = LEVEL_META[normalizedLevel] || LEVEL_META.LEVEL_1_FOUNDATION;
   const domainKey = resolveDomainKey(programTitle, schoolCode, `${keywords} ${description}`);
 
-  // Determine number of weekly learning units (minimum 3 learning units + 1 Final Project Unit)
-  const rawWeeks = Math.max(3, durationWeeks || 3);
-  const learningUnitsCount = rawWeeks <= 3 ? 3 : rawWeeks - 1;
+  // Guarantee at least 6 distinct weekly learning units + Course Intro + Final Project Unit (8+ total units)
+  const rawWeeks = Math.max(7, durationWeeks && durationWeeks >= 7 ? durationWeeks : 7);
+  const learningUnitsCount = Math.min(8, Math.max(6, rawWeeks - 1));
   const finalProjectUnitNumber = learningUnitsCount + 1;
 
   const unitBlueprints = getDomainLevelUnitBlueprints(

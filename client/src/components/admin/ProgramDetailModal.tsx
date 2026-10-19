@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Badge, Card, LoadingSpinner } from '../UIElements';
+import { FormattedAcademicContent } from '../FormattedAcademicContent';
 import {
   X,
   BookOpen,
@@ -1199,9 +1200,7 @@ export const ProgramDetailModal: React.FC<ProgramDetailModalProps> = ({
                     <BookOpen className="w-4 h-4 text-indigo-600" />
                     <span>Instructional Lesson Reading & Practical Study Guide</span>
                   </div>
-                  <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-sans space-y-2">
-                    {previewLesson.content}
-                  </div>
+                  <FormattedAcademicContent content={previewLesson.content} />
                 </div>
               )}
             </div>

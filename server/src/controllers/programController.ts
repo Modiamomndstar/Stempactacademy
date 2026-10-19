@@ -136,6 +136,32 @@ export const getProgramByCode = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    try {
+      const { academicDeliveryService } = await import('../services/academicDeliveryService.js');
+      const ensuredCourses = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
+        program.id,
+        program.level || 'LEVEL_1_FOUNDATION'
+      );
+      if (ensuredCourses.length > 0) {
+        const refreshedCourses = await prisma.course.findMany({
+          where: { programId: program.id },
+          include: {
+            modules: {
+              include: {
+                lessons: { orderBy: { order: 'asc' } },
+                practicalActivities: true,
+              },
+              orderBy: { order: 'asc' },
+            },
+          },
+          orderBy: { order: 'asc' },
+        });
+        (program as any).courses = refreshedCourses;
+      }
+    } catch (syncErr) {
+      console.warn('Auto-sync UoPeople course in getProgramByCode warning:', syncErr);
+    }
+
     res.status(200).json({ program });
   } catch (error: any) {
     console.error('getProgramByCode error:', error);
