@@ -2,6 +2,8 @@ import { Response } from 'express';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { academicDeliveryService } from '../services/academicDeliveryService.js';
+import { normalizeAcademicLevel } from '../services/ai/types.js';
+import { LEVEL_META } from '../services/ai/uopeopleCurriculumBuilder.js';
 
 export const getInstructorDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -99,10 +101,11 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
       },
     });
 
-    // Ensure all cohorts have their level-scoped UoPeople courses populated
+    // Ensure all cohorts have their level-scoped UoPeople courses populated and student metrics synchronized
     const enhancedCohorts = await Promise.all(
       activeCohorts.map(async (cohort) => {
-        const levelCode = String(cohort.levelCode || 'LEVEL_1_FOUNDATION');
+        const { levelCode, levelDisplayName } = await academicDeliveryService.resolveCohortEffectiveLevel(cohort);
+
         let courses: any[] = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
           cohort.programId,
           levelCode,
@@ -111,8 +114,50 @@ export const getInstructorDashboard = async (req: AuthRequest, res: Response): P
         if (courses.length === 0) {
           courses = cohort.curriculumVersion?.courses || [];
         }
+
+        // Enrich each student in the cohort roster with their resolved level and live progress metrics
+        const enrichStudent = async (sp: any) => {
+          if (!sp) return sp;
+          const rawCandidate =
+            (levelCode && levelCode !== 'LEVEL_1_FOUNDATION' ? levelCode : null) ||
+            sp.currentLevel ||
+            levelCode ||
+            'LEVEL_1_FOUNDATION';
+          const spLevelCode = normalizeAcademicLevel(rawCandidate);
+          const spLevelMeta = LEVEL_META[spLevelCode] || LEVEL_META.LEVEL_1_FOUNDATION;
+
+          const progress = await academicDeliveryService.calculateStudentProgress(sp.id).catch(() => null);
+
+          return {
+            ...sp,
+            resolvedLevelCode: spLevelCode,
+            resolvedLevelDisplayName: spLevelMeta.displayName,
+            completedLessonsCount: progress?.completedLessons ?? 0,
+            totalLessonsCount: progress?.totalLessons ?? 0,
+            syllabusProgressPercentage: progress?.syllabusProgressPercentage ?? 0,
+            attendanceRate: progress?.attendanceRate ?? sp.attendanceRate ?? 100,
+            completionRate: progress?.completionRate ?? 0,
+            calculatedCompletionRate: progress?.completionRate ?? 0,
+          };
+        };
+
+        const enrichedProfiles = await Promise.all(
+          (cohort.studentProfiles || []).map((sp) => enrichStudent(sp))
+        );
+        const enrichedEnrollments = await Promise.all(
+          (cohort.enrollments || []).map(async (enr: any) => ({
+            ...enr,
+            student: enr.student ? await enrichStudent(enr.student) : enr.student,
+          }))
+        );
+
         return {
           ...cohort,
+          levelCode,
+          level: levelDisplayName,
+          levelDisplayName,
+          studentProfiles: enrichedProfiles,
+          enrollments: enrichedEnrollments,
           curriculumVersion: cohort.curriculumVersion
             ? { ...cohort.curriculumVersion, courses }
             : { id: 'fallback-cv', versionNumber: 1, courses },
@@ -178,6 +223,11 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
       include: {
         program: { include: { school: true } },
         learningCenter: true,
+        studentProfiles: true,
+        enrollments: {
+          where: { status: { in: ['ENROLLED', 'ACTIVE'] } },
+          include: { student: true },
+        },
         curriculumVersion: {
           include: {
             courses: {
@@ -214,7 +264,8 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const levelCode = String(cohort.levelCode || 'LEVEL_1_FOUNDATION');
+    const { levelCode, levelDisplayName } = await academicDeliveryService.resolveCohortEffectiveLevel(cohort);
+
     let courses: any[] = await academicDeliveryService.ensureUoPeopleCourseForProgramLevel(
       cohort.programId,
       levelCode,
@@ -226,6 +277,9 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
 
     const enhancedCohort = {
       ...cohort,
+      levelCode,
+      level: levelDisplayName,
+      levelDisplayName,
       curriculumVersion: cohort.curriculumVersion
         ? { ...cohort.curriculumVersion, courses }
         : { id: 'fallback-cv', versionNumber: 1, courses },
@@ -237,8 +291,6 @@ export const getCohortCurriculum = async (req: AuthRequest, res: Response): Prom
     res.status(500).json({ message: 'Failed to fetch cohort curriculum' });
   }
 };
-
-
 
 export const createClassSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -316,3 +368,36 @@ export const evaluateCompetency = async (req: AuthRequest, res: Response): Promi
     res.status(500).json({ message: error.message || 'Failed to evaluate competency' });
   }
 };
+
+export const getStudentLearningProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      res.status(400).json({ message: 'studentId is required.' });
+      return;
+    }
+
+    const profile = await academicDeliveryService.getStudentDetailedLearningProfile(studentId);
+    res.status(200).json({ profile });
+  } catch (error: any) {
+    console.error('getStudentLearningProfile error:', error);
+    res.status(500).json({ message: error.message || 'Failed to load student learning profile' });
+  }
+};
+
+export const getStudentsLearningDirectory = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { programId, cohortId, levelCode, search } = req.query;
+    const directory = await academicDeliveryService.getAllStudentsLearningDirectory({
+      programId: programId as string | undefined,
+      cohortId: cohortId as string | undefined,
+      levelCode: levelCode as string | undefined,
+      search: search as string | undefined,
+    });
+    res.status(200).json(directory);
+  } catch (error: any) {
+    console.error('getStudentsLearningDirectory error:', error);
+    res.status(500).json({ message: error.message || 'Failed to load students learning directory' });
+  }
+};
+

@@ -15,6 +15,7 @@ import { AIAdminManager } from '../../components/admin/AIAdminManager';
 import { NotificationDeliveriesManager } from '../../components/admin/NotificationDeliveriesManager';
 import { MarketingLeadsManager } from '../../components/admin/MarketingLeadsManager';
 import { Directory360Manager } from '../../components/admin/Directory360Manager';
+import { StudentLearningManager } from '../../components/admin/StudentLearningManager';
 import {
   TrendingUp,
   Users,
@@ -348,6 +349,12 @@ export const AdminDashboardPage: React.FC = () => {
         name: 'Learners & Directory',
         icon: Users,
         visible: isSuperAdmin || isAcademicAdmin || isFinanceAdmin || isAdmissionsAdmin || isCoordinator,
+      },
+      {
+        id: 'student-learning',
+        name: 'Student Learning & Progress',
+        icon: GraduationCap,
+        visible: isSuperAdmin || isAcademicAdmin || isCoordinator,
       },
       {
         id: 'admissions',
@@ -1352,6 +1359,11 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB: LEARNERS & COMMUNITY DIRECTORY */}
         {activeTab === 'directory' && (
           <Directory360Manager />
+        )}
+
+        {/* TAB: STUDENT LEARNING & ACADEMIC PROGRESS INSPECTOR */}
+        {activeTab === 'student-learning' && (
+          <StudentLearningManager programs={programs} cohorts={cohorts} />
         )}
 
         {/* TAB 2: ADMISSIONS & PLACEMENT MANAGER */}

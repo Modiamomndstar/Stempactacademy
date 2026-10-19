@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { AILessonPlanModal } from '../../components/AILessonPlanModal';
 import { AIFeedbackModal } from '../../components/AIFeedbackModal';
+import { StudentLearningInspectorModal } from '../../components/academic/StudentLearningInspectorModal';
 
 export const InstructorPortalPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -105,6 +106,9 @@ export const InstructorPortalPage: React.FC = () => {
   // Cohort Directory Filters & Search
   const [cohortLevelFilter, setCohortLevelFilter] = useState<string>('ALL');
   const [rosterSearch, setRosterSearch] = useState<string>('');
+
+  // Student Learning Inspector Modal State
+  const [inspectingStudentId, setInspectingStudentId] = useState<string | null>(null);
 
   // Create Assignment Modal State
   const [showCreateAssignmentModal, setShowCreateAssignmentModal] = useState<boolean>(false);
@@ -761,12 +765,12 @@ export const InstructorPortalPage: React.FC = () => {
                   {cohorts.map((c: any) => (
                     <Card key={c.id} className="p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                             {c.cohortCode}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                            {c.levelCode?.replace(/_/g, ' ') || c.level || 'Foundation'}
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                            {c.levelDisplayName || c.level || c.levelCode?.replace(/_/g, ' ') || 'Level 1 — Foundation'}
                           </span>
                         </div>
                         <Badge variant="green">{c.status}</Badge>
@@ -818,23 +822,38 @@ export const InstructorPortalPage: React.FC = () => {
                   <Filter className="w-3.5 h-3.5" />
                   Filter Level:
                 </span>
-                {['ALL', 'LEVEL_1_FOUNDATION', 'LEVEL_2_INTERMEDIATE', 'LEVEL_3_ADVANCED', 'LEVEL_4_MASTERY'].map((lvl) => (
+                {[
+                  { code: 'ALL', label: 'All Levels' },
+                  { code: 'LEVEL_1_FOUNDATION', label: 'Level 1 — Foundation' },
+                  { code: 'LEVEL_2_INTERMEDIATE', label: 'Level 2 — Intermediate' },
+                  { code: 'LEVEL_3_ADVANCED', label: 'Level 3 — Advanced' },
+                  { code: 'LEVEL_4_SPECIALIST', label: 'Level 4 — Specialist' },
+                ].map((lvl) => (
                   <button
-                    key={lvl}
+                    key={lvl.code}
                     type="button"
-                    onClick={() => setCohortLevelFilter(lvl)}
+                    onClick={() => setCohortLevelFilter(lvl.code)}
                     className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      cohortLevelFilter === lvl
+                      cohortLevelFilter === lvl.code
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    {lvl === 'ALL' ? 'All Levels' : lvl.replace(/LEVEL_\d_/, '').charAt(0) + lvl.replace(/LEVEL_\d_/, '').slice(1).toLowerCase()}
+                    {lvl.label}
                   </button>
                 ))}
               </div>
               <span className="text-xs text-slate-400 font-medium">
-                Showing {cohorts.filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter).length} of {cohorts.length} class sections
+                Showing{' '}
+                {
+                  cohorts.filter(
+                    (c: any) =>
+                      cohortLevelFilter === 'ALL' ||
+                      c.levelCode === cohortLevelFilter ||
+                      (cohortLevelFilter === 'LEVEL_4_SPECIALIST' && c.levelCode === 'LEVEL_4_MASTERY')
+                  ).length
+                }{' '}
+                of {cohorts.length} class sections
               </span>
             </div>
 
@@ -846,9 +865,12 @@ export const InstructorPortalPage: React.FC = () => {
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-200 text-indigo-900">
-                        {currentCohort.levelCode?.replace(/_/g, ' ') || 'Level 1 Foundation'}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-200 text-indigo-900">
+                        {currentCohort.levelDisplayName ||
+                          currentCohort.level ||
+                          currentCohort.levelCode?.replace(/_/g, ' ') ||
+                          'Level 1 — Foundation'}
                       </span>
                       <span className="text-[10px] font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-indigo-200">
                         {currentCohort.cohortCode}
@@ -877,7 +899,12 @@ export const InstructorPortalPage: React.FC = () => {
             {/* Cohorts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cohorts
-                .filter((c: any) => cohortLevelFilter === 'ALL' || c.levelCode === cohortLevelFilter)
+                .filter(
+                  (c: any) =>
+                    cohortLevelFilter === 'ALL' ||
+                    c.levelCode === cohortLevelFilter ||
+                    (cohortLevelFilter === 'LEVEL_4_SPECIALIST' && c.levelCode === 'LEVEL_4_MASTERY')
+                )
                 .map((c: any) => {
                   const isSelected = selectedCohortId === c.id;
                   return (
@@ -892,12 +919,12 @@ export const InstructorPortalPage: React.FC = () => {
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                             {c.cohortCode}
                           </span>
                           <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                            {c.levelCode?.replace(/_/g, ' ') || c.level || 'Level 1 Foundation'}
+                            {c.levelDisplayName || c.level || c.levelCode?.replace(/_/g, ' ') || 'Level 1 — Foundation'}
                           </span>
                         </div>
                         <Badge variant="green">{c.status}</Badge>
@@ -965,9 +992,12 @@ export const InstructorPortalPage: React.FC = () => {
                 <Card className="p-6 space-y-4 border-2 border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                        {currentCohort.levelCode?.replace(/_/g, ' ') || currentCohort.level || 'Level 1 Foundation'}
+                        {currentCohort.levelDisplayName ||
+                          currentCohort.level ||
+                          currentCohort.levelCode?.replace(/_/g, ' ') ||
+                          'Level 1 — Foundation'}
                       </span>
                       <span className="text-xs font-mono font-bold text-slate-400">
                         {currentCohort.cohortCode}
@@ -977,7 +1007,7 @@ export const InstructorPortalPage: React.FC = () => {
                       Class Roster: {currentCohort.name}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Enrolled student directory and academic progress ledger for this batch.
+                      Click on any enrolled student&apos;s name below to inspect their complete unit-by-unit and lesson-by-lesson learning profile, attendance, and coursework.
                     </p>
                   </div>
 
@@ -1024,12 +1054,13 @@ export const InstructorPortalPage: React.FC = () => {
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px]">
                         <th className="py-2.5 px-3">Student ID</th>
-                        <th className="py-2.5 px-3">Full Name</th>
+                        <th className="py-2.5 px-3">Full Name (Click to Inspect)</th>
+                        <th className="py-2.5 px-3">Academic Level</th>
                         <th className="py-2.5 px-3">Email</th>
                         <th className="py-2.5 px-3">Lessons Completed</th>
                         <th className="py-2.5 px-3">Attendance Rate</th>
                         <th className="py-2.5 px-3">Completion Rate</th>
-                        <th className="py-2.5 px-3 text-right">Action</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -1059,7 +1090,7 @@ export const InstructorPortalPage: React.FC = () => {
                         if (filteredProfiles.length === 0) {
                           return (
                             <tr>
-                              <td colSpan={7} className="py-12 text-center text-slate-400">
+                              <td colSpan={8} className="py-12 text-center text-slate-400">
                                 <div className="flex flex-col items-center justify-center gap-2">
                                   <Users className="w-8 h-8 text-slate-300" />
                                   <p className="text-xs font-bold text-slate-600">
@@ -1075,45 +1106,87 @@ export const InstructorPortalPage: React.FC = () => {
                         }
 
                         return filteredProfiles.map((sp: any) => {
-                          const completedInCohort = (sp.lessonProgress || []).filter(
-                            (lp: any) => lp.status === 'COMPLETED' && (cohortLessonIds.size === 0 || cohortLessonIds.has(lp.lessonId))
-                          ).length;
+                          const completedInCohort =
+                            sp.completedLessonsCount !== undefined
+                              ? sp.completedLessonsCount
+                              : (sp.lessonProgress || []).filter(
+                                  (lp: any) =>
+                                    lp.status === 'COMPLETED' &&
+                                    (cohortLessonIds.size === 0 || cohortLessonIds.has(lp.lessonId))
+                                ).length;
+                          const effectiveTotalLessons = sp.totalLessonsCount || totalCohortLessons;
                           const dynamicCompletionPct =
-                            totalCohortLessons > 0
-                              ? Math.min(100, Math.round((completedInCohort / totalCohortLessons) * 100))
-                              : sp.completionRate || 0;
+                            effectiveTotalLessons > 0
+                              ? Math.min(100, Math.round((completedInCohort / effectiveTotalLessons) * 100))
+                              : 0;
+                          const authenticCompletionRate =
+                            sp.calculatedCompletionRate !== undefined
+                              ? sp.calculatedCompletionRate
+                              : dynamicCompletionPct;
+
+                          const studentLevelLabel =
+                            sp.resolvedLevelDisplayName ||
+                            currentCohort.levelDisplayName ||
+                            sp.currentLevel ||
+                            currentCohort.level ||
+                            'Level 1 — Foundation';
 
                           return (
-                            <tr key={sp.id} className="hover:bg-slate-50/60">
+                            <tr key={sp.id} className="hover:bg-indigo-50/40 transition">
                               <td className="py-3 px-3 font-mono font-bold text-slate-500">
                                 {sp.studentIdNumber || 'STP-ID'}
                               </td>
-                              <td className="py-3 px-3 font-bold text-slate-900">
-                                {sp.user?.firstName} {sp.user?.lastName}
+                              <td className="py-3 px-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setInspectingStudentId(sp.id)}
+                                  className="font-black text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-1.5 text-left cursor-pointer group"
+                                  title="Click to inspect student learning & progress profile"
+                                >
+                                  <span>
+                                    {sp.user?.firstName} {sp.user?.lastName}
+                                  </span>
+                                  <Eye className="w-3.5 h-3.5 text-indigo-500 opacity-70 group-hover:opacity-100" />
+                                </button>
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  {studentLevelLabel}
+                                </span>
                               </td>
                               <td className="py-3 px-3 text-slate-500">{sp.user?.email}</td>
                               <td className="py-3 px-3">
                                 <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 text-[11px]">
-                                  {completedInCohort} / {totalCohortLessons || '—'} Lessons
+                                  {completedInCohort} / {effectiveTotalLessons || '—'} Lessons
                                 </span>
                               </td>
                               <td className="py-3 px-3">
-                                <span className="font-bold text-emerald-700">{sp.attendanceRate || 100}%</span>
+                                <span className="font-bold text-emerald-700">{sp.attendanceRate ?? 100}%</span>
                               </td>
                               <td className="py-3 px-3">
-                                <span className="font-bold text-blue-700">{Math.max(sp.completionRate || 0, dynamicCompletionPct)}%</span>
+                                <span className="font-bold text-blue-700">{authenticCompletionRate}%</span>
                               </td>
                               <td className="py-3 px-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEvalStudentId(sp.id);
-                                    handleTabChange('competencies');
-                                  }}
-                                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
-                                >
-                                  Evaluate Skills
-                                </button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setInspectingStudentId(sp.id)}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <BookOpen className="w-3 h-3" />
+                                    <span>Inspect Learning</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEvalStudentId(sp.id);
+                                      handleTabChange('competencies');
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
+                                  >
+                                    Evaluate Skills
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -2562,6 +2635,13 @@ export const InstructorPortalPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Student Learning & Academic Progress Inspector Modal */}
+      <StudentLearningInspectorModal
+        studentId={inspectingStudentId}
+        onClose={() => setInspectingStudentId(null)}
+        onUpdated={loadInstructorData}
+      />
     </PortalLayout>
   );
 };

@@ -126,6 +126,8 @@ router.get('/instructor/dashboard', authenticate, instructorController.getInstru
 router.get('/instructor/cohorts/:cohortId/curriculum', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.getCohortCurriculum);
 router.post('/instructor/sessions', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.createClassSession);
 router.post('/instructor/competencies/evaluate', authenticate, authorize(Role.SUPER_ADMIN, Role.INSTRUCTOR, Role.ACADEMIC_ADMIN), instructorController.evaluateCompetency);
+router.get('/academic/students-learning-directory', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.INSTRUCTOR), instructorController.getStudentsLearningDirectory);
+router.get('/academic/students/:studentId/learning-profile', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.COORDINATOR_ADMIN, Role.PROGRAM_COORDINATOR, Role.INSTRUCTOR, Role.STUDENT), instructorController.getStudentLearningProfile);
 router.get('/applicant/dashboard', authenticate, applicantController.getApplicantDashboard);
 router.get('/coordinator/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), coordinatorController.getCoordinatorOverview);
 router.get('/partner/overview', authenticate, authorize(Role.SUPER_ADMIN, Role.PARTNER), partnerController.getPartnerOverview);

@@ -521,16 +521,30 @@ export class AcademicDeliveryService {
     const achievedCompetencies = student.competencies.filter((c) => c.status === 'ACQUIRED').length;
 
     // 5. Authentic Overall Completion Rate Calculation (derived metric)
+    // Distribute weights across active components so empty assignments/sessions never inflate 0% progress to 50%
     let calculatedCompletionRate = 0;
-    if (totalLessons > 0 || totalAssignments > 0) {
-      const lessonComponent = totalLessons > 0 ? (completedLessons / totalLessons) * 40 : 0;
-      const assignmentComponent = totalAssignments > 0
-        ? (completedAssignments / totalAssignments) * 30
-        : 30;
-      const attendanceComponent = totalScopedAttendances > 0 ? (attendanceRate / 100) * 20 : 20;
-      const compComponent = totalCompetencies > 0 ? (achievedCompetencies / totalCompetencies) * 10 : 10;
+    let activeWeightSum = 0;
+    let earnedWeightedSum = 0;
 
-      calculatedCompletionRate = Math.min(100, Math.round(lessonComponent + assignmentComponent + attendanceComponent + compComponent));
+    if (totalLessons > 0) {
+      activeWeightSum += 40;
+      earnedWeightedSum += (completedLessons / totalLessons) * 40;
+    }
+    if (totalAssignments > 0) {
+      activeWeightSum += 30;
+      earnedWeightedSum += (completedAssignments / totalAssignments) * 30;
+    }
+    if (totalScopedAttendances > 0) {
+      activeWeightSum += 20;
+      earnedWeightedSum += (attendanceRate / 100) * 20;
+    }
+    if (totalCompetencies > 0 && achievedCompetencies > 0) {
+      activeWeightSum += 10;
+      earnedWeightedSum += (achievedCompetencies / totalCompetencies) * 10;
+    }
+
+    if (activeWeightSum > 0) {
+      calculatedCompletionRate = Math.min(100, Math.round((earnedWeightedSum / activeWeightSum) * 100));
     } else {
       calculatedCompletionRate = 0;
     }
@@ -1093,6 +1107,616 @@ export class AcademicDeliveryService {
       },
     });
   }
+
+  /**
+   * Resolves a cohort's effective AcademicLevel by inspecting cohort.levelCode, cohort.level,
+   * and the placed currentLevel of its enrolled students. If a cohort was left at default
+   * LEVEL_1_FOUNDATION while its enrolled student(s) were placed into a specific higher level
+   * (e.g., LEVEL_4_SPECIALIST), this synchronizes the cohort's levelCode and level so Student,
+   * Instructor, and Admin dashboards show identical level information.
+   */
+  async resolveCohortEffectiveLevel(cohort: any): Promise<{
+    levelCode: AcademicLevel;
+    levelDisplayName: string;
+  }> {
+    const rawProfiles: any[] =
+      (Array.isArray(cohort.studentProfiles) && cohort.studentProfiles.length > 0
+        ? cohort.studentProfiles
+        : (cohort.enrollments || []).map((e: any) => e.student).filter(Boolean)) || [];
+
+    const explicitCohortLevel =
+      cohort.levelCode && cohort.levelCode !== 'LEVEL_1_FOUNDATION'
+        ? cohort.levelCode
+        : cohort.level && !/level\s*1|foundation/i.test(String(cohort.level))
+        ? cohort.level
+        : null;
+
+    let resolvedCandidate = explicitCohortLevel;
+
+    if (!resolvedCandidate && rawProfiles.length > 0) {
+      // Check placed levels of enrolled students in this cohort
+      const studentLevels = rawProfiles
+        .map((sp: any) => (sp?.currentLevel ? normalizeAcademicLevel(sp.currentLevel) : null))
+        .filter((lvl): lvl is AcademicLevel => Boolean(lvl));
+
+      const nonFoundationLevels = studentLevels.filter((lvl) => lvl !== 'LEVEL_1_FOUNDATION');
+      if (nonFoundationLevels.length > 0) {
+        // Use the dominant placed level among enrolled students
+        const counts = new Map<AcademicLevel, number>();
+        for (const lvl of nonFoundationLevels) {
+          counts.set(lvl, (counts.get(lvl) || 0) + 1);
+        }
+        let bestLevel: AcademicLevel = nonFoundationLevels[0];
+        let bestCount = 0;
+        for (const [lvl, count] of counts.entries()) {
+          if (count > bestCount) {
+            bestLevel = lvl;
+            bestCount = count;
+          }
+        }
+        resolvedCandidate = bestLevel;
+      }
+    }
+
+    const normalizedCode = normalizeAcademicLevel(
+      resolvedCandidate || cohort.levelCode || cohort.level || 'LEVEL_1_FOUNDATION'
+    );
+    const levelMeta = LEVEL_META[normalizedCode] || LEVEL_META.LEVEL_1_FOUNDATION;
+    const effectiveCode = levelMeta.code as AcademicLevel;
+
+    // Persist synchronization if the cohort in DB had default LEVEL_1_FOUNDATION while students are placed at effectiveCode
+    if (cohort.id && cohort.levelCode !== effectiveCode) {
+      await prisma.cohort
+        .update({
+          where: { id: cohort.id },
+          data: {
+            levelCode: effectiveCode,
+            level: levelMeta.displayName,
+          },
+        })
+        .catch(() => {});
+    }
+
+    return {
+      levelCode: effectiveCode,
+      levelDisplayName: levelMeta.displayName,
+    };
+  }
+
+  /**
+   * Retrieves a comprehensive, unit-by-unit and lesson-by-lesson learning profile for a student
+   * (accepts either StudentProfile.id or User.id). Used by Instructors clicking a student in
+   * their class roster and by SuperAdmin / AcademicAdmin in the Student Learning Inspector.
+   */
+  async getStudentDetailedLearningProfile(studentIdOrUserId: string) {
+    let student = await prisma.studentProfile.findUnique({
+      where: { id: studentIdOrUserId },
+      include: {
+        user: true,
+        cohort: {
+          include: {
+            program: { include: { school: true } },
+            learningCenter: true,
+            academicSession: true,
+          },
+        },
+        enrollments: {
+          where: { status: { in: ['ENROLLED', 'ACTIVE', 'COMPLETED'] } },
+          include: {
+            cohort: {
+              include: {
+                program: { include: { school: true } },
+                learningCenter: true,
+                academicSession: true,
+              },
+            },
+            program: { include: { school: true } },
+          },
+          orderBy: { enrollmentDate: 'desc' },
+        },
+        lessonProgress: {
+          orderBy: { completedAt: 'desc' },
+        },
+        attendances: {
+          include: {
+            classSession: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        submissions: {
+          where: { isLatest: true },
+          include: {
+            assignment: true,
+          },
+          orderBy: { submittedAt: 'desc' },
+        },
+        competencies: {
+          include: {
+            competency: true,
+          },
+        },
+        projectMembers: {
+          include: {
+            project: true,
+          },
+        },
+        certificates: {
+          orderBy: { issueDate: 'desc' },
+        },
+      },
+    });
+
+    if (!student) {
+      // Fallback: check if studentIdOrUserId is a User.id
+      student = await prisma.studentProfile.findUnique({
+        where: { userId: studentIdOrUserId },
+        include: {
+          user: true,
+          cohort: {
+            include: {
+              program: { include: { school: true } },
+              learningCenter: true,
+              academicSession: true,
+            },
+          },
+          enrollments: {
+            where: { status: { in: ['ENROLLED', 'ACTIVE', 'COMPLETED'] } },
+            include: {
+              cohort: {
+                include: {
+                  program: { include: { school: true } },
+                  learningCenter: true,
+                  academicSession: true,
+                },
+              },
+              program: { include: { school: true } },
+            },
+            orderBy: { enrollmentDate: 'desc' },
+          },
+          lessonProgress: {
+            orderBy: { completedAt: 'desc' },
+          },
+          attendances: {
+            include: {
+              classSession: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+          submissions: {
+            where: { isLatest: true },
+            include: {
+              assignment: true,
+            },
+            orderBy: { submittedAt: 'desc' },
+          },
+          competencies: {
+            include: {
+              competency: true,
+            },
+          },
+          projectMembers: {
+            include: {
+              project: true,
+            },
+          },
+          certificates: {
+            orderBy: { issueDate: 'desc' },
+          },
+        },
+      });
+    }
+
+    if (!student) {
+      throw new Error(`Student record not found for ID: ${studentIdOrUserId}`);
+    }
+
+    const context = await this.getStudentAcademicContext(student.id);
+    const { courses, competencies: allCompetencies } = await this.getAnchoredCurriculumForStudent(student.id);
+    const progress = await this.calculateStudentProgress(student.id);
+    const readinessReport = await this.evaluateCompletionReadiness(student.id);
+
+    const activeEnrollment = student.enrollments[0];
+    const activeCohort: any = activeEnrollment?.cohort || student.cohort;
+    const activeProgram: any = activeEnrollment?.program || activeCohort?.program;
+
+    // Map lesson progress by lessonId
+    const progressByLessonId = new Map<string, any>();
+    for (const lp of student.lessonProgress) {
+      progressByLessonId.set(lp.lessonId, lp);
+    }
+
+    // Build Unit-by-Unit and Lesson-by-Lesson Breakdown
+    const units: any[] = [];
+    for (const course of courses) {
+      const modules = Array.isArray(course.modules) ? course.modules : [];
+      for (const mod of modules) {
+        const modLessons = Array.isArray(mod.lessons) ? mod.lessons : [];
+        const formattedLessons = modLessons.map((lesson: any) => {
+          const lp = progressByLessonId.get(lesson.id);
+          const isCompleted = lp?.status === 'COMPLETED';
+          return {
+            id: lesson.id,
+            title: lesson.title,
+            order: lesson.order,
+            interactiveLabType: lesson.interactiveLabType || ' STUDIO',
+            hasVideo: Boolean(lesson.videoUrl),
+            videoUrl: lesson.videoUrl || null,
+            videoDurationMin: lesson.videoDurationMin || null,
+            status: isCompleted ? 'COMPLETED' : lp?.status || 'NOT_STARTED',
+            completedAt: lp?.completedAt || null,
+            timeSpentMin: lp?.timeSpentMin || 0,
+          };
+        });
+
+        const completedInUnit = formattedLessons.filter((l: any) => l.status === 'COMPLETED').length;
+        const totalInUnit = formattedLessons.length;
+        const unitProgressPct = totalInUnit > 0 ? Math.round((completedInUnit / totalInUnit) * 100) : 0;
+
+        units.push({
+          id: mod.id,
+          courseId: course.id,
+          courseCode: course.code,
+          courseTitle: course.title,
+          title: mod.title,
+          description: mod.description,
+          order: mod.order,
+          durationHours: mod.durationHours || 8,
+          completedLessons: completedInUnit,
+          totalLessons: totalInUnit,
+          progressPercentage: unitProgressPct,
+          isCompleted: totalInUnit > 0 && completedInUnit === totalInUnit,
+          lessons: formattedLessons,
+        });
+      }
+    }
+
+    const completedUnits = units.filter((u) => u.isCompleted).length;
+    const totalUnits = units.length;
+
+    // Merge program competencies with student's evaluated records
+    const studentCompByCompId = new Map<string, any>();
+    for (const sc of student.competencies) {
+      studentCompByCompId.set(sc.competencyId, sc);
+    }
+
+    const mergedCompetencies = allCompetencies.map((comp: any) => {
+      const evalRecord = studentCompByCompId.get(comp.id);
+      return {
+        id: comp.id,
+        code: comp.code,
+        name: comp.name || comp.title,
+        description: comp.description,
+        category: comp.category || 'Technical Mastery',
+        status: evalRecord?.status || 'NOT_EVALUATED',
+        score: evalRecord?.score ?? null,
+        evidenceNotes: evalRecord?.evidenceNotes || null,
+        evaluatedAt: evalRecord?.evaluatedAt || null,
+      };
+    });
+
+    // Cohort assignments with student submission status
+    const cohortAssignments = activeCohort
+      ? await prisma.assignment.findMany({
+          where: { cohortId: activeCohort.id },
+          orderBy: { dueDate: 'asc' },
+        })
+      : [];
+
+    const subByAssignmentId = new Map<string, any>();
+    for (const sub of student.submissions) {
+      subByAssignmentId.set(sub.assignmentId, sub);
+    }
+
+    const assignmentsBreakdown = cohortAssignments.map((a) => {
+      const sub = subByAssignmentId.get(a.id);
+      return {
+        assignmentId: a.id,
+        title: a.title,
+        description: a.description,
+        dueDate: a.dueDate,
+        maxPoints: a.maxPoints,
+        submissionId: sub?.id || null,
+        status: sub ? (sub.grade !== null && sub.grade !== undefined ? 'GRADED' : 'SUBMITTED') : 'PENDING',
+        submittedAt: sub?.submittedAt || null,
+        grade: sub?.grade ?? null,
+        feedback: sub?.feedback || null,
+        content: sub?.content || null,
+        attachmentUrl: sub?.attachmentUrl || null,
+      };
+    });
+
+    return {
+      student: {
+        id: student.id,
+        userId: student.userId,
+        studentIdNumber: student.studentIdNumber,
+        firstName: student.user.firstName,
+        lastName: student.user.lastName,
+        fullName: `${student.user.firstName} ${student.user.lastName}`,
+        email: student.user.email,
+        phone: student.user.phone,
+        avatar: student.user.avatarUrl,
+        status: student.status,
+        enrollmentDate: student.enrollmentDate,
+        currentLevel: student.currentLevel,
+        levelCode: context.levelCode,
+        levelDisplayName: context.levelDisplayName,
+      },
+      cohort: activeCohort
+        ? {
+            id: activeCohort.id,
+            cohortCode: activeCohort.cohortCode,
+            name: activeCohort.name,
+            levelCode: context.levelCode,
+            levelDisplayName: context.levelDisplayName,
+            schedule: activeCohort.schedule,
+            mode: activeCohort.mode,
+            startDate: activeCohort.startDate,
+            endDate: activeCohort.endDate,
+            status: activeCohort.status,
+            instructorName: activeCohort.instructorName,
+            learningCenter: activeCohort.learningCenter || null,
+          }
+        : null,
+      program: activeProgram
+        ? {
+            id: activeProgram.id,
+            code: activeProgram.code,
+            name: activeProgram.name,
+            duration: activeProgram.duration,
+            school: activeProgram.school || null,
+          }
+        : null,
+      metrics: {
+        ...progress,
+        completedUnits,
+        totalUnits,
+        attendedSessions: readinessReport.academicEvidence.attendedSessions,
+        totalSessions: readinessReport.academicEvidence.totalCohortSessions,
+      },
+      units,
+      assignments: assignmentsBreakdown,
+      submissions: student.submissions,
+      attendances: student.attendances.map((a) => ({
+        id: a.id,
+        status: a.status,
+        remarks: a.remarks,
+        markedAt: a.createdAt,
+        sessionTitle: a.classSession?.title || 'Class Session',
+        sessionTopic: a.classSession?.topic || '',
+        sessionDate: a.classSession?.date || a.createdAt,
+        startTime: a.classSession?.startTime || '',
+        endTime: a.classSession?.endTime || '',
+      })),
+      competencies: mergedCompetencies,
+      projects: student.projectMembers.map((pm) => pm.project).filter(Boolean),
+      certificates: student.certificates,
+      readinessReport,
+    };
+  }
+
+  /**
+   * Lists all enrolled students across the academy with live unit/lesson progress,
+   * resolved academic level (Level 1-4), attendance, assignments, and certificate readiness.
+   */
+  async getAllStudentsLearningDirectory(filters?: {
+    programId?: string;
+    cohortId?: string;
+    levelCode?: string;
+    search?: string;
+  }) {
+    const students = await prisma.studentProfile.findMany({
+      include: {
+        user: true,
+        cohort: {
+          include: {
+            program: { include: { school: true } },
+            learningCenter: true,
+          },
+        },
+        enrollments: {
+          where: { status: { in: ['ENROLLED', 'ACTIVE', 'COMPLETED'] } },
+          include: {
+            cohort: {
+              include: {
+                program: { include: { school: true } },
+                learningCenter: true,
+              },
+            },
+            program: { include: { school: true } },
+          },
+          orderBy: { enrollmentDate: 'desc' },
+          take: 1,
+        },
+        lessonProgress: {
+          where: { status: 'COMPLETED' },
+        },
+        submissions: {
+          where: { isLatest: true },
+        },
+        competencies: true,
+        certificates: true,
+      },
+      orderBy: { enrollmentDate: 'desc' },
+    });
+
+    const enrichedStudents: any[] = [];
+
+    for (const sp of students) {
+      const activeEnrollment = sp.enrollments[0];
+      const activeCohort: any = activeEnrollment?.cohort || sp.cohort;
+      const activeProgram: any = activeEnrollment?.program || activeCohort?.program;
+
+      if (!activeCohort || !activeProgram) continue;
+
+      const rawLevelCandidate =
+        (activeCohort.levelCode && activeCohort.levelCode !== 'LEVEL_1_FOUNDATION'
+          ? activeCohort.levelCode
+          : null) ||
+        sp.currentLevel ||
+        activeCohort.level ||
+        activeCohort.levelCode ||
+        'LEVEL_1_FOUNDATION';
+      const resolvedLevelCode = normalizeAcademicLevel(rawLevelCandidate);
+      const levelInfo = LEVEL_META[resolvedLevelCode] || LEVEL_META.LEVEL_1_FOUNDATION;
+
+      if (filters?.programId && filters.programId !== 'ALL' && activeProgram.id !== filters.programId) {
+        continue;
+      }
+      if (filters?.cohortId && filters.cohortId !== 'ALL' && activeCohort.id !== filters.cohortId) {
+        continue;
+      }
+      if (filters?.levelCode && filters.levelCode !== 'ALL') {
+        const filterNormalized = normalizeAcademicLevel(filters.levelCode);
+        if (resolvedLevelCode !== filterNormalized) continue;
+      }
+      if (filters?.search) {
+        const q = filters.search.toLowerCase().trim();
+        const fullName = `${sp.user?.firstName || ''} ${sp.user?.lastName || ''}`.toLowerCase();
+        const matches =
+          fullName.includes(q) ||
+          (sp.studentIdNumber || '').toLowerCase().includes(q) ||
+          (sp.user?.email || '').toLowerCase().includes(q) ||
+          (activeProgram.name || '').toLowerCase().includes(q) ||
+          (activeCohort.name || '').toLowerCase().includes(q);
+        if (!matches) continue;
+      }
+
+      // Ensure UoPeople course exists and compute live progress
+      const courses = await this.ensureUoPeopleCourseForProgramLevel(
+        activeProgram.id,
+        resolvedLevelCode,
+        activeCohort.curriculumVersionId
+      );
+
+      let totalLessons = 0;
+      let totalUnits = 0;
+      let completedUnits = 0;
+      const validLessonIds = new Set<string>();
+      const completedLessonIds = new Set(sp.lessonProgress.map((lp) => lp.lessonId));
+
+      for (const c of courses) {
+        const mods = Array.isArray(c.modules) ? c.modules : [];
+        totalUnits += mods.length;
+        for (const m of mods) {
+          const mLessons = Array.isArray(m.lessons) ? m.lessons : [];
+          totalLessons += mLessons.length;
+          let mCompleted = 0;
+          for (const l of mLessons) {
+            validLessonIds.add(l.id);
+            if (completedLessonIds.has(l.id)) mCompleted++;
+          }
+          if (mLessons.length > 0 && mCompleted === mLessons.length) {
+            completedUnits++;
+          }
+        }
+      }
+
+      const completedLessons = sp.lessonProgress.filter((lp) => validLessonIds.has(lp.lessonId)).length;
+      const syllabusProgressPercentage =
+        totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
+
+      const progressSummary = await this.calculateStudentProgress(sp.id).catch(() => ({
+        completionRate: syllabusProgressPercentage,
+        attendanceRate: sp.attendanceRate || 100,
+        syllabusProgressPercentage,
+        totalLessons,
+        completedLessons,
+        totalAssignments: 0,
+        completedAssignments: sp.submissions.length,
+        averageAssignmentGrade: null,
+        totalCompetencies: 0,
+        achievedCompetencies: sp.competencies.filter((c) => c.status === 'ACQUIRED').length,
+        totalProjects: 0,
+      }));
+
+      const lastLessonCompleted = sp.lessonProgress.reduce((latest: Date | null, lp) => {
+        if (!lp.completedAt) return latest;
+        return !latest || lp.completedAt > latest ? lp.completedAt : latest;
+      }, null);
+
+      enrichedStudents.push({
+        id: sp.id,
+        userId: sp.userId,
+        studentIdNumber: sp.studentIdNumber,
+        firstName: sp.user?.firstName || '',
+        lastName: sp.user?.lastName || '',
+        fullName: `${sp.user?.firstName || ''} ${sp.user?.lastName || ''}`.trim(),
+        email: sp.user?.email || '',
+        phone: sp.user?.phone || '',
+        status: sp.status,
+        enrollmentDate: sp.enrollmentDate,
+        levelCode: resolvedLevelCode,
+        levelDisplayName: levelInfo.displayName,
+        cohort: {
+          id: activeCohort.id,
+          cohortCode: activeCohort.cohortCode,
+          name: activeCohort.name,
+          schedule: activeCohort.schedule,
+          mode: activeCohort.mode,
+          learningCenterName: activeCohort.learningCenter?.name || null,
+        },
+        program: {
+          id: activeProgram.id,
+          code: activeProgram.code,
+          name: activeProgram.name,
+          schoolName: activeProgram.school?.name || 'STEMPACT Faculty',
+        },
+        metrics: {
+          completedLessons: progressSummary.completedLessons,
+          totalLessons: progressSummary.totalLessons,
+          syllabusProgressPercentage: progressSummary.syllabusProgressPercentage,
+          completedUnits,
+          totalUnits,
+          attendanceRate: progressSummary.attendanceRate,
+          completionRate: progressSummary.completionRate,
+          completedAssignments: progressSummary.completedAssignments,
+          totalAssignments: progressSummary.totalAssignments,
+          averageAssignmentGrade: progressSummary.averageAssignmentGrade,
+          achievedCompetencies: progressSummary.achievedCompetencies,
+          totalCompetencies: progressSummary.totalCompetencies,
+        },
+        certificateIssued: sp.certificates.length > 0,
+        isEligibleForCertificate:
+          progressSummary.syllabusProgressPercentage >= 90 && progressSummary.attendanceRate >= 75,
+        lastActivityAt: lastLessonCompleted || sp.enrollmentDate,
+      });
+    }
+
+    const totalStudents = enrichedStudents.length;
+    const averageLessonCompletion =
+      totalStudents > 0
+        ? Math.round(
+            enrichedStudents.reduce((acc, s) => acc + s.metrics.syllabusProgressPercentage, 0) / totalStudents
+          )
+        : 0;
+    const averageAttendanceRate =
+      totalStudents > 0
+        ? Math.round(enrichedStudents.reduce((acc, s) => acc + s.metrics.attendanceRate, 0) / totalStudents)
+        : 100;
+    const eligibleForCertificateCount = enrichedStudents.filter(
+      (s) => s.isEligibleForCertificate || s.certificateIssued
+    ).length;
+
+    const byLevelCounts = {
+      LEVEL_1_FOUNDATION: enrichedStudents.filter((s) => s.levelCode === 'LEVEL_1_FOUNDATION').length,
+      LEVEL_2_INTERMEDIATE: enrichedStudents.filter((s) => s.levelCode === 'LEVEL_2_INTERMEDIATE').length,
+      LEVEL_3_ADVANCED: enrichedStudents.filter((s) => s.levelCode === 'LEVEL_3_ADVANCED').length,
+      LEVEL_4_SPECIALIST: enrichedStudents.filter((s) => s.levelCode === 'LEVEL_4_SPECIALIST').length,
+    };
+
+    return {
+      students: enrichedStudents,
+      summary: {
+        totalStudents,
+        averageLessonCompletion,
+        averageAttendanceRate,
+        eligibleForCertificateCount,
+        byLevelCounts,
+      },
+    };
+  }
 }
 
 export const academicDeliveryService = new AcademicDeliveryService();
+

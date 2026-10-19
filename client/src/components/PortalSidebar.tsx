@@ -233,6 +233,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         items: [
           { key: 'analytics', label: 'Executive Dashboard', icon: TrendingUp, route: '/portal/admin' },
           { key: 'directory', label: 'Learners & Community Directory', icon: Users, route: '/portal/admin' },
+          { key: 'student-learning', label: 'Student Learning & Progress', icon: GraduationCap, route: '/portal/admin' },
         ],
       },
       {

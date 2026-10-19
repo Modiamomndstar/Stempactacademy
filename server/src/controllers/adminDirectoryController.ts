@@ -426,6 +426,12 @@ export const getDirectoryUsers = async (req: AuthRequest, res: Response): Promis
         relation: gr.relationType || 'Guardian',
       })) || [];
 
+      const resolvedLevelLabel =
+        u.studentProfile?.currentLevel ||
+        u.studentProfile?.cohort?.level ||
+        u.studentProfile?.cohort?.levelCode?.replace(/_/g, ' ') ||
+        null;
+
       return {
         id: u.id,
         firstName: u.firstName,
@@ -439,6 +445,13 @@ export const getDirectoryUsers = async (req: AuthRequest, res: Response): Promis
         createdAt: u.createdAt,
         lastLogin,
         financialStatus,
+        paymentStatus: financialStatus !== 'NO_INVOICE' ? financialStatus : null,
+        studentId: u.studentProfile?.studentIdNumber || null,
+        cohortName: u.studentProfile?.cohort?.name || u.applications?.[0]?.cohort?.name || null,
+        levelCode: resolvedLevelLabel,
+        guardianName: linkedGuardians[0]?.name || null,
+        guardianPhone: linkedGuardians[0]?.phone || null,
+        linkedWardsCount: u.parentProfile ? linkedWards.length : undefined,
         financialSummary: {
           totalBilled,
           totalPaid,
@@ -448,7 +461,7 @@ export const getDirectoryUsers = async (req: AuthRequest, res: Response): Promis
           ? {
               id: u.studentProfile.id,
               studentIdNumber: u.studentProfile.studentIdNumber,
-              currentLevel: u.studentProfile.currentLevel,
+              currentLevel: resolvedLevelLabel,
               attendanceRate: u.studentProfile.attendanceRate,
               completionRate: u.studentProfile.completionRate,
               cohort: u.studentProfile.cohort,

@@ -33,6 +33,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { StudentLearningInspectorModal } from '../academic/StudentLearningInspectorModal';
 
 // -------------------------------------------------------------
 // 360° PROFILE DOSSIER MODAL COMPONENT
@@ -929,6 +930,7 @@ export const Directory360Manager: React.FC = () => {
 
   // Dossier modal state
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [inspectingStudentUserId, setInspectingStudentUserId] = useState<string | null>(null);
 
   // Fetch directory stats
   const fetchStats = async () => {
@@ -1397,18 +1399,29 @@ export const Directory360Manager: React.FC = () => {
                 </div>
 
                 {/* Card Action Footer */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 truncate">
                     {item.lastLogin
                       ? `Active ${new Date(item.lastLogin).toLocaleDateString()}`
                       : 'Never logged in'}
                   </span>
-                  <button
-                    onClick={() => setSelectedUserId(item.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> 360° Profile
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.role === 'STUDENT' && (
+                      <button
+                        type="button"
+                        onClick={() => setInspectingStudentUserId(item.id)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition cursor-pointer"
+                      >
+                        <BookOpen className="w-3 h-3" /> Learning
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedUserId(item.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> 360° Profile
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -1439,9 +1452,19 @@ export const Directory360Manager: React.FC = () => {
                           {`${item.firstName?.[0] || ''}${item.lastName?.[0] || ''}`}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 truncate">
-                            {item.firstName} {item.lastName}
-                          </p>
+                          {item.role === 'STUDENT' ? (
+                            <button
+                              type="button"
+                              onClick={() => setInspectingStudentUserId(item.id)}
+                              className="font-black text-indigo-700 hover:underline truncate block text-left cursor-pointer"
+                            >
+                              {item.firstName} {item.lastName}
+                            </button>
+                          ) : (
+                            <p className="font-bold text-slate-900 truncate">
+                              {item.firstName} {item.lastName}
+                            </p>
+                          )}
                           <p className="text-[10px] text-slate-400 truncate">{item.email}</p>
                         </div>
                       </div>
@@ -1509,12 +1532,23 @@ export const Directory360Manager: React.FC = () => {
                         : 'Never'}
                     </td>
                     <td className="p-3.5 text-right">
-                      <button
-                        onClick={() => setSelectedUserId(item.id)}
-                        className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition cursor-pointer"
-                      >
-                        360° Dossier
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {item.role === 'STUDENT' && (
+                          <button
+                            type="button"
+                            onClick={() => setInspectingStudentUserId(item.id)}
+                            className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <BookOpen className="w-3 h-3" /> Learning
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelectedUserId(item.id)}
+                          className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition cursor-pointer"
+                        >
+                          360° Dossier
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1535,6 +1569,16 @@ export const Directory360Manager: React.FC = () => {
           }}
         />
       )}
+
+      {/* STUDENT LEARNING & ACADEMIC PROGRESS INSPECTOR MODAL */}
+      <StudentLearningInspectorModal
+        studentId={inspectingStudentUserId}
+        onClose={() => setInspectingStudentUserId(null)}
+        onUpdated={() => {
+          fetchStats();
+          fetchUsers();
+        }}
+      />
     </div>
   );
 };

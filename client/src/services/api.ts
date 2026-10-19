@@ -194,6 +194,16 @@ export const api = {
   evaluateCompetency: (data: { studentId: string; competencyId: string; status: 'ACQUIRED' | 'IN_PROGRESS' | 'NEEDS_PRACTICE' | string; score?: number; evidenceNotes?: string }) =>
     apiRequest('/instructor/competencies/evaluate', { method: 'POST', body: JSON.stringify(data) }),
   getCohortCurriculum: (cohortId: string) => apiRequest(`/instructor/cohorts/${cohortId}/curriculum`),
+  getStudentLearningProfile: (studentId: string) =>
+    apiRequest(`/academic/students/${studentId}/learning-profile`),
+  getStudentsLearningDirectory: (params: { programId?: string; cohortId?: string; levelCode?: string; search?: string } = {}) => {
+    const cleanParams: Record<string, string> = {};
+    Object.entries(params).forEach(([k, v]) => {
+      if (v && v !== 'ALL') cleanParams[k] = v;
+    });
+    const query = new URLSearchParams(cleanParams).toString();
+    return apiRequest(`/academic/students-learning-directory${query ? `?${query}` : ''}`);
+  },
 
   // Academic Progression & Multi-Cohort Entitlements
   getAcademicJourney: (studentId?: string) =>
