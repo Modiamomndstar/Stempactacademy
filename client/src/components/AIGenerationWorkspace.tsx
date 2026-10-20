@@ -14,6 +14,11 @@ import {
   Briefcase,
   Sliders,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Play,
+  HelpCircle,
+  FileText,
   Info
 } from 'lucide-react';
 import { ProgramDraft, QualityCheckResult } from '../types';
@@ -39,6 +44,40 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
   const [publishing, setPublishing] = useState<boolean>(false);
   const [publishSuccess, setPublishSuccess] = useState<string>('');
   const [publishError, setPublishError] = useState<string>('');
+  const [generatingSummary, setGeneratingSummary] = useState<boolean>(false);
+  const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({ 0: true, 1: true });
+
+  const toggleModuleExpand = (idx: number) => {
+    setExpandedModules((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const handleToggleAllModules = (expand: boolean) => {
+    const updated: Record<number, boolean> = {};
+    (draft.modules || []).forEach((_, idx) => {
+      updated[idx] = expand;
+    });
+    setExpandedModules(updated);
+  };
+
+  const handleGenerateSummary = async () => {
+    try {
+      setGeneratingSummary(true);
+      const res = await api.generateProgramSummary({
+        domain: draft.name,
+        academicLevel: String(draft.academicLevel || ''),
+        keywords: Array.isArray((draft as any).tools)
+          ? (draft as any).tools.join(', ')
+          : ((draft as any).tools || (draft as any).keywords || ''),
+      });
+      if (res?.summary) {
+        setDraft((prev) => ({ ...prev, description: res.summary }));
+      }
+    } catch (err: any) {
+      console.warn('Could not generate summary via AI:', err);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
 
   const handleRunQualityCheck = async () => {
     try {
@@ -267,18 +306,33 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Executive Academic Description
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Executive Academic Description
+                    </label>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={handleGenerateSummary}
+                        disabled={generatingSummary}
+                        className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        title="Click to auto-generate a comprehensive two-paragraph executive overview with AI"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${generatingSummary ? 'animate-spin' : ''}`} />
+                        {generatingSummary ? 'Generating Description...' : '✨ AI Generate Summary'}
+                      </button>
+                    )}
+                  </div>
                   {isEditing ? (
                     <textarea
-                      rows={4}
+                      rows={5}
                       value={draft.description}
                       onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                      placeholder="Executive summary of curriculum vision, pedagogical methodology, and capstone outputs..."
                       className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
                     />
                   ) : (
-                    <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+                    <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-line">
                       {draft.description}
                     </p>
                   )}
@@ -357,58 +411,209 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
         {/* TAB 2: MODULES & PRACTICAL PROJECTS */}
         {activeTab === 'modules' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Curriculum Progression Matrix ({(draft.modules || []).length} Modules)
-              </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Curriculum Progression Matrix ({(draft.modules || []).length} Modules)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Inspect comprehensive weekly lessons, video lectures, self-quizzes, and lab deliverables before publishing.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleAllModules(true)}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Expand All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleAllModules(false)}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Collapse All
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {(draft.modules || []).map((mod: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center font-mono">
-                        W{mod.weekNumber || idx + 1}
-                      </span>
-                      <h4 className="font-bold text-base text-slate-900 dark:text-white">
-                        {mod.title}
-                      </h4>
+              {(draft.modules || []).map((mod: any, idx: number) => {
+                const isExpanded = !!expandedModules[idx];
+                const weekLabel = String(mod.weekNumber).toLowerCase().includes('intro') || mod.weekNumber === 0
+                  ? 'Intro'
+                  : `W${mod.weekNumber || idx + 1}`;
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-[280px]">
+                        <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center font-mono shrink-0 shadow-xs mt-0.5">
+                          {weekLabel}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={mod.title}
+                                onChange={(e) => {
+                                  const updated = [...(draft.modules || [])];
+                                  updated[idx] = { ...updated[idx], title: e.target.value };
+                                  setDraft({ ...draft, modules: updated });
+                                }}
+                                className="font-bold text-sm text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-900 w-full"
+                              />
+                            ) : (
+                              <h4 className="font-bold text-base text-slate-900 dark:text-white">
+                                {mod.title}
+                              </h4>
+                            )}
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                              {mod.durationHours || 12} Contact Hours
+                            </span>
+                            {(mod.lessons || []).length > 0 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                {mod.lessons.length} Lessons
+                              </span>
+                            )}
+                          </div>
+
+                          {isEditing ? (
+                            <textarea
+                              rows={2}
+                              value={mod.description}
+                              onChange={(e) => {
+                                const updated = [...(draft.modules || [])];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setDraft({ ...draft, modules: updated });
+                              }}
+                              className="text-xs text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-900 w-full mt-1"
+                            />
+                          ) : (
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {mod.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleModuleExpand(idx)}
+                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0"
+                      >
+                        <span>{isExpanded ? 'Hide Details' : 'Inspect Lessons & Deliverables'}</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
+
+                    {/* EXPANDED ACCORDION VIEW */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/80 space-y-4 animate-fadeIn">
+                        {/* Lessons List */}
+                        <div className="space-y-2">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                            Instructional Lessons & Guided Reading ({(mod.lessons || []).length})
+                          </h5>
+                          {(mod.lessons || []).length > 0 ? (
+                            <div className="grid grid-cols-1 gap-2.5">
+                              {mod.lessons.map((lesson: any, lIdx: number) => (
+                                <div
+                                  key={lIdx}
+                                  className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-750 shadow-2xs space-y-1.5"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center font-mono">
+                                        {lIdx + 1}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                        {lesson.title}
+                                      </span>
+                                    </div>
+                                    {lesson.videoDurationMin && (
+                                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 shrink-0">
+                                        <Play className="w-2.5 h-2.5 fill-rose-600 text-rose-600" />
+                                        {lesson.videoDurationMin}m Video
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed pl-7">
+                                    {lesson.contentSummary || (lesson.content ? lesson.content.slice(0, 160) + '...' : 'Comprehensive instructional guide covering core mechanics, toolchains, and real-world implementation.')}
+                                  </p>
+
+                                  {lesson.practicalActivities && lesson.practicalActivities.length > 0 && (
+                                    <div className="pt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium pl-7">
+                                      🛠️ <strong>Practical Task:</strong> {lesson.practicalActivities.join('; ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No detailed lessons generated for this module.</p>
+                          )}
+                        </div>
+
+                        {/* Quiz & Assignment Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 text-xs">
+                            <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 mb-1">
+                              <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                              Module Knowledge Check & Self-Quiz
+                            </span>
+                            <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                              {mod.assessmentQuiz || `Self-Quiz: Comprehensive Technical Comprehension for ${mod.title}`}
+                            </p>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-800/40 text-xs">
+                            <span className="font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5 mb-1">
+                              <FileText className="w-3.5 h-3.5 text-blue-600" />
+                              Graded Hands-On Lab Assignment
+                            </span>
+                            <p className="text-[11px] text-blue-800 dark:text-blue-300">
+                              {mod.assignmentTitle || `Hands-On Lab Deliverable for ${mod.title}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Learning Objectives & Practical Projects */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700/60 text-xs">
+                          <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                              🎯 Key Competencies:
+                            </span>
+                            <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 space-y-1">
+                              {(mod.learningObjectives || []).map((obj: string, oIdx: number) => (
+                                <li key={oIdx}>{obj}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div>
+                            <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                              🛠️ Practical Labs & Deliverables:
+                            </span>
+                            <ul className="list-disc list-inside text-emerald-700 dark:text-emerald-400 space-y-1">
+                              {(mod.practicalProjects || []).map((proj: string, pIdx: number) => (
+                                <li key={pIdx}>{proj}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
-                    {mod.description}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/60 text-xs">
-                    <div>
-                      <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        🎯 Learning Objectives:
-                      </span>
-                      <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 space-y-1">
-                        {(mod.learningObjectives || []).map((obj: string, oIdx: number) => (
-                          <li key={oIdx}>{obj}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        🛠️ Practical Labs & Deliverables:
-                      </span>
-                      <ul className="list-disc list-inside text-emerald-700 dark:text-emerald-400 space-y-1">
-                        {(mod.practicalProjects || []).map((proj: string, pIdx: number) => (
-                          <li key={pIdx}>{proj}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -442,6 +442,10 @@ export const api = {
     previousProjects?: string;
     careerGoals?: string;
   }) => apiRequest('/ai/placement-rationale', { method: 'POST', body: JSON.stringify(data) }),
+  autofillProgramMeta: (data: { domain: string; academicLevel?: string; schoolCode?: string; programCode?: string }) =>
+    apiRequest('/ai/autofill-program-meta', { method: 'POST', body: JSON.stringify(data) }),
+  generateProgramSummary: (data: { domain: string; academicLevel?: string; keywords?: string }) =>
+    apiRequest('/ai/generate-summary', { method: 'POST', body: JSON.stringify(data) }),
   getAIGenerations: (params?: { entityType?: string; entityId?: string; actionType?: string }) => {
     const query = new URLSearchParams();
     if (params?.entityType) query.append('entityType', params.entityType);

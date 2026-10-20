@@ -4,7 +4,7 @@ import { z } from 'zod';
 import prisma from '../config/prisma.js';
 import { AuthRequest } from '../middlewares/auth.js';
 import { AIOrchestrator } from '../services/ai/aiOrchestrator.js';
-import { getDeterministicFallback } from '../services/ai/aiProvider.js';
+import { getDeterministicFallback, buildDomainProgramCourses } from '../services/ai/aiProvider.js';
 import {
   ProgramGenerationSchema,
   CurriculumGenerationSchema,
@@ -127,12 +127,33 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
 
     const structured = result.structured;
 
+    // Build authoritative multi-week UoPeople-style course structure
+    const domainTitle = structured.name || domain;
+    const resolvedSchool = structured.schoolCode || schoolCode;
+    const uoPeopleCourses = buildDomainProgramCourses(
+      domainTitle,
+      resolvedSchool,
+      Math.max(durationWeeks, 6),
+      normalizedLevel,
+      `${keywords} ${specialInstructions} ${structured.description || ''}`
+    );
+
+    // If AI output returned rich courses with >= 3 modules, preserve them; otherwise use authoritative UoPeople courses
+    const hasRichCourses =
+      Array.isArray(structured.courses) &&
+      structured.courses.length > 0 &&
+      Array.isArray(structured.courses[0]?.modules) &&
+      structured.courses[0].modules.length >= 3;
+
+    const authoritativeCourses = hasRichCourses ? structured.courses : uoPeopleCourses;
+
     // Build client-compatible flat modules array with rich lessons preserved
-    const clientModules = (structured.courses || []).flatMap((c: any, cIdx: number) =>
+    const clientModules = authoritativeCourses.flatMap((c: any, cIdx: number) =>
       (c.modules || []).map((m: any, mIdx: number) => ({
-        weekNumber: m.order || (cIdx * 4) + mIdx + 1,
+        weekNumber: m.order !== undefined ? m.order : (cIdx * 4) + mIdx + 1,
         title: m.title || `Module ${mIdx + 1}`,
         description: m.description || '',
+        durationHours: m.durationHours || 12,
         assessmentQuiz: m.assessmentQuiz,
         assignmentTitle: m.assignmentTitle,
         learningObjectives: (m.lessons || []).map((l: any) => l.title),
@@ -143,9 +164,9 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
 
     const draft = {
       ...structured,
-      name: structured.name || domain,
+      name: domainTitle,
       code: structured.code || `PRG-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-      schoolCode: structured.schoolCode || schoolCode,
+      schoolCode: resolvedSchool,
       level: normalizedLevel,
       academicLevel: normalizedLevel,
       duration: duration,
@@ -160,16 +181,8 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
         ? structured.prerequisites
         : (typeof structured.prerequisites === 'string' ? [structured.prerequisites] : ['Basic computer literacy and logical thinking']),
       suggestedFeeNgn: 150000,
-      modules: clientModules.length > 0 ? clientModules : [
-        {
-          weekNumber: 1,
-          title: 'Core Fundamentals & Architecture Setup',
-          description: 'Establishment of baseline development workflows and theoretical principles.',
-          learningObjectives: ['Environment initialization', 'Core principles synthesis'],
-          practicalProjects: ['Lab 1: Baseline Architecture Setup'],
-          lessons: []
-        }
-      ],
+      courses: authoritativeCourses,
+      modules: clientModules,
     };
 
     res.status(200).json({
@@ -185,6 +198,29 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
   } catch (error: any) {
     console.error('[generateProgram error - Returning resilient offline draft]:', error);
     const mock = getDeterministicFallback(prompt);
+
+    const fallbackCourses = buildDomainProgramCourses(
+      domain,
+      schoolCode,
+      Math.max(durationWeeks, 6),
+      normalizedLevel,
+      `${keywords} ${specialInstructions}`
+    );
+
+    const fallbackModules = fallbackCourses.flatMap((c: any, cIdx: number) =>
+      (c.modules || []).map((m: any, mIdx: number) => ({
+        weekNumber: m.order !== undefined ? m.order : (cIdx * 4) + mIdx + 1,
+        title: m.title || `Module ${mIdx + 1}`,
+        description: m.description || '',
+        durationHours: m.durationHours || 12,
+        assessmentQuiz: m.assessmentQuiz,
+        assignmentTitle: m.assignmentTitle,
+        learningObjectives: (m.lessons || []).map((l: any) => l.title),
+        practicalProjects: (m.lessons || []).flatMap((l: any) => l.practicalActivities || []),
+        lessons: m.lessons || [],
+      }))
+    );
+
     const fallbackDraft = {
       ...mock,
       name: domain,
@@ -196,23 +232,29 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       durationWeeks,
       targetAudience,
       targetLearner: targetAudience,
+      description: `Comprehensive competency-based academic program in ${domain}. Structured with weekly video-anchored lectures, physical/hybrid hands-on lab sprints, unit quizzes, and real-world project deliverables.`,
+      learningOutcomes: [
+        `Master foundational and advanced principles of ${domain}.`,
+        `Apply industry toolchains to design, build, and deploy production-grade solutions.`,
+        `Troubleshoot and optimize complex technical implementations in physical and cloud environments.`,
+        `Deliver and defend a comprehensive real-world capstone project addressing Nigerian and global market needs.`
+      ],
+      careerOutcomes: [
+        `${domain} Specialist`,
+        'Systems Solutions Architect',
+        'Technical Consultant / Freelance Contractor',
+        'Venture Innovator / Technical Founder'
+      ],
+      careerPathways: [
+        `${domain} Specialist`,
+        'Systems Solutions Architect',
+        'Technical Consultant / Freelance Contractor',
+        'Venture Innovator / Technical Founder'
+      ],
+      prerequisites: ['Basic digital literacy and logical problem-solving aptitude'],
       suggestedFeeNgn: 150000,
-      modules: [
-        {
-          weekNumber: 1,
-          title: 'Core Fundamentals & Architecture Setup',
-          description: 'Baseline development workflows and theoretical principles.',
-          learningObjectives: ['Environment initialization', 'Core principles synthesis'],
-          practicalProjects: ['Lab 1: Baseline Architecture Setup']
-        },
-        {
-          weekNumber: 2,
-          title: 'Practical Systems Implementation',
-          description: 'Hands-on practical development sprint.',
-          learningObjectives: ['Component integration', 'Automated testing verification'],
-          practicalProjects: ['Lab 2: Microservice & API Construction']
-        }
-      ]
+      courses: fallbackCourses,
+      modules: fallbackModules,
     };
 
     res.status(200).json({
@@ -920,6 +962,116 @@ Do not use bullet points, markdown quotes, or headings. Write directly in plain 
     res.status(500).json({ message: error.message || 'Failed to generate placement rationale.' });
   }
 };
+
+// ---------------------------------------------------------------------------
+// 16. AI SMART AUTO-FILL FOR PROGRAM ARCHITECT
+// ---------------------------------------------------------------------------
+export const autofillProgramMeta = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { domain = '', academicLevel = 'LEVEL_1_FOUNDATION', schoolCode = '', programCode = '' } = req.body;
+    const normLevel = normalizeAcademicLevel(academicLevel);
+
+    const t = `${domain} ${schoolCode} ${programCode}`.toLowerCase();
+    let meta: {
+      targetAudience: string;
+      keywords: string;
+      specialInstructions: string;
+      description: string;
+      durationWeeks: number;
+    };
+
+    if (t.includes('marketing') || t.includes('seo') || t.includes('content') || t.includes('advertising') || t.includes('copywriting') || t.includes('dmap')) {
+      meta = {
+        targetAudience: 'Marketing professionals, copywriters, digital creators, growth hackers, and entrepreneurs seeking AI automation workflows.',
+        keywords: 'ChatGPT, Copy.ai, Midjourney, Canva AI, Meta Ads Advantage+, Google Ads AI, Ahrefs, SEMrush, Zapier, HubSpot, Prompt Engineering',
+        specialInstructions: 'Emphasize AI-driven direct response copywriting, automated Meta/Google ad creative variants, SEO keyword clusters, and high-ticket client retainers for African and global brands.',
+        description: `The ${domain || 'AI for Digital Marketing'} program is an intensive, high-impact curriculum designed to empower creators, brand managers, and agency founders with state-of-the-art generative AI workflows. Learners master prompt engineering for high-converting marketing copywriting, automated graphic and video ad production, programmatic semantic SEO, and multi-channel paid ad campaign scaling.\n\nThroughout the program, learners build automated customer acquisition funnels, deploy AI customer service bots, and package commercial retainers, culminating in an end-to-end multi-platform marketing portfolio that delivers measurable Return on Ad Spend (ROAS).`,
+        durationWeeks: 6,
+      };
+    } else if (t.includes('hardware') || t.includes('pc') || t.includes('repair') || t.includes('soldering') || t.includes('motherboard') || t.includes('csep-01')) {
+      meta = {
+        targetAudience: 'Aspiring computer engineers, hardware technicians, electronics hobbyists, and IT support professionals.',
+        keywords: 'Digital Multimeter, Hot-Air SMD Rework, Soldering, UEFI BIOS, Oscilloscope, CH341A SPI Flash, Thermal Dynamics, Power Delivery, ATX PSU',
+        specialInstructions: 'Mandatory ESD workbench safety, schematic analysis, voltage injection short-circuit isolation, and physical hardware repair lab exercises.',
+        description: `The ${domain || 'Computer Systems & Hardware Engineering'} program trains engineers and technicians in precision component-level diagnostics, electronics repair, and systems assembly. Learners progress from basic motherboard architecture and power rail multimeter testing to advanced surface-mount device (SMD) soldering, VRM short isolation, and EEPROM BIOS flashing.\n\nEmphasizing 70% physical laboratory bench work at STEMPACT Learning Centers, the course equips graduates to diagnose complex hardware faults, restore damaged laptops and servers, and operate commercial computer engineering repair centers.`,
+        durationWeeks: 8,
+      };
+    } else if (t.includes('solar') || t.includes('clean energy') || t.includes('inverter') || t.includes('photovoltaic') || t.includes('scee')) {
+      meta = {
+        targetAudience: 'Electrical technicians, clean energy installers, facilities managers, and renewable energy entrepreneurs.',
+        keywords: 'Photovoltaic Panels, MPPT Charge Controllers, Pure Sine Wave Inverters, Lithium LiFePO4 & Gel Batteries, Solar Sizing, AC/DC Disconnects',
+        specialInstructions: 'Hands-on solar bench sizing, battery bank wiring, inverter safety testing, and real-world Nigerian off-grid solar installation case studies.',
+        description: `The ${domain || 'Solar & Renewable Energy Systems'} program prepares technicians and energy professionals to design, install, and maintain commercial and residential clean energy installations. The curriculum covers solar irradiance assessment, photovoltaic array string calculations, MPPT charge controllers, lithium battery storage, and hybrid inverter grid-interfacing.\n\nLearners acquire hands-on mastery through physical solar field labs, safety compliance audits, and system sizing capstones tailored to the Nigerian and West African power distribution landscape.`,
+        durationWeeks: 8,
+      };
+    } else if (t.includes('robot') || t.includes('iot') || t.includes('arduino') || t.includes('esp32') || t.includes('embedded') || t.includes('rioth')) {
+      meta = {
+        targetAudience: 'Mechatronics students, makers, embedded software developers, and automation engineers.',
+        keywords: 'ESP32, Arduino, C/C++, Sensors, PWM Motor Drivers, I2C/SPI, FreeRTOS, MQTT, Edge AI, KiCAD PCB Design',
+        specialInstructions: 'Closed-loop autonomous navigation, breadboard prototyping, sensor calibration, and IoT MQTT telemetry dashboards.',
+        description: `The ${domain || 'Robotics, IoT & Embedded Systems'} curriculum bridges physical hardware and firmware engineering. Learners master microcontroller peripherals, analog/digital sensor interfacing, motor driver kinematics, and wireless IoT cloud connectivity using ESP32 and Arduino.\n\nThrough structured laboratory sprints, students construct autonomous mobile robotics prototypes and deploy cloud-connected telemetry stations solving agricultural, industrial, and smart-city challenges.`,
+        durationWeeks: 8,
+      };
+    } else if (t.includes('ai') || t.includes('machine learning') || t.includes('data science') || t.includes('deep learning') || t.includes('saiml') || t.includes('aidm')) {
+      meta = {
+        targetAudience: 'Computer science undergraduates, software developers, data analysts, and aspiring AI engineers.',
+        keywords: 'Python, NumPy, Pandas, Scikit-Learn, PyTorch, Hugging Face Transformers, Computer Vision, FastAPI, Docker, MLflow, Vector Databases',
+        specialInstructions: 'Hands-on neural network training, model evaluation metrics, fine-tuning open-source LLMs, and deploying scalable REST inference APIs.',
+        description: `The ${domain || 'Artificial Intelligence & Machine Learning'} curriculum provides a comprehensive, production-ready journey through modern machine learning. Learners master exploratory data analysis, classical machine learning algorithms, deep neural architectures, and generative transformers.\n\nThe program emphasizes real-world deployment—guiding students from model training and validation through containerized FastAPI inference microservices and vector search pipelines.`,
+        durationWeeks: 10,
+      };
+    } else {
+      meta = {
+        targetAudience: 'Polytechnic and university students, young tech professionals, coding bootcamp graduates, and career switchers.',
+        keywords: 'TypeScript, React, Next.js, Node.js, Express, PostgreSQL, Prisma, Docker, REST APIs, Git, Tailwind CSS, CI/CD',
+        specialInstructions: 'Focus on full-stack architecture, database relational modeling, clean RESTful API design, authentication security, and deploying production web applications.',
+        description: `The ${domain || 'Full-Stack Software Engineering'} program delivers an end-to-end, industry-aligned pathway from core web development to scalable cloud architecture. Learners master frontend component lifecycles, backend REST microservices, database schema design with Prisma, and cloud deployment containerization.\n\nEmphasizing collaborative agile sprints and test-driven development, students build and deploy production-grade web solutions addressing real-world enterprise needs.`,
+        durationWeeks: 12,
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      meta,
+    });
+  } catch (err: any) {
+    console.error('[autofillProgramMeta error]:', err);
+    res.status(500).json({ message: 'Failed to auto-fill program metadata.' });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// 17. AI PROGRAM EXECUTIVE SUMMARY GENERATOR
+// ---------------------------------------------------------------------------
+export const generateProgramSummary = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { domain = 'STEM Academic Program', academicLevel = 'LEVEL_1_FOUNDATION', keywords = '' } = req.body;
+    const prompt = `Write an authoritative, compelling, two-paragraph Executive Academic Description for a course titled "${domain}" at academic level "${academicLevel}".
+Key topics: ${keywords || 'Industry-standard technologies and hands-on laboratory practice'}.
+Paragraph 1 should summarize the course vision, pedagogical methodology (structured digital study + intensive hands-on lab sprints), and core technical competencies mastered.
+Paragraph 2 should describe practical capstone deliverables, career readiness, and the real-world value to employers or client markets in Nigeria and globally.
+Write in polished, professional academic prose without bullet points or headers.`;
+
+    let summary = '';
+    try {
+      summary = await AIOrchestrator.generateTextResponse(
+        req.user!.id,
+        req.user!.role,
+        AIActionType.PROGRAM_GENERATION,
+        prompt,
+        'You are the Chief Academic Officer of STEMPACT Academy. Write authoritative executive program descriptions.'
+      );
+    } catch {
+      summary = `The ${domain} program is an intensive, competency-driven curriculum engineered to transition learners from foundational concepts to production-grade mastery. Built on STEMPACT Academy's proven pedagogical framework, the course pairs structured digital learning units with hands-on physical and hybrid laboratory sessions at accredited learning centers.\n\nThroughout the program, learners design, implement, test, and document real-world technical deliverables under the mentorship of seasoned industry instructors. Graduates emerge with an industry-vetted portfolio, proven diagnostic problem-solving capabilities, and the verifiable credentials needed to excel in competitive technical careers or launch technology-driven ventures.`;
+    }
+
+    res.status(200).json({ success: true, summary: summary.trim() });
+  } catch (err: any) {
+    console.error('[generateProgramSummary error]:', err);
+    res.status(500).json({ message: 'Failed to generate program summary.' });
+  }
+};
+
 
 
 

@@ -4,6 +4,7 @@ import { Role, ProgramStatus, CohortStatus } from '@prisma/client';
 import { schoolsData, programsData } from '../../seed/seedData.js';
 import { ensureSuperAdminFromEnv } from '../../controllers/authController.js';
 import { academicService } from '../academicService.js';
+import { buildDomainProgramCourses } from '../ai/aiProvider.js';
 
 export interface BootstrapStatus {
   schoolCount: number;
@@ -436,6 +437,9 @@ export class BootstrapService {
 
       // Ensure baseline lessons are populated across all modules
       await this.ensureBaselineLessons();
+
+      // Self-heal any misaligned courses (e.g. CAD modules on marketing programs)
+      await this.fixMisalignedMarketingCourses();
 
       const schoolCount = await prisma.school.count();
       if (schoolCount > 0) {
@@ -1003,6 +1007,108 @@ export class BootstrapService {
     } catch (err: any) {
       console.warn('⚠️ [BOOTSTRAP WARNING] Lesson baseline generation notice:', err.message);
       return 0;
+    }
+  }
+
+  /**
+   * Self-heals any courses under Digital Marketing programs that were misassigned CAD/Fusion 360 units
+   */
+  static async fixMisalignedMarketingCourses(): Promise<void> {
+    try {
+      const misalignedModules = await prisma.module.findMany({
+        where: {
+          OR: [
+            { title: { contains: 'Fusion 360', mode: 'insensitive' } },
+            { title: { contains: 'Parametric', mode: 'insensitive' } },
+            { title: { contains: 'Extrusion', mode: 'insensitive' } },
+            { title: { contains: 'Solidworks', mode: 'insensitive' } },
+          ],
+          course: {
+            program: {
+              OR: [
+                { code: { contains: 'DMAP', mode: 'insensitive' } },
+                { name: { contains: 'Marketing', mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
+        include: {
+          course: {
+            include: {
+              program: { include: { school: true } },
+            },
+          },
+        },
+      });
+
+      if (misalignedModules.length === 0) return;
+
+      console.log(`[BOOTSTRAP SELF-HEALING] Detected ${misalignedModules.length} misaligned CAD modules under Digital Marketing courses. Correcting...`);
+
+      const affectedCourseIds = Array.from(new Set(misalignedModules.map((m) => m.courseId)));
+
+      for (const courseId of affectedCourseIds) {
+        const course = await prisma.course.findUnique({
+          where: { id: courseId },
+          include: { program: { include: { school: true } } },
+        });
+        if (!course) continue;
+
+        // Delete previous misaligned course and its children
+        await prisma.course.delete({ where: { id: courseId } });
+
+        // Re-generate authoritative courses
+        const properCourses = buildDomainProgramCourses(
+          course.program.name,
+          course.program.school?.code || 'DMAP',
+          6,
+          course.level,
+          'marketing seo advertising copywriting social media content'
+        );
+
+        for (const cData of properCourses) {
+          const newCourse = await prisma.course.create({
+            data: {
+              programId: course.program.id,
+              code: cData.code,
+              title: cData.title,
+              description: cData.description,
+              credits: cData.credits || 3,
+              order: cData.order || 1,
+              level: course.level,
+            },
+          });
+
+          for (const mData of cData.modules || []) {
+            const newMod = await prisma.module.create({
+              data: {
+                courseId: newCourse.id,
+                title: mData.title,
+                description: mData.description,
+                durationHours: mData.durationHours || 12,
+                order: mData.order !== undefined ? mData.order : 1,
+              },
+            });
+
+            for (const [lIdx, lData] of ((mData.lessons || []) as any[]).entries()) {
+              await prisma.lesson.create({
+                data: {
+                  moduleId: newMod.id,
+                  title: lData.title || `Lesson ${lIdx + 1}`,
+                  content: lData.content || lData.contentSummary || 'Lesson instructional guide.',
+                  videoUrl: lData.videoUrl || null,
+                  videoDurationMin: lData.videoDurationMin || 18,
+                  videoSummary: lData.videoSummary || null,
+                  order: lData.order !== undefined ? lData.order : lIdx + 1,
+                },
+              });
+            }
+          }
+        }
+      }
+      console.log(`✔ [BOOTSTRAP SELF-HEALING] Corrected Digital Marketing curriculum.`);
+    } catch (err: any) {
+      console.warn('⚠️ [BOOTSTRAP SELF-HEALING NOTICE]:', err.message);
     }
   }
 }

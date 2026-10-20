@@ -286,6 +286,8 @@ router.patch('/ai/drafts/:generationId/review', authenticate, authorize(Role.SUP
 router.get('/ai/generations', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.getAIGenerations);
 router.post('/ai/optimize-schedule', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.PROGRAM_COORDINATOR, Role.COORDINATOR_ADMIN), aiController.optimizeSchedule);
 router.post('/ai/placement-rationale', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN), aiController.generatePlacementRationale);
+router.post('/ai/autofill-program-meta', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.autofillProgramMeta);
+router.post('/ai/generate-summary', authenticate, authorize(Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN), aiController.generateProgramSummary);
 
 // 22. Database Bootstrap & System Health Diagnostics
 router.get('/bootstrap/status', authenticate, authorize(Role.SUPER_ADMIN), async (req, res) => {

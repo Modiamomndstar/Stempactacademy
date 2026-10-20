@@ -245,6 +245,82 @@ export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
     },
   ],
 
+  // 2b. AI for Digital Marketing, Creative Media & Content Creation (DMAP)
+  digital_marketing_content: [
+    {
+      youtubeId: 'nU-IIXBWlS4',
+      embedUrl: 'https://www.youtube.com/embed/nU-IIXBWlS4',
+      title: 'ChatGPT & Generative AI for Digital Marketing & Copywriting',
+      channel: 'HubSpot Marketing',
+      durationMin: 18,
+      summary: 'Prompt engineering techniques for high-converting marketing copywriting, brand positioning, and social media ad campaigns.',
+      tags: ['marketing', 'digital marketing', 'copywriting', 'prompt engineering', 'chatgpt', 'content'],
+    },
+    {
+      youtubeId: 'bixR-KIJKYM',
+      embedUrl: 'https://www.youtube.com/embed/bixR-KIJKYM',
+      title: 'Digital Marketing Full Course — Strategy, SEO & Social Ads',
+      channel: 'Simplilearn',
+      durationMin: 22,
+      summary: 'Omnichannel digital marketing strategies, customer acquisition funnels, and performance marketing analytics.',
+      tags: ['marketing', 'strategy', 'digital marketing', 'campaigns', 'performance'],
+    },
+    {
+      youtubeId: '7VnS2CxgJ5s',
+      embedUrl: 'https://www.youtube.com/embed/7VnS2CxgJ5s',
+      title: 'AI Visual Design & Commercial Ad Creatives in Canva & Midjourney',
+      channel: 'Design with Canva',
+      durationMin: 16,
+      summary: 'Generative AI visual design, diffusion model image generation, and composing high-converting social media banner ads.',
+      tags: ['design', 'canva', 'ad creative', 'banner', 'visuals', 'midjourney'],
+    },
+    {
+      youtubeId: 'wQ3zWzZ_5Q0',
+      embedUrl: 'https://www.youtube.com/embed/wQ3zWzZ_5Q0',
+      title: 'AI Commercial Video Production: From Script to Video Ads',
+      channel: 'Film Booth',
+      durationMin: 19,
+      summary: 'AI text-to-video storyboarding, neural voiceover dubbing, and producing viral short-form video ads for TikTok, Instagram Reels, and YouTube.',
+      tags: ['video', 'ai video', 'commercial', 'reels', 'tiktok', 'scripting'],
+    },
+    {
+      youtubeId: 'DvwS7cV9GmQ',
+      embedUrl: 'https://www.youtube.com/embed/DvwS7cV9GmQ',
+      title: 'Semantic SEO & Content Strategy Masterclass',
+      channel: 'Ahrefs',
+      durationMin: 24,
+      summary: 'Keyword clustering, semantic search engine optimization, on-page content architecture, and organic traffic growth.',
+      tags: ['seo', 'search', 'keywords', 'organic', 'ranking', 'content'],
+    },
+    {
+      youtubeId: '0nZk5f3iZtw',
+      embedUrl: 'https://www.youtube.com/embed/0nZk5f3iZtw',
+      title: 'Meta Ads Advantage+ AI Tutorial: Scaling Paid Ad Campaigns',
+      channel: 'Ben Heath',
+      durationMin: 21,
+      summary: 'AI-driven paid advertising on Meta (Facebook & Instagram), automated audience targeting, and creative fatigue optimization.',
+      tags: ['paid ads', 'meta ads', 'facebook ads', 'advantage+', 'roas', 'scaling'],
+    },
+    {
+      youtubeId: 'bLzS_qM0p2c',
+      embedUrl: 'https://www.youtube.com/embed/bLzS_qM0p2c',
+      title: 'Email Marketing & Automated Sales Funnels Masterclass',
+      channel: 'Santrel Media',
+      durationMin: 20,
+      summary: 'Automated email nurture sequences, lead capture funnels, and CRM pipeline integration for customer retention.',
+      tags: ['email marketing', 'sales funnel', 'automation', 'crm', 'conversion'],
+    },
+    {
+      youtubeId: 'M0Tf2h3Y3aU',
+      embedUrl: 'https://www.youtube.com/embed/M0Tf2h3Y3aU',
+      title: 'Building an AI Marketing Agency: Systems & Client Retainers',
+      channel: 'Liam Ottley',
+      durationMin: 25,
+      summary: 'Packaging AI marketing services, closing ₦500k–₦2M/month corporate retainers, client onboarding, and agency delivery systems.',
+      tags: ['agency', 'client retainers', 'smma', 'b2b', 'packaging', 'monetization'],
+    },
+  ],
+
   // 3. AI, Machine Learning & Deep Learning (AIDM)
   ai_machine_learning: [
     {
@@ -739,15 +815,30 @@ export function getCuratedVideoForLesson(params: {
       programName,
     });
 
-  // 1. Check for 3D Design, CAD, 3D Printing & Digital Fabrication
+  // 0. Digital Marketing, Creative Media, Copywriting & Content (DMAP)
   if (
-    combinedText.includes('3d') ||
-    combinedText.includes('cad') ||
-    combinedText.includes('fabrication') ||
-    combinedText.includes('printing') ||
-    combinedText.includes('fusion') ||
-    combinedText.includes('slic') ||
-    combinedText.includes('cura') ||
+    combinedText.includes('marketing') ||
+    combinedText.includes('seo') ||
+    combinedText.includes('advertising') ||
+    combinedText.includes('copywriting') ||
+    combinedText.includes('social media') ||
+    combinedText.includes('content') ||
+    combinedText.includes('canva') ||
+    combinedText.includes('video ad') ||
+    combinedText.includes('funnel') ||
+    schoolCode.toUpperCase().includes('DMAP') ||
+    programCode.toUpperCase().startsWith('DMAP')
+  ) {
+    const vids = VERIFIED_VIDEO_CATALOG.digital_marketing_content;
+    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
+    return wrap(vids[idx]);
+  }
+
+  // 1. Check for 3D Design, CAD, 3D Printing & Digital Fabrication
+  // MUST use word boundaries (\bcad\b) so 'academic' NEVER matches CAD!
+  if (
+    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*print|3d\s*printing|3d\s*model|cura|slicer|rioth-06)\b/i.test(combinedText) ||
+    (combinedText.includes('fabrication') && !combinedText.includes('textile')) ||
     combinedText.includes('parametric') ||
     combinedText.includes('caliper') ||
     programCode.includes('RIOTH-06')
@@ -943,9 +1034,7 @@ export function getCuratedVideoForLesson(params: {
     combinedText.includes('gpt') ||
     combinedText.includes('model') ||
     schoolCode.toUpperCase().includes('AIDM') ||
-    schoolCode.toUpperCase().includes('DMAP') ||
-    programCode.toUpperCase().startsWith('AIDM') ||
-    programCode.toUpperCase().startsWith('DMAP')
+    programCode.toUpperCase().startsWith('AIDM')
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.ai_machine_learning;
     const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;

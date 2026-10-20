@@ -143,18 +143,35 @@ interface UnitBlueprint {
 export function resolveDomainKey(title: string, schoolCode: string = '', keywords: string = ''): string {
   const t = `${title} ${schoolCode} ${keywords}`.toLowerCase();
 
+  // 1. Digital Marketing, Content Creation, Creative Media & DMAP
+  // Checked first to ensure marketing programs are never misrouted
   if (
-    t.includes('3d') ||
-    t.includes('cad') ||
-    t.includes('fabricat') ||
-    t.includes('printing') ||
-    t.includes('fusion') ||
-    t.includes('cura') ||
-    t.includes('rioth-06')
+    t.includes('marketing') ||
+    t.includes('seo') ||
+    t.includes('advertising') ||
+    t.includes('copywriting') ||
+    t.includes('content') ||
+    t.includes('social media') ||
+    t.includes('digital media') ||
+    t.includes('creative media') ||
+    t.includes('dmap') ||
+    t.includes('funnel') ||
+    t.includes('campaign')
+  ) {
+    return 'content';
+  }
+
+  // 2. 3D Design, CAD, 3D Printing & Digital Fabrication
+  // MUST use word boundaries (\bcad\b) so that 'academic' NEVER matches 'cad'!
+  if (
+    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*print|3d\s*printing|3d\s*model|cura|slicer|rioth-06)\b/i.test(t) ||
+    (t.includes('fabricat') && !t.includes('textile')) ||
+    (t.includes('3d') && (t.includes('mesh') || t.includes('stl') || t.includes('g-code') || t.includes('extrusion')))
   ) {
     return 'cad_3d_fabrication';
   }
-  // Check Computer Hardware BEFORE Robotics so Computer Hardware Engineering never gets misclassified as Robotics!
+
+  // 3. Computer Hardware Engineering (checked BEFORE robotics)
   if (
     t.includes('computer hardware') ||
     t.includes('hardware engineering') ||
@@ -163,15 +180,6 @@ export function resolveDomainKey(title: string, schoolCode: string = '', keyword
     (t.includes('hardware') && !t.includes('arduino') && !t.includes('robot'))
   ) {
     return 'computer_hardware';
-  }
-  if (
-    t.includes('content') ||
-    t.includes('media') ||
-    t.includes('creative') ||
-    t.includes('copywriting') ||
-    t.includes('dmap')
-  ) {
-    return 'content';
   }
   if (
     t.includes('machine learning') ||
@@ -500,6 +508,24 @@ function getDomainLevelUnitBlueprints(
           l1: 'Text-to-Video & Image-to-Video Storyboarding, Camera Motion Control & Temporal Continuity',
           l2: 'Multilingual Neural Voiceovers, Audio Soundscapes & Freelance/Agency Retainer Packaging',
           deliverable: '60-Second Commercial AI Video Showcase & Client Retainer Pitch Deck',
+        },
+        {
+          theme: 'Semantic Search Engine Optimization (SEO), AI Keyword Clustering & Search Visibility',
+          l1: 'Entity-Based Semantic SEO, AI-Powered Keyword Intent Clustering & Content Gap Auditing',
+          l2: 'Programmatic Long-Form Article Generation, Schema Markup & On-Page Technical Optimization',
+          deliverable: 'Comprehensive 90-Day Organic Search Growth Blueprint & 10 AI-Optimized Pillar Articles',
+        },
+        {
+          theme: 'Paid Performance Advertising, AI Creative Variants & Multi-Platform Campaign Scaling',
+          l1: 'Meta & Google Ads Advantage+ AI Algorithms, Creative Fatigue Management & Dynamic Ad Sets',
+          l2: 'High-Converting Video Ad Scripting, Visual Hook Testing & ROAS Telemetry Tracking',
+          deliverable: 'Omnichannel Paid Advertising Campaign Architecture, Ad Creative Matrix & ROAS Model',
+        },
+        {
+          theme: 'Marketing Funnel Automation, AI Chatbots, Email Nurture Sequences & Client Retainers',
+          l1: 'Automated Lead Magnets, AI Conversational Chatbots & Automated Email Nurturing Workflows',
+          l2: 'CRM Integration, Conversion Rate Optimization (CRO) & Packaging Freelance/Agency Retainers',
+          deliverable: 'End-to-End Automated Customer Acquisition Funnel & Client Retainer Proposal Deck',
         },
       ],
       2: [
