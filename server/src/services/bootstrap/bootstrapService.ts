@@ -438,8 +438,9 @@ export class BootstrapService {
       // Ensure baseline lessons are populated across all modules
       await this.ensureBaselineLessons();
 
-      // Self-heal any misaligned courses (e.g. CAD modules on marketing programs)
+      // Self-heal any misaligned courses (e.g. CAD modules on marketing, or marketing modules on IoT)
       await this.fixMisalignedMarketingCourses();
+      await this.fixMisalignedIoTCourses();
 
       const schoolCount = await prisma.school.count();
       if (schoolCount > 0) {
@@ -904,7 +905,7 @@ export class BootstrapService {
         }
         if (pCode.startsWith('RIOTH') || pCode.includes('ROBOT') || pCode.includes('IOT') || pCode.includes('HARDWARE')) {
           return {
-            url: 'https://www.youtube-nocookie.com/embed/fJWR7dBuc14',
+            url: 'https://www.youtube-nocookie.com/embed/6mBO2vqLv38',
             duration: 25,
             summary: 'Step-by-step laboratory tutorial on microcontroller architecture, circuit assembly, and hardware interfacing.',
           };
@@ -925,7 +926,7 @@ export class BootstrapService {
         }
         if (pCode.startsWith('SKT') || pCode.includes('KIDS') || pCode.includes('CREATIVE')) {
           return {
-            url: 'https://www.youtube-nocookie.com/embed/jXUZhvl1uY4',
+            url: 'https://www.youtube-nocookie.com/embed/j_n4_2Kj4wU',
             duration: 15,
             summary: 'Interactive junior engineering lesson introducing algorithmic thinking and creative digital building.',
           };
@@ -1107,6 +1108,112 @@ export class BootstrapService {
         }
       }
       console.log(`✔ [BOOTSTRAP SELF-HEALING] Corrected Digital Marketing curriculum.`);
+    } catch (err: any) {
+      console.warn('⚠️ [BOOTSTRAP SELF-HEALING NOTICE]:', err.message);
+    }
+  }
+
+  /**
+   * Self-heals any courses under IoT / Embedded / Hardware programs that were misassigned marketing or copywriting units
+   */
+  static async fixMisalignedIoTCourses(): Promise<void> {
+    try {
+      const misalignedModules = await prisma.module.findMany({
+        where: {
+          OR: [
+            { title: { contains: 'Copywriting', mode: 'insensitive' } },
+            { title: { contains: 'Prompt Engineering', mode: 'insensitive' } },
+            { title: { contains: 'Video Synthesis', mode: 'insensitive' } },
+            { title: { contains: 'Visual Art Direction', mode: 'insensitive' } },
+          ],
+          course: {
+            program: {
+              OR: [
+                { code: { contains: 'RIOTH', mode: 'insensitive' } },
+                { code: { contains: 'IOT', mode: 'insensitive' } },
+                { name: { contains: 'Internet of Things', mode: 'insensitive' } },
+                { name: { contains: 'Robotics', mode: 'insensitive' } },
+                { name: { contains: 'Embedded', mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
+        include: {
+          course: {
+            include: {
+              program: { include: { school: true } },
+            },
+          },
+        },
+      });
+
+      if (misalignedModules.length === 0) return;
+
+      console.log(`[BOOTSTRAP SELF-HEALING] Detected ${misalignedModules.length} misaligned marketing modules under IoT/Robotics courses. Correcting...`);
+
+      const affectedCourseIds = Array.from(new Set(misalignedModules.map((m) => m.courseId)));
+
+      for (const courseId of affectedCourseIds) {
+        const course = await prisma.course.findUnique({
+          where: { id: courseId },
+          include: { program: { include: { school: true } } },
+        });
+        if (!course) continue;
+
+        // Delete previous misaligned course and its children
+        await prisma.course.delete({ where: { id: courseId } });
+
+        // Re-generate authoritative courses for IoT/Robotics
+        const properCourses = buildDomainProgramCourses(
+          course.program.name,
+          course.program.school?.code || 'RIOTH',
+          6,
+          course.level,
+          'iot esp32 mqtt telemetry sensors cloud edge microcontrollers',
+          course.program.code
+        );
+
+        for (const cData of properCourses) {
+          const newCourse = await prisma.course.create({
+            data: {
+              programId: course.program.id,
+              code: cData.code,
+              title: cData.title,
+              description: cData.description,
+              credits: cData.credits || 3,
+              order: cData.order || 1,
+              level: course.level,
+            },
+          });
+
+          for (const mData of cData.modules || []) {
+            const newMod = await prisma.module.create({
+              data: {
+                courseId: newCourse.id,
+                title: mData.title,
+                description: mData.description,
+                durationHours: mData.durationHours || 12,
+                order: mData.order !== undefined ? mData.order : 1,
+              },
+            });
+
+            for (const [lIdx, lData] of ((mData.lessons || []) as any[]).entries()) {
+              await prisma.lesson.create({
+                data: {
+                  moduleId: newMod.id,
+                  title: lData.title || `Lesson ${lIdx + 1}`,
+                  content: lData.content || lData.contentSummary || 'Lesson instructional guide.',
+                  videoUrl: lData.videoUrl || null,
+                  videoDurationMin: lData.videoDurationMin || 18,
+                  videoSummary: lData.videoSummary || null,
+                  order: lData.order !== undefined ? lData.order : lIdx + 1,
+                },
+              });
+            }
+          }
+        }
+      }
+      console.log(`✔ [BOOTSTRAP SELF-HEALING] Corrected IoT/Hardware curriculum.`);
     } catch (err: any) {
       console.warn('⚠️ [BOOTSTRAP SELF-HEALING NOTICE]:', err.message);
     }

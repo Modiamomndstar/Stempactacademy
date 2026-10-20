@@ -29,11 +29,12 @@ export function buildDomainProgramCourses(
   schoolCode: string = 'SAIML',
   durationWeeks: number = 3,
   levelStr: string = 'LEVEL_1_FOUNDATION',
-  keywords: string = ''
+  keywords: string = '',
+  programCode?: string
 ) {
   return buildUoPeopleStructuredCourse({
     programTitle: title,
-    programCode: `${schoolCode.slice(0, 4).toUpperCase()}-PRG`,
+    programCode: programCode || `${schoolCode.slice(0, 4).toUpperCase()}-PRG`,
     schoolCode,
     durationWeeks,
     levelStr,
@@ -82,6 +83,15 @@ export function repairStructuredFields(obj: any, prompt: string): any {
       obj.careerPathways = ['Specialist Practitioner', 'Agency Consultant', 'Solutions Architect'];
     }
 
+    // Build clean keywords avoiding raw prompt JSON schema noise
+    const cleanKeywords = [
+      Array.isArray(obj.tools) ? obj.tools.join(', ') : (obj.tools || ''),
+      obj.discipline || '',
+      obj.industryFocus || '',
+      obj.targetAudience || '',
+      obj.description || '',
+    ].filter(Boolean).join(' ');
+
     // Build canonical UoPeople structured courses (Course Introduction + Units 1..W + Final Project & Certificate Unit)
     const canonicalCourses = buildUoPeopleStructuredCourse({
       programTitle: obj.name,
@@ -89,7 +99,7 @@ export function repairStructuredFields(obj: any, prompt: string): any {
       schoolCode: obj.schoolCode,
       durationWeeks,
       levelStr: obj.level,
-      keywords: promptLower,
+      keywords: cleanKeywords,
       description: obj.description,
       tools: obj.tools,
     });
@@ -305,8 +315,8 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
   }
 
   if (p.includes('assessment') || p.includes('diagnostic')) {
-    const isMedia = p.includes('content') || p.includes('media') || p.includes('market') || p.includes('productiv') || p.includes('creative') || p.includes('video') || p.includes('graphic');
-    const isHardware = p.includes('hardware') || p.includes('embedded') || p.includes('robot') || p.includes('iot');
+    const isMedia = /\b(content creation|digital marketing|copywriting|creative media|video editing|graphic design)\b/i.test(prompt);
+    const isHardware = /\b(hardware|embedded|robot|iot|drone|electronics|solar|sensor)\b/i.test(prompt);
     
     if (isMedia) {
       return {
@@ -803,8 +813,9 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
     return m ? m[1].trim() : fallback;
   };
 
-  const domain = extractField('Title/Concept', '') || extractField('Title', '') || (p.includes('content') ? 'AI Content Creation' : 'Applied Technology Specialist');
-  const schoolCode = extractField('School Code', p.includes('content') ? 'SAIML' : 'SCSE');
+  const domain = extractField('Title/Concept', '') || extractField('Title', '') || (/\b(content creation|digital marketing|copywriting)\b/i.test(prompt) ? 'AI Content Creation' : 'Applied Technology Specialist');
+  const schoolCode = extractField('School Code', /\b(content creation|digital marketing|copywriting)\b/i.test(prompt) ? 'SAIML' : 'SCSE');
+  const programCode = extractField('Program Code', '') || extractField('Code', '');
   const targetLearner = extractField('Target Learners', 'Tech students, creatives, entrepreneurs and aspiring specialists');
   const durationStr = extractField('Duration', '3 Weeks');
   const weeksMatch = durationStr.match(/(\d+)\s*week/i) || prompt.match(/(\d+)\s*week/i);
@@ -813,7 +824,7 @@ export function getDeterministicFallback<T>(prompt: string, schema?: z.ZodType<T
   const level = normalizeAcademicLevel(levelStr);
   const keywords = extractField('Key Topics / Technologies', '');
 
-  const courses = buildDomainProgramCourses(domain, schoolCode, durationWeeks, level, keywords || prompt);
+  const courses = buildDomainProgramCourses(domain, schoolCode, durationWeeks, level, keywords, programCode);
 
   return {
     name: domain,

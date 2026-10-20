@@ -36,9 +36,11 @@ export const generateProgram = async (req: AuthRequest, res: Response): Promise<
     ? req.body.keywords.join(', ')
     : (req.body.keywords || '');
   const specialInstructions = req.body.specialInstructions || req.body.goals || '';
+  const programCode = req.body.programCode || req.body.code || '';
   const prompt = `Generate a rigorous, complete STEM academic program for STEMPACT Academy in Ile-Ife, Nigeria.
 Details provided:
 - Title/Concept: ${domain}
+- Program Code: ${programCode || 'Auto-generated'}
 - School Code: ${schoolCode}
 - Target Learners: ${targetAudience}
 - Level: ${normalizedLevel}
@@ -57,7 +59,7 @@ CRITICAL PEDAGOGICAL REQUIREMENTS:
 CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structure:
 {
   "name": "${domain}",
-  "code": "STP-${domain.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X')}-SPEC",
+  "code": "${programCode || `STP-${domain.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X')}-SPEC`}",
   "schoolCode": "${schoolCode}",
   "description": "Comprehensive practical curriculum overview...",
   "targetLearner": "${targetAudience}",
@@ -135,7 +137,8 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       resolvedSchool,
       Math.max(durationWeeks, 6),
       normalizedLevel,
-      `${keywords} ${specialInstructions} ${structured.description || ''}`
+      `${keywords} ${specialInstructions} ${structured.description || ''}`,
+      programCode || structured.code
     );
 
     // If AI output returned rich courses with >= 3 modules, preserve them; otherwise use authoritative UoPeople courses
@@ -204,7 +207,8 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       schoolCode,
       Math.max(durationWeeks, 6),
       normalizedLevel,
-      `${keywords} ${specialInstructions}`
+      `${keywords} ${specialInstructions}`,
+      programCode
     );
 
     const fallbackModules = fallbackCourses.flatMap((c: any, cIdx: number) =>
@@ -972,6 +976,8 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
     const normLevel = normalizeAcademicLevel(academicLevel);
 
     const t = `${domain} ${schoolCode} ${programCode}`.toLowerCase();
+    const pCode = (programCode || '').toUpperCase();
+    const sCode = (schoolCode || '').toUpperCase();
     let meta: {
       targetAudience: string;
       keywords: string;
@@ -980,7 +986,87 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
       durationWeeks: number;
     };
 
-    if (t.includes('marketing') || t.includes('seo') || t.includes('content') || t.includes('advertising') || t.includes('copywriting') || t.includes('dmap')) {
+    if (pCode.startsWith('RIOTH-07') || t.includes('drone') || t.includes('uav') || t.includes('quadcopter') || t.includes('aerial')) {
+      meta = {
+        targetAudience: 'Drone pilots, mechatronics technicians, aerial surveyors, and agricultural UAV specialists.',
+        keywords: 'PX4, ArduPilot, Betaflight, BLDC Motors, ESC Calibration, LiPo Power Safety, ExpressLRS, GPS Waypoints, QGroundControl, CAD 3D Printing',
+        specialInstructions: 'Aviation safety compliance, flight controller wiring and soldering, PID control tuning, GPS autonomous waypoint mapping, and aerial surveying missions.',
+        description: `The ${domain || 'Drone Piloting & UAV Engineering'} program equips learners with end-to-end expertise in commercial unmanned aerial vehicle assembly, aerodynamics, and mission piloting. Students progress from frame mechanics, brushless motor selection, and electronic speed controllers to flight controller calibration and telemetry links.\n\nThrough structured field flight sessions and bench assembly labs at accredited STEMPACT Learning Centers, learners configure autonomous flight waypoints, conduct photogrammetry surveys, and earn credentials for high-demand agricultural, inspection, and security drone operations.`,
+        durationWeeks: 8,
+      };
+    } else if (pCode.startsWith('RIOTH-02') || (t.includes('iot') && !t.includes('marketing')) || t.includes('internet of things') || t.includes('telemetry') || t.includes('smart agriculture') || t.includes('smart meter')) {
+      meta = {
+        targetAudience: 'IoT engineers, smart hardware makers, firmware developers, and industrial automation technicians.',
+        keywords: 'ESP32, MicroPython, FreeRTOS, MQTT, InfluxDB, Grafana, LoRaWAN, RS485/Modbus, Sensors, Relays, TinyML, AWS IoT Core',
+        specialInstructions: 'Hands-on breadboard and PCB sensor interfacing, MQTT pub/sub telemetry, Grafana dashboard deployment, deep-sleep solar optimization, and real-world African smart irrigation/energy telemetry case studies.',
+        description: `The ${domain || 'Internet of Things & Connected Systems'} curriculum trains hardware engineers and firmware developers in building resilient distributed IoT deployments. Learners master microcontroller peripherals, MQTT telemetry brokers, LoRaWAN long-range communications, sensor signal conditioning, and low-power solar sleep cycles.\n\nThrough practical workbench sprints at STEMPACT Learning Centers, students construct and deploy production-grade connected hardware tackling Nigerian smart energy metering, cold-chain monitoring, and automated precision agriculture.`,
+        durationWeeks: 8,
+      };
+    } else if (pCode.startsWith('RIOTH-03') || t.includes('firmware') || t.includes('bare-metal') || (t.includes('embedded') && !t.includes('marketing'))) {
+      meta = {
+        targetAudience: 'Embedded firmware engineers, computer engineering students, and IoT hardware developers.',
+        keywords: 'Bare-Metal C, ARM Cortex-M, STM32CubeIDE, FreeRTOS, NVIC, Hardware Timers, PWM, SPI, I2C, UART, DMA, Logic Analyzers',
+        specialInstructions: 'Register-level peripheral manipulation, memory management, RTOS multi-task scheduling, and hardware in-circuit debugging.',
+        description: `The ${domain || 'Embedded Systems & Firmware Engineering'} curriculum guides learners from bare-metal C register configuration to deterministic real-time multitasking on ARM Cortex-M microcontrollers. Students master interrupt controllers, communication busses (SPI/I2C/UART), DMA data transfers, and FreeRTOS task synchronization.\n\nThrough hardware bench labs, students implement low-level drivers, optimize clock trees, and build production-grade embedded controllers for industrial and consumer devices.`,
+        durationWeeks: 8,
+      };
+    } else if (pCode.startsWith('RIOTH-04') || t.includes('pcb') || (t.includes('circuit') && !t.includes('marketing')) || t.includes('electronics repair')) {
+      meta = {
+        targetAudience: 'Electronics hobbyists, hardware engineers, circuit design technicians, and consumer electronics repairers.',
+        keywords: 'KiCad, Schematic Capture, 2-Layer & 4-Layer PCB Layout, SMD Soldering, Multimeter, Oscilloscope, Gerber Specs, BOM Sourcing, Power Regulators',
+        specialInstructions: 'Component-level circuit analysis, schematic design, PCB trace routing, SMD rework station soldering, and hardware test bench verification.',
+        description: `The ${domain || 'Electronics Engineering & PCB Design'} program takes learners through the complete hardware development lifecycle from schematic design to physical printed circuit board assembly. Students master active/passive component selection, power supply decoupling, signal integrity, and PCB layout rules in KiCad.\n\nIn hands-on workbench sessions, learners assemble physical SMD boards, troubleshoot electrical faults with oscilloscopes and multimeters, and package products into production-ready enclosures.`,
+        durationWeeks: 8,
+      };
+    } else if (pCode.startsWith('RIOTH-06') || t.includes('fusion') || t.includes('solidworks') || t.includes('cad') || t.includes('3d print') || t.includes('fabrication')) {
+      meta = {
+        targetAudience: 'Industrial designers, mechanical makers, product prototyping engineers, and hardware entrepreneurs.',
+        keywords: 'Autodesk Fusion 360, SolidWorks, Parametric 3D Modeling, Assemblies, Cura Slicing, FDM 3D Printing, PLA/PETG, Calipers, Tolerance Fit, CNC G-Code',
+        specialInstructions: 'Design for Additive Manufacturing (DFAM), parametric sketching, mechanical tolerances, bed leveling, slicing optimization, and functional rapid prototyping.',
+        description: `The ${domain || 'Computer-Aided Design & 3D Fabrication'} curriculum immerses learners in parametric 3D computer modeling and precision additive manufacturing. Students learn sketch constraints, extrusions, revolves, sweeping, multi-part assemblies, and engineering drawing standards in Autodesk Fusion 360.\n\nPractical maker lab sessions cover slicing parameter optimization, FDM 3D printer calibration, tolerance engineering, and rapid physical prototyping of custom functional enclosures.`,
+        durationWeeks: 8,
+      };
+    } else if (pCode.startsWith('RIOTH-01') || (t.includes('robot') && !t.includes('marketing')) || t.includes('mechatronics')) {
+      meta = {
+        targetAudience: 'Mechatronics students, makers, robotics hobbyists, and automation engineers.',
+        keywords: 'Differential Drive, ROS2, ESP32, Motor Drivers, Encoders, PID Speed Control, Ultrasonic/LiDAR Sensors, SLAM, Kinematics',
+        specialInstructions: 'Closed-loop autonomous navigation, breadboard and chassis prototyping, sensor calibration, and obstacle avoidance algorithms.',
+        description: `The ${domain || 'Robotics & Autonomous Systems'} curriculum bridges mechanical kinematics, embedded control, and autonomous software algorithms. Learners construct mobile robotic chassis, wire motor drivers with encoder feedback, and implement closed-loop PID control and obstacle navigation.\n\nThrough structured robotics challenge sprints, students build autonomous mobile robots capable of warehouse navigation, inspection, and intelligent environmental interaction.`,
+        durationWeeks: 8,
+      };
+    } else if (sCode.startsWith('RETE') || t.includes('solar') || t.includes('clean energy') || t.includes('inverter') || t.includes('photovoltaic')) {
+      meta = {
+        targetAudience: 'Electrical technicians, clean energy installers, facilities managers, and renewable energy entrepreneurs.',
+        keywords: 'Photovoltaic Panels, MPPT Charge Controllers, Pure Sine Wave Inverters, Lithium LiFePO4 & Gel Batteries, Solar Sizing, AC/DC Disconnects, Surge Protection',
+        specialInstructions: 'Hands-on solar bench sizing, battery bank wiring, inverter safety testing, and real-world Nigerian off-grid solar installation case studies.',
+        description: `The ${domain || 'Solar & Renewable Energy Systems'} program prepares technicians and energy professionals to design, install, and maintain commercial and residential clean energy installations. The curriculum covers solar irradiance assessment, photovoltaic array string calculations, MPPT charge controllers, lithium battery storage, and hybrid inverter grid-interfacing.\n\nLearners acquire hands-on mastery through physical solar field labs, safety compliance audits, and system sizing capstones tailored to the Nigerian and West African power distribution landscape.`,
+        durationWeeks: 8,
+      };
+    } else if (sCode.startsWith('SKT') || t.includes('kids') || t.includes('teen') || t.includes('junior') || t.includes('young innovator')) {
+      meta = {
+        targetAudience: 'Young learners (ages 8-16), STEM club students, and aspiring young coders.',
+        keywords: 'Scratch 3.0, BBC micro:bit, Python Turtle, Block Coding, 2D Game Mechanics, Teachable Machine AI, Sensors, Tinkercad 3D',
+        specialInstructions: 'Age-appropriate gamified pedagogy, visual interactive feedback, safety guidelines, and celebration of creative projects with digital badges.',
+        description: `The ${domain || 'Young Innovators STEM & Creative Coding'} program is an engaging, gamified curriculum engineered for kids and teenagers. Young learners discover computer science fundamentals through block-based visual coding, animations, and game development in Scratch 3.0 before progressing to hands-on hardware experiments with BBC micro:bit.\n\nStudents develop computational thinking, creative problem-solving, and digital confidence through weekly interactive mini-sprints and showcase their creations to peers and parents.`,
+        durationWeeks: 6,
+      };
+    } else if (pCode.startsWith('CSE-06') || pCode.startsWith('CSE-07') || t.includes('cyber') || t.includes('security') || t.includes('ethical hack') || t.includes('penetration')) {
+      meta = {
+        targetAudience: 'IT administrators, aspiring cybersecurity analysts, computer science graduates, and security consultants.',
+        keywords: 'Linux Hardening, Wireshark, Nmap, Metasploit, Burp Suite, Network Protocols, Firewalls, Threat Modeling, Incident Response, SIEM',
+        specialInstructions: 'Strict ethical sandbox labs, vulnerability scanning, packet inspection, defensible web application security, and incident response playbooks.',
+        description: `The ${domain || 'Cybersecurity & Defensive Cloud Systems'} curriculum prepares security practitioners to defend enterprise networks and cloud infrastructure against modern cyber threats. Learners master Linux terminal security, packet capture with Wireshark, vulnerability assessments, and web penetration testing methodologies.\n\nHands-on defensive war-game labs provide practical experience in detecting intrusion attempts, configuring host firewalls, and documenting incident mitigation reports.`,
+        durationWeeks: 10,
+      };
+    } else if (t.includes('data science') || t.includes('data analytics') || t.includes('power bi') || t.includes('business intelligence')) {
+      meta = {
+        targetAudience: 'Data analysts, business professionals, finance managers, and aspiring data scientists.',
+        keywords: 'Excel Advanced Formulas, Power Query, Relational SQL, Window Functions, Power BI, DAX Measures, Python Pandas, Data Storytelling',
+        specialInstructions: 'Real-world corporate datasets, automated dashboard creation, statistical hypothesis testing, and stakeholder presentation deliverables.',
+        description: `The ${domain || 'Data Analytics & Business Intelligence'} program empowers professionals to transform raw organizational data into actionable executive insights. Learners master advanced data modeling in SQL, automated ETL pipelines in Power Query, and interactive business intelligence dashboards in Power BI.\n\nThrough real-world case studies, students build automated sales, operational, and financial dashboards that solve actual business challenges in the African commercial landscape.`,
+        durationWeeks: 8,
+      };
+    } else if (sCode.startsWith('DMAP') || pCode.startsWith('AIDM') || t.includes('marketing') || t.includes('advertising') || t.includes('copywriting') || t.includes('social media marketing')) {
       meta = {
         targetAudience: 'Marketing professionals, copywriters, digital creators, growth hackers, and entrepreneurs seeking AI automation workflows.',
         keywords: 'ChatGPT, Copy.ai, Midjourney, Canva AI, Meta Ads Advantage+, Google Ads AI, Ahrefs, SEMrush, Zapier, HubSpot, Prompt Engineering',
@@ -988,7 +1074,15 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
         description: `The ${domain || 'AI for Digital Marketing'} program is an intensive, high-impact curriculum designed to empower creators, brand managers, and agency founders with state-of-the-art generative AI workflows. Learners master prompt engineering for high-converting marketing copywriting, automated graphic and video ad production, programmatic semantic SEO, and multi-channel paid ad campaign scaling.\n\nThroughout the program, learners build automated customer acquisition funnels, deploy AI customer service bots, and package commercial retainers, culminating in an end-to-end multi-platform marketing portfolio that delivers measurable Return on Ad Spend (ROAS).`,
         durationWeeks: 6,
       };
-    } else if (t.includes('hardware') || t.includes('pc') || t.includes('repair') || t.includes('soldering') || t.includes('motherboard') || t.includes('csep-01')) {
+    } else if (sCode.startsWith('BIE') || t.includes('business') || t.includes('startup') || t.includes('venture') || t.includes('entrepreneur')) {
+      meta = {
+        targetAudience: 'Startup founders, innovation managers, corporate intrapreneurs, and business executives.',
+        keywords: 'Business Model Canvas, Lean Canvas, Customer Discovery, MVP Scoping, Unit Economics, CAC/LTV, Cap Tables, Financial Modeling, Investor Pitch Decks',
+        specialInstructions: 'Customer validation interviews, financial projection modeling, go-to-market execution, and investor pitch defense.',
+        description: `The ${domain || 'Venture Innovation & Tech Entrepreneurship'} program guides founders and executives from validated market problem to fundable technology startup. Students master customer discovery, rapid prototype scoping, unit economic viability, and go-to-market growth loops.\n\nLearners pitch their ventures to a panel of experienced angel investors and startup mentors, graduating with a complete investor deck and an operating business model.`,
+        durationWeeks: 8,
+      };
+    } else if (t.includes('hardware') || t.includes('repair') || t.includes('motherboard') || pCode.startsWith('CSEP-01')) {
       meta = {
         targetAudience: 'Aspiring computer engineers, hardware technicians, electronics hobbyists, and IT support professionals.',
         keywords: 'Digital Multimeter, Hot-Air SMD Rework, Soldering, UEFI BIOS, Oscilloscope, CH341A SPI Flash, Thermal Dynamics, Power Delivery, ATX PSU',
@@ -996,23 +1090,7 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
         description: `The ${domain || 'Computer Systems & Hardware Engineering'} program trains engineers and technicians in precision component-level diagnostics, electronics repair, and systems assembly. Learners progress from basic motherboard architecture and power rail multimeter testing to advanced surface-mount device (SMD) soldering, VRM short isolation, and EEPROM BIOS flashing.\n\nEmphasizing 70% physical laboratory bench work at STEMPACT Learning Centers, the course equips graduates to diagnose complex hardware faults, restore damaged laptops and servers, and operate commercial computer engineering repair centers.`,
         durationWeeks: 8,
       };
-    } else if (t.includes('solar') || t.includes('clean energy') || t.includes('inverter') || t.includes('photovoltaic') || t.includes('scee')) {
-      meta = {
-        targetAudience: 'Electrical technicians, clean energy installers, facilities managers, and renewable energy entrepreneurs.',
-        keywords: 'Photovoltaic Panels, MPPT Charge Controllers, Pure Sine Wave Inverters, Lithium LiFePO4 & Gel Batteries, Solar Sizing, AC/DC Disconnects',
-        specialInstructions: 'Hands-on solar bench sizing, battery bank wiring, inverter safety testing, and real-world Nigerian off-grid solar installation case studies.',
-        description: `The ${domain || 'Solar & Renewable Energy Systems'} program prepares technicians and energy professionals to design, install, and maintain commercial and residential clean energy installations. The curriculum covers solar irradiance assessment, photovoltaic array string calculations, MPPT charge controllers, lithium battery storage, and hybrid inverter grid-interfacing.\n\nLearners acquire hands-on mastery through physical solar field labs, safety compliance audits, and system sizing capstones tailored to the Nigerian and West African power distribution landscape.`,
-        durationWeeks: 8,
-      };
-    } else if (t.includes('robot') || t.includes('iot') || t.includes('arduino') || t.includes('esp32') || t.includes('embedded') || t.includes('rioth')) {
-      meta = {
-        targetAudience: 'Mechatronics students, makers, embedded software developers, and automation engineers.',
-        keywords: 'ESP32, Arduino, C/C++, Sensors, PWM Motor Drivers, I2C/SPI, FreeRTOS, MQTT, Edge AI, KiCAD PCB Design',
-        specialInstructions: 'Closed-loop autonomous navigation, breadboard prototyping, sensor calibration, and IoT MQTT telemetry dashboards.',
-        description: `The ${domain || 'Robotics, IoT & Embedded Systems'} curriculum bridges physical hardware and firmware engineering. Learners master microcontroller peripherals, analog/digital sensor interfacing, motor driver kinematics, and wireless IoT cloud connectivity using ESP32 and Arduino.\n\nThrough structured laboratory sprints, students construct autonomous mobile robotics prototypes and deploy cloud-connected telemetry stations solving agricultural, industrial, and smart-city challenges.`,
-        durationWeeks: 8,
-      };
-    } else if (t.includes('ai') || t.includes('machine learning') || t.includes('data science') || t.includes('deep learning') || t.includes('saiml') || t.includes('aidm')) {
+    } else if (t.includes('ai') || t.includes('machine learning') || t.includes('deep learning') || sCode.startsWith('SAIML')) {
       meta = {
         targetAudience: 'Computer science undergraduates, software developers, data analysts, and aspiring AI engineers.',
         keywords: 'Python, NumPy, Pandas, Scikit-Learn, PyTorch, Hugging Face Transformers, Computer Vision, FastAPI, Docker, MLflow, Vector Databases',

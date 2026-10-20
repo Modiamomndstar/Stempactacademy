@@ -165,7 +165,7 @@ export class WorkflowEngine {
       });
 
       // Determine courses to create (ensuring UoPeople Course Introduction + Weekly Units + Final Project structure)
-      const defaultUoPeopleCourses = buildDomainProgramCourses(name, school.code, Math.max(7, durationWeeks), level, description);
+      const defaultUoPeopleCourses = buildDomainProgramCourses(name, school.code, Math.max(7, durationWeeks), level, tools || description, code);
       const coursesToCreate = (rawData.courses && Array.isArray(rawData.courses) && rawData.courses.length > 0)
         ? rawData.courses.map((c: any) => {
             const hasIntro =

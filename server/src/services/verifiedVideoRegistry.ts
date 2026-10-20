@@ -102,34 +102,182 @@ export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
     },
   ],
 
-  // 2. Robotics, Embedded Systems, IoT & Hardware (RIOTH)
+  // 2. Robotics & Mechatronics Automation (RIOTH-01)
+  // NOTE: Every title below is the real (oEmbed-verified) title/subject of the video.
   robotics_hardware: [
     {
       youtubeId: 'LAB8MQM03pI',
       embedUrl: 'https://www.youtube.com/embed/LAB8MQM03pI',
-      title: 'What is Arduino? Complete Arduino Tutorial for Beginners',
+      title: 'What is Arduino? Arduino Tutorial for Beginners',
       channel: 'Paul McWhorter',
       durationMin: 22,
-      summary: 'Microcontroller architecture, digital and analog I/O pins, pulse width modulation (PWM), and circuit wiring basics.',
-      tags: ['arduino', 'microcontroller', 'robotics', 'hardware', 'gpio', 'embedded'],
+      summary: 'Microcontroller architecture, digital and analog I/O pins, pulse width modulation (PWM), and the controller boards used to drive robotic actuators.',
+      tags: ['arduino', 'microcontroller', 'robotics', 'gpio', 'actuators'],
     },
     {
       youtubeId: 'd8_xXNcGYgo',
       embedUrl: 'https://www.youtube.com/embed/d8_xXNcGYgo',
-      title: 'Simple Introduction to the Arduino: IDE, Sketches & Board Setup',
+      title: 'Simple Introduction to the Arduino (Lesson 1)',
       channel: 'Paul McWhorter',
       durationMin: 20,
-      summary: 'Setting up the Arduino IDE, writing C/C++ firmware sketches, uploading binaries, and reading serial monitor telemetry.',
-      tags: ['arduino', 'firmware', 'c++', 'serial monitor', 'breadboard', 'sensors'],
+      summary: 'Setting up the Arduino IDE, writing C/C++ firmware sketches, uploading code, and reading serial monitor output.',
+      tags: ['arduino', 'firmware', 'c++', 'serial monitor', 'breadboard'],
     },
     {
       youtubeId: 'zJ-LqeX_fLU',
       embedUrl: 'https://www.youtube.com/embed/zJ-LqeX_fLU',
-      title: 'Arduino Course for Beginners: Open-Source Electronic Prototyping',
+      title: 'Arduino Course for Beginners — Open-Source Electronics Platform',
       channel: 'freeCodeCamp.org',
       durationMin: 25,
-      summary: 'Hands-on electronic circuits with LEDs, potentiometers, ultrasonic distance sensors, and servo motor control.',
-      tags: ['circuits', 'electronics', 'actuators', 'servos', 'ultrasonic', 'iot'],
+      summary: 'Hands-on circuits with LEDs, potentiometers, ultrasonic distance sensors, and servo motor control for robot sub-assemblies.',
+      tags: ['circuits', 'actuators', 'servos', 'ultrasonic', 'motors'],
+    },
+    {
+      youtubeId: 'wkfEZmsQqiA',
+      embedUrl: 'https://www.youtube.com/embed/wkfEZmsQqiA',
+      title: 'What Is PID Control? Understanding PID Control, Part 1',
+      channel: 'MATLAB',
+      durationMin: 12,
+      summary: 'Closed-loop feedback control, proportional/integral/derivative terms, and how PID tuning stabilises motor speed and robot motion.',
+      tags: ['pid', 'control systems', 'feedback', 'robotics'],
+    },
+    {
+      youtubeId: 'Gg25GfA456o',
+      embedUrl: 'https://www.youtube.com/embed/Gg25GfA456o',
+      title: 'ROS2 Tutorial — ROS2 Humble Crash Course',
+      channel: 'ROS2 Tutorials',
+      durationMin: 25,
+      summary: 'Robot Operating System 2 workspaces, nodes, topics, publishers/subscribers, and the middleware used to build autonomous robots.',
+      tags: ['ros2', 'ros', 'nodes', 'topics', 'navigation'],
+    },
+    {
+      youtubeId: 'saVZtgPyyJQ',
+      embedUrl: 'https://www.youtube.com/embed/saVZtgPyyJQ',
+      title: 'Understanding SLAM Using Pose Graph Optimization — Autonomous Navigation, Part 3',
+      channel: 'MATLAB',
+      durationMin: 14,
+      summary: 'Simultaneous Localization and Mapping (SLAM), loop closure, pose graphs, and how mobile robots build maps while localising themselves.',
+      tags: ['slam', 'lidar', 'autonomous', 'navigation', 'mapping'],
+    },
+  ],
+
+  // 2a. Internet of Things (IoT), ESP32, MQTT & Smart Telemetry (RIOTH-02)
+  iot_connected_systems: [
+    {
+      youtubeId: '6mBO2vqLv38',
+      embedUrl: 'https://www.youtube.com/embed/6mBO2vqLv38',
+      title: 'IoT Explained in 6 Minutes — What is IoT and How IoT Works',
+      channel: 'Simplilearn',
+      durationMin: 6,
+      summary: 'Core Internet of Things architecture: sensors, connectivity, data processing, cloud platforms, and user-facing applications.',
+      tags: ['iot', 'internet of things', 'sensors', 'architecture', 'cloud'],
+    },
+    {
+      youtubeId: 'LlhmzVL5bm8',
+      embedUrl: 'https://www.youtube.com/embed/LlhmzVL5bm8',
+      title: 'Internet of Things (IoT) — What is IoT, How it Works, IoT Explained',
+      channel: 'edureka!',
+      durationMin: 25,
+      summary: 'IoT building blocks, device-to-cloud communication, IoT protocols, real-world smart home/agriculture/city use cases, and IoT security concerns.',
+      tags: ['iot', 'protocols', 'smart agriculture', 'smart city', 'gateway'],
+    },
+    {
+      youtubeId: 'xPlN_Tk3VLQ',
+      embedUrl: 'https://www.youtube.com/embed/xPlN_Tk3VLQ',
+      title: 'Introduction to ESP32 — Getting Started',
+      channel: 'DroneBot Workshop',
+      durationMin: 25,
+      summary: 'The ESP32 Wi-Fi/Bluetooth microcontroller: pinout, ADC/GPIO peripherals, Arduino IDE setup, and first connected sensor sketches.',
+      tags: ['esp32', 'wifi', 'ble', 'gpio', 'adc'],
+    },
+    {
+      youtubeId: 'EIxdz-2rhLs',
+      embedUrl: 'https://www.youtube.com/embed/EIxdz-2rhLs',
+      title: 'What is MQTT and How It Works',
+      channel: 'MQTT Explained',
+      durationMin: 10,
+      summary: 'The MQTT publish/subscribe protocol, brokers, topics, Quality of Service levels, and why MQTT is the standard for IoT telemetry.',
+      tags: ['mqtt', 'broker', 'pubsub', 'telemetry', 'iot'],
+    },
+    {
+      youtubeId: '3AR432bguOY',
+      embedUrl: 'https://www.youtube.com/embed/3AR432bguOY',
+      title: 'Intro to Node-RED: Part 1 Fundamentals',
+      channel: 'Node-RED',
+      durationMin: 20,
+      summary: 'Flow-based wiring of IoT data in Node-RED: inject/debug nodes, MQTT in/out nodes, functions, and building live dashboards.',
+      tags: ['node-red', 'dashboard', 'flows', 'visualization'],
+    },
+    {
+      youtubeId: 'hMOwbNUpDQA',
+      embedUrl: 'https://www.youtube.com/embed/hMOwbNUpDQA',
+      title: 'LoRa / LoRaWAN De-Mystified — Tutorial',
+      channel: 'Andreas Spiess',
+      durationMin: 25,
+      summary: 'Long-range low-power LoRa radio, LoRaWAN gateways and network servers, spreading factors, and field deployments for remote sensor nodes.',
+      tags: ['lora', 'lorawan', 'wireless', 'long range', 'rf'],
+    },
+  ],
+
+  // 2a-ii. Embedded Systems, Firmware & RTOS (RIOTH-03)
+  embedded_systems: [
+    {
+      youtubeId: 'F321087yYy4',
+      embedUrl: 'https://www.youtube.com/embed/F321087yYy4',
+      title: 'Introduction to RTOS Part 1 — What is a Real-Time Operating System?',
+      channel: 'Digi-Key Electronics',
+      durationMin: 12,
+      summary: 'Real-time operating systems vs super-loops, task scheduling, determinism, and FreeRTOS concepts for embedded firmware.',
+      tags: ['freertos', 'rtos', 'multitasking', 'real-time', 'scheduling'],
+    },
+    {
+      youtubeId: 'fpnE6UAfbtU',
+      embedUrl: 'https://www.youtube.com/embed/fpnE6UAfbtU',
+      title: 'Registers and RAM: Crash Course Computer Science #6',
+      channel: 'CrashCourse',
+      durationMin: 12,
+      summary: 'How latches, registers, and memory addressing work at the hardware level — the foundation of bare-metal register programming.',
+      tags: ['registers', 'memory', 'bare metal', 'hardware'],
+    },
+    {
+      youtubeId: 'LAB8MQM03pI',
+      embedUrl: 'https://www.youtube.com/embed/LAB8MQM03pI',
+      title: 'What is Arduino? Arduino Tutorial for Beginners',
+      channel: 'Paul McWhorter',
+      durationMin: 22,
+      summary: 'Microcontroller board architecture, I/O pins, PWM, and the embedded development workflow from code to hardware.',
+      tags: ['microcontroller', 'embedded', 'gpio', 'pwm'],
+    },
+    {
+      youtubeId: 'd8_xXNcGYgo',
+      embedUrl: 'https://www.youtube.com/embed/d8_xXNcGYgo',
+      title: 'Simple Introduction to the Arduino (Lesson 1)',
+      channel: 'Paul McWhorter',
+      durationMin: 20,
+      summary: 'Toolchain setup, compiling and flashing C/C++ firmware, and serial debugging on a microcontroller target.',
+      tags: ['firmware', 'c++', 'flashing', 'serial'],
+    },
+  ],
+
+  // 2a-iii. Drone Technology & UAV Engineering (RIOTH-07)
+  drone_uav: [
+    {
+      youtubeId: 'C0KBu2ihp-s',
+      embedUrl: 'https://www.youtube.com/embed/C0KBu2ihp-s',
+      title: 'Drones — The Complete Flight Dynamics',
+      channel: 'Lesics',
+      durationMin: 10,
+      summary: 'How multirotor drones generate lift and control roll, pitch, and yaw through differential motor speeds and counter-rotating propellers.',
+      tags: ['drone', 'uav', 'quadcopter', 'aerodynamics', 'propeller'],
+    },
+    {
+      youtubeId: 'wkfEZmsQqiA',
+      embedUrl: 'https://www.youtube.com/embed/wkfEZmsQqiA',
+      title: 'What Is PID Control? Understanding PID Control, Part 1',
+      channel: 'MATLAB',
+      durationMin: 12,
+      summary: 'The PID feedback loops that flight controllers (Betaflight, ArduPilot) use to stabilise a drone’s attitude.',
+      tags: ['pid', 'flight controller', 'stabilization', 'control'],
     },
   ],
 
@@ -250,74 +398,38 @@ export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
     {
       youtubeId: 'nU-IIXBWlS4',
       embedUrl: 'https://www.youtube.com/embed/nU-IIXBWlS4',
-      title: 'ChatGPT & Generative AI for Digital Marketing & Copywriting',
-      channel: 'HubSpot Marketing',
-      durationMin: 18,
-      summary: 'Prompt engineering techniques for high-converting marketing copywriting, brand positioning, and social media ad campaigns.',
-      tags: ['marketing', 'digital marketing', 'copywriting', 'prompt engineering', 'chatgpt', 'content'],
+      title: 'Digital Marketing Course Part 1 — Digital Marketing Tutorial for Beginners',
+      channel: 'Simplilearn',
+      durationMin: 25,
+      summary: 'Digital marketing foundations: channels, customer journey, SEO, social media, paid advertising, email, and analytics.',
+      tags: ['marketing', 'digital marketing', 'seo', 'social media', 'ads'],
     },
     {
       youtubeId: 'bixR-KIJKYM',
       embedUrl: 'https://www.youtube.com/embed/bixR-KIJKYM',
-      title: 'Digital Marketing Full Course — Strategy, SEO & Social Ads',
+      title: 'Digital Marketing in 5 Minutes — What Is Digital Marketing?',
       channel: 'Simplilearn',
-      durationMin: 22,
-      summary: 'Omnichannel digital marketing strategies, customer acquisition funnels, and performance marketing analytics.',
-      tags: ['marketing', 'strategy', 'digital marketing', 'campaigns', 'performance'],
-    },
-    {
-      youtubeId: '7VnS2CxgJ5s',
-      embedUrl: 'https://www.youtube.com/embed/7VnS2CxgJ5s',
-      title: 'AI Visual Design & Commercial Ad Creatives in Canva & Midjourney',
-      channel: 'Design with Canva',
-      durationMin: 16,
-      summary: 'Generative AI visual design, diffusion model image generation, and composing high-converting social media banner ads.',
-      tags: ['design', 'canva', 'ad creative', 'banner', 'visuals', 'midjourney'],
-    },
-    {
-      youtubeId: 'wQ3zWzZ_5Q0',
-      embedUrl: 'https://www.youtube.com/embed/wQ3zWzZ_5Q0',
-      title: 'AI Commercial Video Production: From Script to Video Ads',
-      channel: 'Film Booth',
-      durationMin: 19,
-      summary: 'AI text-to-video storyboarding, neural voiceover dubbing, and producing viral short-form video ads for TikTok, Instagram Reels, and YouTube.',
-      tags: ['video', 'ai video', 'commercial', 'reels', 'tiktok', 'scripting'],
+      durationMin: 5,
+      summary: 'A concise overview of digital marketing strategy, inbound vs outbound channels, and performance measurement.',
+      tags: ['marketing', 'strategy', 'digital marketing', 'campaigns'],
     },
     {
       youtubeId: 'DvwS7cV9GmQ',
       embedUrl: 'https://www.youtube.com/embed/DvwS7cV9GmQ',
-      title: 'Semantic SEO & Content Strategy Masterclass',
+      title: 'SEO for Beginners: A Basic Search Engine Optimization Tutorial for Higher Google Rankings',
       channel: 'Ahrefs',
-      durationMin: 24,
-      summary: 'Keyword clustering, semantic search engine optimization, on-page content architecture, and organic traffic growth.',
-      tags: ['seo', 'search', 'keywords', 'organic', 'ranking', 'content'],
+      durationMin: 14,
+      summary: 'Keyword research, search intent, on-page optimisation, link building, and technical SEO basics for organic growth.',
+      tags: ['seo', 'search', 'keywords', 'organic', 'ranking'],
     },
     {
-      youtubeId: '0nZk5f3iZtw',
-      embedUrl: 'https://www.youtube.com/embed/0nZk5f3iZtw',
-      title: 'Meta Ads Advantage+ AI Tutorial: Scaling Paid Ad Campaigns',
-      channel: 'Ben Heath',
-      durationMin: 21,
-      summary: 'AI-driven paid advertising on Meta (Facebook & Instagram), automated audience targeting, and creative fatigue optimization.',
-      tags: ['paid ads', 'meta ads', 'facebook ads', 'advantage+', 'roas', 'scaling'],
-    },
-    {
-      youtubeId: 'bLzS_qM0p2c',
-      embedUrl: 'https://www.youtube.com/embed/bLzS_qM0p2c',
-      title: 'Email Marketing & Automated Sales Funnels Masterclass',
-      channel: 'Santrel Media',
-      durationMin: 20,
-      summary: 'Automated email nurture sequences, lead capture funnels, and CRM pipeline integration for customer retention.',
-      tags: ['email marketing', 'sales funnel', 'automation', 'crm', 'conversion'],
-    },
-    {
-      youtubeId: 'M0Tf2h3Y3aU',
-      embedUrl: 'https://www.youtube.com/embed/M0Tf2h3Y3aU',
-      title: 'Building an AI Marketing Agency: Systems & Client Retainers',
-      channel: 'Liam Ottley',
-      durationMin: 25,
-      summary: 'Packaging AI marketing services, closing ₦500k–₦2M/month corporate retainers, client onboarding, and agency delivery systems.',
-      tags: ['agency', 'client retainers', 'smma', 'b2b', 'packaging', 'monetization'],
+      youtubeId: 'G2fqAlgmoPo',
+      embedUrl: 'https://www.youtube.com/embed/G2fqAlgmoPo',
+      title: 'Introduction to Generative AI',
+      channel: 'Google Cloud Tech',
+      durationMin: 22,
+      summary: 'How generative AI and large language models work — the foundation for AI-assisted copywriting, creative generation, and marketing automation.',
+      tags: ['generative ai', 'llm', 'ai marketing', 'prompting'],
     },
   ],
 
@@ -504,113 +616,243 @@ export const VERIFIED_VIDEO_CATALOG: Record<string, VerifiedVideo[]> = {
     },
   ],
 
-  // 6. Cybersecurity, Networking & Cloud
+  // 6. Cybersecurity, Networking & Cloud (CSE-06, CSE-07)
   cyber_cloud: [
     {
       youtubeId: 'inWWhr5tnEA',
       embedUrl: 'https://www.youtube.com/embed/inWWhr5tnEA',
-      title: 'What Is Cyber Security? How It Works and Core Pillars',
+      title: 'What Is Cyber Security — How It Works (Cyber Security in 7 Minutes)',
       channel: 'Simplilearn',
-      durationMin: 15,
-      summary: 'The CIA triad (Confidentiality, Integrity, Availability), malware categories, phishing defense, and cyber threat vectors.',
+      durationMin: 7,
+      summary: 'The CIA triad, common attack types (malware, phishing, MITM), and the defensive pillars of cybersecurity.',
       tags: ['cybersecurity', 'cia triad', 'security', 'malware', 'threats'],
     },
     {
       youtubeId: 'U_P23SqJaDc',
       embedUrl: 'https://www.youtube.com/embed/U_P23SqJaDc',
-      title: 'Cyber Security Full Course for Beginners: Network Defense',
+      title: 'Cyber Security Full Course for Beginners',
       channel: 'Edureka',
       durationMin: 25,
-      summary: 'Firewalls, VPNs, packet sniffing, cryptography basics, authentication protocols, and securing operating systems.',
+      summary: 'Firewalls, VPNs, cryptography basics, authentication protocols, network defense, and securing operating systems.',
       tags: ['network security', 'firewall', 'cryptography', 'protocols', 'cyber'],
     },
     {
       youtubeId: '3c-iBn73dDE',
       embedUrl: 'https://www.youtube.com/embed/3c-iBn73dDE',
-      title: 'Docker Tutorial for Beginners: Containerization Fundamentals',
+      title: 'Docker Tutorial for Beginners [Full Course]',
       channel: 'TechWorld with Nana',
       durationMin: 25,
-      summary: 'Containers vs virtual machines, Dockerfiles, building container images, Docker Hub, and container networking.',
+      summary: 'Containers vs virtual machines, Dockerfiles, images, registries, and multi-container networking for DevOps workflows.',
       tags: ['docker', 'devops', 'cloud', 'containers', 'dockerfile'],
+    },
+    {
+      youtubeId: 'X48VuDVv0do',
+      embedUrl: 'https://www.youtube.com/embed/X48VuDVv0do',
+      title: 'Kubernetes Tutorial for Beginners [Full Course]',
+      channel: 'TechWorld with Nana',
+      durationMin: 25,
+      summary: 'Kubernetes architecture, Pods, Deployments, Services, Ingress, ConfigMaps/Secrets, and scaling containerised apps.',
+      tags: ['kubernetes', 'k8s', 'cloud', 'devops', 'orchestration'],
+    },
+    {
+      youtubeId: 'SOTamWNgDKc',
+      embedUrl: 'https://www.youtube.com/embed/SOTamWNgDKc',
+      title: 'AWS Certified Cloud Practitioner Course — Cloud Computing Fundamentals',
+      channel: 'freeCodeCamp.org',
+      durationMin: 25,
+      summary: 'Cloud computing concepts, AWS global infrastructure, core compute/storage/networking services, security, and pricing models.',
+      tags: ['aws', 'cloud computing', 'cloud', 'iaas', 'networking'],
     },
   ],
 
-  // 7. Renewable Energy & Solar Tech (RETE)
+  // 7. Renewable Energy & Solar Tech (RETE-01..05)
   solar_energy: [
     {
       youtubeId: 'xKxrkht7CpY',
       embedUrl: 'https://www.youtube.com/embed/xKxrkht7CpY',
-      title: 'How Do Solar Panels Work? Photovoltaic Cell Physics',
-      channel: 'TED-Ed / Richard Komp',
-      durationMin: 15,
-      summary: 'Semiconductor physics of photovoltaic cells, photon absorption, electron flow, and converting solar irradiance to DC electricity.',
-      tags: ['solar', 'photovoltaic', 'pv cells', 'renewable energy', 'physics'],
+      title: 'How Do Solar Panels Work? — Richard Komp',
+      channel: 'TED-Ed',
+      durationMin: 5,
+      summary: 'Semiconductor physics of photovoltaic cells, photon absorption, electron flow, and converting sunlight into DC electricity.',
+      tags: ['solar', 'photovoltaic', 'pv cells', 'renewable energy'],
     },
     {
       youtubeId: '7LxTYeeHSxk',
       embedUrl: 'https://www.youtube.com/embed/7LxTYeeHSxk',
-      title: 'How to Install Solar Panels for Maximum Energy Yield',
-      channel: 'Engineering Mindset',
+      title: 'How to Install Solar Panels for Maximum Energy Capture — Solar Power for Batteries',
+      channel: 'Solar Installation Tutorials',
       durationMin: 20,
-      summary: 'Solar array tilt angles, roof orientation, series vs parallel string connections, and charge controller wiring.',
-      tags: ['solar installation', 'wiring', 'charge controller', 'tilt angle', 'efficiency'],
+      summary: 'Panel tilt and orientation, series vs parallel wiring, charge controller connection, and battery charging setups.',
+      tags: ['solar installation', 'wiring', 'charge controller', 'tilt angle'],
+    },
+    {
+      youtubeId: 'mc979OhitAg',
+      embedUrl: 'https://www.youtube.com/embed/mc979OhitAg',
+      title: 'How Electricity Works — Working Principle',
+      channel: 'The Engineering Mindset',
+      durationMin: 15,
+      summary: 'Voltage, current, resistance, AC vs DC, and the electrical fundamentals behind inverters, loads, and power distribution.',
+      tags: ['electrical', 'ac/dc', 'voltage', 'current'],
     },
   ],
 
-  // 8. Business, Innovation, Startups & Entrepreneurship (BIE, ISL)
+  // 8. Business, Innovation & Entrepreneurship (BIE, ISL)
   business_innovation: [
     {
       youtubeId: 'bNpx7gpSqbY',
       embedUrl: 'https://www.youtube.com/embed/bNpx7gpSqbY',
-      title: 'The Single Biggest Reason Why Start-ups Succeed',
-      channel: 'TED / Bill Gross',
-      durationMin: 18,
-      summary: 'Analyzing the 5 factors of venture success: timing, team execution, business model, idea originality, and venture funding.',
-      tags: ['startups', 'entrepreneurship', 'venture', 'business', 'innovation'],
+      title: 'The Single Biggest Reason Why Start-ups Succeed — Bill Gross',
+      channel: 'TED',
+      durationMin: 7,
+      summary: 'Data from hundreds of companies on the five factors of startup success: timing, team, idea, business model, and funding.',
+      tags: ['startups', 'entrepreneurship', 'venture', 'business'],
+    },
+    {
+      youtubeId: 'IP0cUBWTgpY',
+      embedUrl: 'https://www.youtube.com/embed/IP0cUBWTgpY',
+      title: 'The Business Model Canvas — 9 Steps to Creating a Successful Business Model',
+      channel: 'Startup Tips',
+      durationMin: 10,
+      summary: 'The nine building blocks of the Business Model Canvas: customer segments, value propositions, channels, revenue streams, and cost structure.',
+      tags: ['business model canvas', 'value proposition', 'revenue'],
+    },
+    {
+      youtubeId: 'CBYhVcO4WgI',
+      embedUrl: 'https://www.youtube.com/embed/CBYhVcO4WgI',
+      title: 'How to Start a Startup — Lecture 1 (Sam Altman, Dustin Moskovitz)',
+      channel: 'Y Combinator',
+      durationMin: 25,
+      summary: 'Great ideas, products users love, team, and execution — the core principles of building a venture-scale startup.',
+      tags: ['startup', 'mvp', 'product', 'y combinator'],
     },
   ],
 
-  // 9. Kids & Teens STEM Track (SKT)
+  // 9. Kids & Teens STEM Track (SKT-01..06)
   kids_stem: [
     {
       youtubeId: 'tasLK8UrE88',
       embedUrl: 'https://www.youtube.com/embed/tasLK8UrE88',
-      title: 'Scratch Basics: A Beginner Guide to Block Coding',
-      channel: 'Griffpatch',
+      title: 'Scratch Tutorial — Introduction to Scratch (Coding for Kids)',
+      channel: 'Coding for Kids',
       durationMin: 16,
-      summary: 'Interactive sprite animations, motion blocks, event triggers, loops, and building fun arcade games in MIT Scratch.',
-      tags: ['scratch', 'kids', 'block coding', 'games', 'sprites', 'teens'],
+      summary: 'Sprites, motion blocks, event triggers, loops, and building simple animations and games in MIT Scratch.',
+      tags: ['scratch', 'kids', 'block coding', 'games', 'sprites'],
+    },
+    {
+      youtubeId: 'nKIu9yen5nc',
+      embedUrl: 'https://www.youtube.com/embed/nKIu9yen5nc',
+      title: 'What Most Schools Don’t Teach',
+      channel: 'Code.org',
+      durationMin: 6,
+      summary: 'Why learning to code matters for young people, told by leading technologists — an inspiring introduction to computational thinking.',
+      tags: ['code.org', 'computational thinking', 'creative computing', 'kids'],
+    },
+    {
+      youtubeId: 'kqtD5dpn9C8',
+      embedUrl: 'https://www.youtube.com/embed/kqtD5dpn9C8',
+      title: 'Python for Beginners — Learn Coding with Python in 1 Hour',
+      channel: 'Programming with Mosh',
+      durationMin: 25,
+      summary: 'Moving from blocks to text coding: variables, input, conditions, and loops in Python for older kids and teens.',
+      tags: ['python', 'teens', 'coding'],
+    },
+    {
+      youtubeId: 'UB1O30fR-EE',
+      embedUrl: 'https://www.youtube.com/embed/UB1O30fR-EE',
+      title: 'HTML Crash Course for Absolute Beginners',
+      channel: 'Traversy Media',
+      durationMin: 25,
+      summary: 'Structuring a first web page with HTML tags, links, images, lists, and forms — the starting point for young web developers.',
+      tags: ['html', 'young web', 'portfolio'],
     },
   ],
 
-  // 10. Electronics & Electrical Engineering
+  // 10. Electronics, Digital Logic & PCB (RIOTH-04, RETE-03)
   electronics_engineering: [
     {
       youtubeId: 'mc979OhitAg',
       embedUrl: 'https://www.youtube.com/embed/mc979OhitAg',
-      title: 'How Electricity Works: Voltage, Current & Resistance',
+      title: 'How Electricity Works — Working Principle',
       channel: 'The Engineering Mindset',
       durationMin: 15,
-      summary: 'Electron flow, voltage potential, DC vs AC currents, Ohm\'s law, and foundational electrical engineering principles.',
-      tags: ['electronics', 'electricity', 'voltage', 'current', 'resistance', 'circuits', 'electrical'],
+      summary: 'Electron flow, voltage, current, resistance, AC vs DC, and Ohm’s law — the foundation for circuit analysis.',
+      tags: ['electronics', 'electricity', 'voltage', 'current', 'resistance', 'circuits'],
     },
     {
       youtubeId: '7ukDKVHnac4',
       embedUrl: 'https://www.youtube.com/embed/7ukDKVHnac4',
-      title: 'How Transistors Work: BJT, MOSFET & Switching Circuits',
+      title: 'Transistors, How Do They Work?',
       channel: 'The Engineering Mindset',
       durationMin: 14,
-      summary: 'Semiconductor p-n junctions, bipolar junction transistors, amplification, digital logic switches, and gate threshold voltages.',
-      tags: ['transistors', 'mosfet', 'semiconductors', 'amplification', 'switches', 'logic'],
+      summary: 'Semiconductor junctions, NPN/PNP transistors, switching and amplification, and the basis of digital logic.',
+      tags: ['transistors', 'semiconductors', 'switches', 'logic'],
+    },
+    {
+      youtubeId: '6Maq5IyHSuc',
+      embedUrl: 'https://www.youtube.com/embed/6Maq5IyHSuc',
+      title: 'A Simple Guide to Electronic Components',
+      channel: 'bigclivedotcom',
+      durationMin: 18,
+      summary: 'Identifying resistors, capacitors, inductors, diodes, transistors, and other components found on circuit boards.',
+      tags: ['components', 'resistors', 'capacitors', 'diodes', 'pcb'],
+    },
+    {
+      youtubeId: 'Qps9woUGkvI',
+      embedUrl: 'https://www.youtube.com/embed/Qps9woUGkvI',
+      title: 'Soldering Tutorial for Beginners: Five Easy Steps',
+      channel: 'oneTesla',
+      durationMin: 10,
+      summary: 'Iron temperature, tinning, heating the joint, applying solder, and inspecting good through-hole joints on a PCB.',
+      tags: ['soldering', 'pcb', 'through-hole', 'fabrication'],
+    },
+    {
+      youtubeId: 'ts0EVc9vXcs',
+      embedUrl: 'https://www.youtube.com/embed/ts0EVc9vXcs',
+      title: 'How to Use a Multimeter',
+      channel: 'Science Buddies',
+      durationMin: 10,
+      summary: 'Measuring voltage, current, resistance, and continuity safely with a digital multimeter when testing circuits.',
+      tags: ['multimeter', 'testing', 'continuity', 'voltage'],
     },
     {
       youtubeId: 'bHIhgxav9LY',
       embedUrl: 'https://www.youtube.com/embed/bHIhgxav9LY',
-      title: 'How Electricity and Circuit Fields Propagate',
+      title: 'The Biggest Misconception About Electricity',
       channel: 'Veritasium',
-      durationMin: 18,
-      summary: 'Poynting vectors, electromagnetic field propagation around conductors, transmission line dynamics, and circuit theory.',
-      tags: ['electromagnetism', 'circuit theory', 'fields', 'signals', 'electrical engineering'],
+      durationMin: 14,
+      summary: 'How energy actually flows in circuits via electromagnetic fields — a deeper look at circuit theory.',
+      tags: ['electromagnetism', 'circuit theory', 'fields'],
+    },
+  ],
+
+  // 10b. UI/UX, Graphic Design & Video Production (DMAP-02, DMAP-03)
+  ui_ux_design: [
+    {
+      youtubeId: 'c9Wg6Cb_YlU',
+      embedUrl: 'https://www.youtube.com/embed/c9Wg6Cb_YlU',
+      title: 'UI / UX Design Tutorial — Wireframe, Mockup & Design in Figma',
+      channel: 'Figma Tutorials',
+      durationMin: 25,
+      summary: 'Taking an app idea from wireframes to mockups and a polished high-fidelity design in Figma.',
+      tags: ['ui/ux', 'figma', 'wireframing', 'prototyping'],
+    },
+    {
+      youtubeId: 'YqQx75OPRa0',
+      embedUrl: 'https://www.youtube.com/embed/YqQx75OPRa0',
+      title: 'Beginning Graphic Design: Fundamentals',
+      channel: 'GCFLearnFree.org',
+      durationMin: 6,
+      summary: 'Core graphic design fundamentals: lines, shapes, form, texture, balance, and visual composition.',
+      tags: ['graphic design', 'composition', 'branding'],
+    },
+    {
+      youtubeId: 'O6ERELse_QY',
+      embedUrl: 'https://www.youtube.com/embed/O6ERELse_QY',
+      title: 'Advanced Video Editing Tutorial (Premiere Pro) — Editing from Start to Finish',
+      channel: 'Taran Van Hemert',
+      durationMin: 25,
+      summary: 'A professional editor’s full Premiere Pro workflow: organising footage, cutting for pacing, audio, and finishing.',
+      tags: ['video editing', 'premiere pro', 'post-production'],
     },
   ],
 
@@ -768,6 +1010,9 @@ export async function validateYouTubeVideo(videoId: string): Promise<boolean> {
 /**
  * Categorizes a program, academic level, and lesson to return the most relevant, verified educational video
  * with full UoPeople-style citation and learning expectation alignment.
+ *
+ * Uses strict program-first identity matching + word-boundary regexes so generic words
+ * like "content", "academic", "model", or "training" NEVER misroute a program's videos.
  */
 export function getCuratedVideoForLesson(params: {
   programName?: string;
@@ -790,7 +1035,11 @@ export function getCuratedVideoForLesson(params: {
     lessonIdx = 0,
   } = params;
 
+  const progIdentity = `${programName} ${programCode}`.toLowerCase();
   const combinedText = `${programName} ${programCode} ${schoolCode} ${moduleTitle} ${lessonTitle}`.toLowerCase();
+  const pCodeUpper = programCode.toUpperCase().trim();
+  const sCodeUpper = schoolCode.toUpperCase().trim();
+
   const lvlUpper = String(level).toUpperCase();
   const levelOffset = lvlUpper.includes('4') || lvlUpper.includes('SPEC') || lvlUpper.includes('MASTERY')
     ? 6
@@ -815,72 +1064,68 @@ export function getCuratedVideoForLesson(params: {
       programName,
     });
 
-  // 0. Digital Marketing, Creative Media, Copywriting & Content (DMAP)
+  const pickByIdx = (vids: VerifiedVideo[]) => wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % vids.length]);
+
+  // =========================================================================
+  // STAGE 1: AUTHORITATIVE PROGRAM TITLE / CODE MATCH (Highest Priority)
+  // Prevents lesson/module wording from hijacking a known program's domain!
+  // =========================================================================
+
+  // 1-PRE. Kids & Teens STEM Programs — SKT-01..06
+  // Checked FIRST so "Young Robotics" / "Young AI" never receive adult ROS2 / deep-learning videos.
   if (
-    combinedText.includes('marketing') ||
-    combinedText.includes('seo') ||
-    combinedText.includes('advertising') ||
-    combinedText.includes('copywriting') ||
-    combinedText.includes('social media') ||
-    combinedText.includes('content') ||
-    combinedText.includes('canva') ||
-    combinedText.includes('video ad') ||
-    combinedText.includes('funnel') ||
-    schoolCode.toUpperCase().includes('DMAP') ||
-    programCode.toUpperCase().startsWith('DMAP')
+    pCodeUpper.startsWith('SKT') ||
+    sCodeUpper === 'SKT' ||
+    /\b(kids?|teens?|junior|creative computing|creative coding|scratch|young web|young robotics|young ai|young entrepreneurs?)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.digital_marketing_content;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.kids_stem);
   }
 
-  // 1. Check for 3D Design, CAD, 3D Printing & Digital Fabrication
-  // MUST use word boundaries (\bcad\b) so 'academic' NEVER matches CAD!
+  // 1-PRE-b. Mobile Application Development — CSE-05
   if (
-    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*print|3d\s*printing|3d\s*model|cura|slicer|rioth-06)\b/i.test(combinedText) ||
-    (combinedText.includes('fabrication') && !combinedText.includes('textile')) ||
-    combinedText.includes('parametric') ||
-    combinedText.includes('caliper') ||
-    programCode.includes('RIOTH-06')
+    pCodeUpper === 'CSE-05' ||
+    /\b(mobile app|mobile application|flutter|react native|android development|ios development)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.cad_3d_fabrication;
-    if (combinedText.includes('print') || combinedText.includes('bed') || combinedText.includes('level') || combinedText.includes('layer')) {
-      return wrap(vids.find((v) => v.tags.includes('bed leveling')) || vids[3]);
-    }
-    if (combinedText.includes('toleran') || combinedText.includes('dimension') || combinedText.includes('clearance')) {
-      return wrap(vids.find((v) => v.tags.includes('tolerances')) || vids[5]);
-    }
-    if (combinedText.includes('export') || combinedText.includes('stl') || combinedText.includes('mesh')) {
-      return wrap(vids.find((v) => v.tags.includes('export')) || vids[1]);
-    }
-    if (combinedText.includes('assembly') || combinedText.includes('part') || combinedText.includes('fillet')) {
-      return wrap(vids.find((v) => v.tags.includes('assembly')) || vids[2]);
-    }
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return wrap(VERIFIED_VIDEO_CATALOG.web_software[6]);
   }
 
-  // 2. Computer Hardware Engineering, PC Architecture, Board-Level Repair & Diagnostics
-  // Checked strictly BEFORE robotics so Computer Hardware never defaults to Arduino!
+  // 1A. Internet of Things (IoT) — RIOTH-02
   if (
-    combinedText.includes('computer hardware') ||
-    combinedText.includes('hardware engineering') ||
-    (combinedText.includes('hardware') && !combinedText.includes('arduino') && !combinedText.includes('robot')) ||
-    combinedText.includes('motherboard') ||
-    combinedText.includes('esd') ||
-    combinedText.includes('multimeter') ||
-    combinedText.includes('post card') ||
-    combinedText.includes('power delivery') ||
-    combinedText.includes('power supply') ||
-    combinedText.includes('pc architecture') ||
-    combinedText.includes('ram') ||
-    combinedText.includes('chipset') ||
-    combinedText.includes('crimping') ||
-    combinedText.includes('storage') ||
-    combinedText.includes('pc build') ||
-    combinedText.includes('bios') ||
-    combinedText.includes('vrm') ||
-    combinedText.includes('solder')
+    pCodeUpper === 'RIOTH-02' ||
+    /\b(internet of things|iot|smart energy|re-05|rete-05|lorawan|mqtt)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.iot_connected_systems);
+  }
+
+  // 1B. Drone Technology & UAVs — RIOTH-07
+  if (
+    pCodeUpper === 'RIOTH-07' ||
+    /\b(drone|uav|quadcopter|aerial|ardupilot|pixhawk)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.drone_uav);
+  }
+
+  // 1C. Embedded Systems & Microcontrollers — RIOTH-03
+  if (
+    pCodeUpper === 'RIOTH-03' ||
+    /\b(embedded systems?|stm32|freertos|rtos|bare-metal|arm cortex)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.embedded_systems);
+  }
+
+  // 1D. Electronics, Digital Systems & PCB Design — RIOTH-04 / RETE-03
+  if (
+    pCodeUpper === 'RIOTH-04' ||
+    pCodeUpper === 'RETE-03' ||
+    /\b(electronics|digital systems|pcb design|electrical and electronics)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.electronics_engineering);
+  }
+
+  // 1E. Computer Hardware Engineering — RIOTH-05
+  if (
+    pCodeUpper === 'RIOTH-05' ||
+    /\b(computer hardware|hardware engineering|pc repair|motherboard)\b/i.test(progIdentity)
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.computer_hardware;
     const lessonLower = `${moduleTitle} ${lessonTitle}`.toLowerCase();
@@ -895,190 +1140,183 @@ export function getCuratedVideoForLesson(params: {
     if (lessonLower.includes('ram') || lessonLower.includes('memory')) return wrap(vids[2]);
     if (lessonLower.includes('motherboard') || lessonLower.includes('chipset')) return wrap(vids[1]);
     if (lessonLower.includes('esd') || lessonLower.includes('safety') || lessonLower.includes('workbench')) return wrap(vids[0]);
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % (vids.length - 1); // exclude index 11 (microcontroller) unless explicitly requested
-    return wrap(vids[idx]);
+    return wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % (vids.length - 1)]);
   }
 
-  // 2a. Robotics, Embedded Systems, IoT & Arduino
+  // 1F. 3D Design, CAD & Digital Fabrication — RIOTH-06
   if (
-    combinedText.includes('robot') ||
-    combinedText.includes('arduino') ||
-    combinedText.includes('embedded') ||
-    combinedText.includes('microcontroller') ||
-    combinedText.includes('iot') ||
-    combinedText.includes('sensor') ||
-    schoolCode.toUpperCase().includes('RIOTH') ||
-    programCode.toUpperCase().startsWith('RIOTH')
+    pCodeUpper === 'RIOTH-06' ||
+    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*design|3d\s*print|3d\s*printing|digital fabrication)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.robotics_hardware;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    const vids = VERIFIED_VIDEO_CATALOG.cad_3d_fabrication;
+    if (combinedText.includes('print') || combinedText.includes('bed') || combinedText.includes('slic') || combinedText.includes('layer')) {
+      return wrap(vids.find((v) => v.tags.includes('bed leveling')) || vids[3]);
+    }
+    if (combinedText.includes('toleran') || combinedText.includes('dimension') || combinedText.includes('clearance')) {
+      return wrap(vids.find((v) => v.tags.includes('tolerances')) || vids[5]);
+    }
+    if (combinedText.includes('export') || combinedText.includes('stl') || combinedText.includes('mesh')) {
+      return wrap(vids.find((v) => v.tags.includes('export')) || vids[1]);
+    }
+    if (combinedText.includes('assembly') || combinedText.includes('part') || combinedText.includes('fillet')) {
+      return wrap(vids.find((v) => v.tags.includes('assembly')) || vids[2]);
+    }
+    return pickByIdx(vids);
   }
 
-  // 2b. Electronics & Electrical Engineering
+  // 1G. Robotics & Automation — RIOTH-01
   if (
-    combinedText.includes('electronic') ||
-    combinedText.includes('electrical') ||
-    combinedText.includes('circuit') ||
-    combinedText.includes('transistor') ||
-    combinedText.includes('resistor') ||
-    combinedText.includes('pcb') ||
-    combinedText.includes('voltage') ||
-    combinedText.includes('current')
+    pCodeUpper === 'RIOTH-01' ||
+    /\b(robotics|mechatronics|ros2|autonomous robot)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.electronics_engineering;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.robotics_hardware);
   }
 
-  // 2c. Mathematics & Applied Industrial Mathematics
+  // 1H. Solar, Renewable Energy & Energy Storage — RETE-01..05
   if (
-    combinedText.includes('math') ||
-    combinedText.includes('calculus') ||
-    combinedText.includes('linear algebra') ||
-    combinedText.includes('matrix') ||
-    combinedText.includes('matrices') ||
-    combinedText.includes('vector') ||
-    combinedText.includes('fourier') ||
-    combinedText.includes('derivative') ||
-    combinedText.includes('integral') ||
-    combinedText.includes('differential') ||
-    combinedText.includes('statistics') ||
-    combinedText.includes('discrete')
+    pCodeUpper.startsWith('RETE') ||
+    sCodeUpper === 'RETE' ||
+    /\b(solar|renewable energy|photovoltaic|energy management|battery storage|microgrid)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.mathematics_applied;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.solar_energy);
   }
 
-  // 2d. Physics & Applied Physical Systems
+  // 1I. UI/UX, Graphic Design & Video Production — DMAP-02, DMAP-03 (and custom UI/UX programs)
   if (
-    combinedText.includes('physic') ||
-    combinedText.includes('mechanic') ||
-    combinedText.includes('newton') ||
-    combinedText.includes('kinematic') ||
-    combinedText.includes('dynamics') ||
-    combinedText.includes('optics') ||
-    combinedText.includes('thermodynamic')
+    pCodeUpper === 'DMAP-02' ||
+    pCodeUpper === 'DMAP-03' ||
+    /\b(ui\/ux|ui design|ux design|product design|graphic design|visual communication|video production|video editing)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.physics_applied;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.ui_ux_design);
   }
 
-  // 2e. Chemistry & Materials Science
+  // 1J. Digital Marketing, AI Content Creation & Productivity — DMAP-01, 04, 05, 06, 07
   if (
-    combinedText.includes('chem') ||
-    combinedText.includes('stoichiometry') ||
-    combinedText.includes('periodic table') ||
-    combinedText.includes('atomic') ||
-    combinedText.includes('molecule') ||
-    combinedText.includes('materials science')
+    pCodeUpper === 'DMAP-01' ||
+    pCodeUpper === 'DMAP-04' ||
+    pCodeUpper === 'DMAP-05' ||
+    pCodeUpper === 'DMAP-06' ||
+    pCodeUpper === 'DMAP-07' ||
+    /\b(marketing|digital marketing|content creation|copywriting|seo|paid ads|social media|ai productivity|ai for education)\b/i.test(progIdentity)
   ) {
-    const vids = VERIFIED_VIDEO_CATALOG.chemistry_science;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.digital_marketing_content);
   }
 
-  // 3. Renewable Energy & Solar Tech
+  // 1K. Data Analytics & Data Science — AIDM-01, AIDM-02
   if (
-    combinedText.includes('solar') ||
-    combinedText.includes('energy') ||
-    combinedText.includes('renewable') ||
-    combinedText.includes('photovoltaic') ||
-    combinedText.includes('inverter') ||
-    schoolCode.toUpperCase().includes('RETE') ||
-    programCode.toUpperCase().startsWith('RETE')
-  ) {
-    const vids = VERIFIED_VIDEO_CATALOG.solar_energy;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
-  }
-
-  // 4. Kids & Teens Track
-  if (
-    combinedText.includes('kid') ||
-    combinedText.includes('teen') ||
-    combinedText.includes('scratch') ||
-    combinedText.includes('block code') ||
-    schoolCode.toUpperCase().includes('SKT') ||
-    programCode.toUpperCase().startsWith('SKT')
-  ) {
-    const vids = VERIFIED_VIDEO_CATALOG.kids_stem;
-    return wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % vids.length]);
-  }
-
-  // 5. Cybersecurity & Cloud/DevOps
-  if (
-    combinedText.includes('cyber') ||
-    combinedText.includes('hack') ||
-    combinedText.includes('security') ||
-    combinedText.includes('penetration') ||
-    combinedText.includes('docker') ||
-    combinedText.includes('cloud') ||
-    combinedText.includes('devops')
-  ) {
-    const vids = VERIFIED_VIDEO_CATALOG.cyber_cloud;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
-  }
-
-  // 6. AI, Machine Learning, Deep Learning & Generative Media
-  if (
-    combinedText.includes('ai') ||
-    combinedText.includes('machine learning') ||
-    combinedText.includes('deep learning') ||
-    combinedText.includes('neural') ||
-    combinedText.includes('prompt') ||
-    combinedText.includes('llm') ||
-    combinedText.includes('gpt') ||
-    combinedText.includes('model') ||
-    schoolCode.toUpperCase().includes('AIDM') ||
-    programCode.toUpperCase().startsWith('AIDM')
-  ) {
-    const vids = VERIFIED_VIDEO_CATALOG.ai_machine_learning;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
-  }
-
-  // 7. Business, Startup, Venture & Entrepreneurship
-  if (
-    combinedText.includes('business') ||
-    combinedText.includes('startup') ||
-    combinedText.includes('venture') ||
-    combinedText.includes('entrepreneur') ||
-    combinedText.includes('pitch') ||
-    schoolCode.toUpperCase().includes('BIE') ||
-    schoolCode.toUpperCase().includes('ISL') ||
-    programCode.toUpperCase().startsWith('BIE') ||
-    programCode.toUpperCase().startsWith('ISL')
-  ) {
-    const vids = VERIFIED_VIDEO_CATALOG.business_innovation;
-    return wrap(vids[(levelOffset + weekIdx * 2 + lessonIdx) % vids.length]);
-  }
-
-  // 8. Python & Data Science
-  if (
-    combinedText.includes('python') ||
-    combinedText.includes('data science') ||
-    combinedText.includes('sql') ||
-    combinedText.includes('pandas') ||
-    combinedText.includes('database')
+    pCodeUpper === 'AIDM-01' ||
+    pCodeUpper === 'AIDM-02' ||
+    /\b(data analytics|data science|business intelligence|power bi|tableau|pandas|sql)\b/i.test(progIdentity)
   ) {
     const vids = VERIFIED_VIDEO_CATALOG.python_data;
-    const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-    return wrap(vids[idx]);
+    // For Data Science & Analytics, prefer NumPy/Pandas and SQL over basic Python syntax
+    const dsIdx = [3, 4, 1, 0][(weekIdx + lessonIdx) % 4];
+    return wrap(vids[dsIdx] || vids[3]);
   }
 
-  // 9. Default Web & Software Engineering
-  const vids = VERIFIED_VIDEO_CATALOG.web_software;
-  if (combinedText.includes('html')) return wrap(vids[0]);
-  if (combinedText.includes('css')) return wrap(vids[1]);
-  if (combinedText.includes('react')) return wrap(vids[3]);
-  if (combinedText.includes('node') || combinedText.includes('api') || combinedText.includes('backend')) return wrap(vids[5]);
-  if (combinedText.includes('flutter') || combinedText.includes('mobile')) return wrap(vids[6]);
+  // 1L. Artificial Intelligence, Machine Learning, Computer Vision & GenAI — AIDM-03..06
+  if (
+    pCodeUpper.startsWith('AIDM') ||
+    sCodeUpper === 'AIDM' ||
+    /\b(artificial intelligence|machine learning|deep learning|generative ai|computer vision|ai automation|neural network|llm)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.ai_machine_learning);
+  }
 
-  const idx = (levelOffset + weekIdx * 2 + lessonIdx) % vids.length;
-  return wrap(vids[idx]);
+  // 1M. Cybersecurity, Cloud Computing, DevOps & Networking — CSE-06, CSE-07
+  if (
+    pCodeUpper === 'CSE-06' ||
+    pCodeUpper === 'CSE-07' ||
+    /\b(cybersecurity|cyber security|ethical hacking|cloud computing|devops|networking|system administration|docker|kubernetes)\b/i.test(progIdentity)
+  ) {
+    const vids = VERIFIED_VIDEO_CATALOG.cyber_cloud;
+    // For Cloud Computing / DevOps specifically, prioritize Docker & Kubernetes over generic Cybersecurity
+    if (/\b(cloud|devops|docker|kubernetes|container)\b/i.test(progIdentity)) {
+      const cloudIdx = [2, 3, 4][(weekIdx + lessonIdx) % 3]; // Docker, Kubernetes, AWS Cloud
+      return wrap(vids[cloudIdx] || vids[2]);
+    }
+    return pickByIdx(vids);
+  }
+
+  // 1O. Business, Entrepreneurship, Startup & Innovation Labs — BIE-01..05, ISL-01..06
+  if (
+    pCodeUpper.startsWith('BIE') ||
+    pCodeUpper.startsWith('ISL') ||
+    sCodeUpper === 'BIE' ||
+    sCodeUpper === 'ISL' ||
+    /\b(entrepreneurship|business development|startup|venture|freelancing|e-commerce|innovation lab|product development)\b/i.test(progIdentity)
+  ) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.business_innovation);
+  }
+
+  // =========================================================================
+  // STAGE 2: LESSON / MODULE KEYWORD FALLBACK (For Custom Programs/Schools)
+  // Uses strict word boundaries so "content", "academic", "model", or "training" never misfire!
+  // =========================================================================
+  if (/\b(iot|internet of things|mqtt|esp32|lorawan|node-red|influxdb|smart sensor)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.iot_connected_systems);
+  }
+  if (/\b(drone|uav|quadcopter|pixhawk|ardupilot|betaflight)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.drone_uav);
+  }
+  if (/\b(stm32|freertos|rtos|bare-metal|arm cortex|i2c|spi|can bus)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.embedded_systems);
+  }
+  if (/\b(cad|autocad|fusion\s*360|solidworks|3d\s*print|3d\s*printing|slicer)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.cad_3d_fabrication);
+  }
+  if (/\b(motherboard|esd|post card|vrm|atx|pc build|bios|chip-level)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.computer_hardware);
+  }
+  if (/\b(robot|robotics|arduino|ros2|servo|kinematics|slam)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.robotics_hardware);
+  }
+  if (/\b(electronic|electrical|circuit|transistor|mosfet|pcb|kicad|oscilloscope)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.electronics_engineering);
+  }
+  if (/\b(solar|photovoltaic|renewable energy|inverter|mppt|lifepo4)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.solar_energy);
+  }
+  if (/\b(digital marketing|copywriting|seo|paid ads|social media marketing|content creation|ad creative)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.digital_marketing_content);
+  }
+  if (/\b(ui\/ux|figma|wireframe|graphic design|video editing|premiere pro|davinci resolve)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.ui_ux_design);
+  }
+  if (/\b(cybersecurity|cyber security|penetration testing|firewall|docker|kubernetes|devops)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.cyber_cloud);
+  }
+  if (/\b(machine learning|deep learning|artificial intelligence|neural network|pytorch|tensorflow|langchain|llm)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.ai_machine_learning);
+  }
+  if (/\b(python|data science|pandas|numpy|sql|power bi|tableau)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.python_data);
+  }
+  if (/\b(math|calculus|linear algebra|matrix|matrices|fourier|differential equation)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.mathematics_applied);
+  }
+  if (/\b(physics|classical mechanics|thermodynamics|electromagnetism)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.physics_applied);
+  }
+  if (/\b(chemistry|stoichiometry|periodic table|chemical bonding)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.chemistry_science);
+  }
+  if (/\b(startup|entrepreneurship|business model|venture capital|ecommerce|freelancing)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.business_innovation);
+  }
+  if (/\b(scratch|kids|teens|block coding|micro:bit)\b/i.test(combinedText)) {
+    return pickByIdx(VERIFIED_VIDEO_CATALOG.kids_stem);
+  }
+
+  // Default Web, Mobile & Full-Stack Software Engineering
+  const vids = VERIFIED_VIDEO_CATALOG.web_software;
+  if (/\b(flutter|react native|mobile app|android|ios)\b/i.test(combinedText)) return wrap(vids[6]);
+  if (/\b(node\.?js|express|rest api|backend|graphql)\b/i.test(combinedText)) return wrap(vids[5]);
+  if (/\b(react|next\.?js|frontend|jsx)\b/i.test(combinedText)) return wrap(vids[3]);
+  if (/\b(c\+\+|pointers|systems programming)\b/i.test(combinedText)) return wrap(vids[7]);
+  if (/\b(html|html5)\b/i.test(combinedText)) return wrap(vids[0]);
+  if (/\b(css|flexbox|tailwind)\b/i.test(combinedText)) return wrap(vids[1]);
+
+  return pickByIdx(vids);
 }
 

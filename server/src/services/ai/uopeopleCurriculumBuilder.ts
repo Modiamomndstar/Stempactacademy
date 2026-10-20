@@ -1,5 +1,6 @@
 import { getCuratedVideoForLesson } from '../verifiedVideoRegistry.js';
 import { normalizeAcademicLevel } from './types.js';
+import { EXTENDED_DOMAIN_THEMES } from './extendedDomainThemes.js';
 
 export interface QuizQuestionItem {
   id: string;
@@ -141,92 +142,147 @@ interface UnitBlueprint {
 }
 
 export function resolveDomainKey(title: string, schoolCode: string = '', keywords: string = ''): string {
-  const t = `${title} ${schoolCode} ${keywords}`.toLowerCase();
+  const titleLow = (title || '').toLowerCase().trim();
+  const schoolLow = (schoolCode || '').toUpperCase().trim();
+  const keywordsLow = (keywords || '').toLowerCase();
 
-  // 1. Digital Marketing, Content Creation, Creative Media & DMAP
-  // Checked first to ensure marketing programs are never misrouted
+  // =========================================================================
+  // STAGE 1: AUTHORITATIVE TITLE & PROGRAM CODE MATCH (Highest Priority)
+  // Ensures existing and custom program titles are matched unambiguously FIRST
+  // =========================================================================
+
+  // 1A. Kids & Teens STEM Programs (Checked first so 'Young AI' / 'Young Robotics' never route to adult tracks)
   if (
-    t.includes('marketing') ||
-    t.includes('seo') ||
-    t.includes('advertising') ||
-    t.includes('copywriting') ||
-    t.includes('content') ||
-    t.includes('social media') ||
-    t.includes('digital media') ||
-    t.includes('creative media') ||
-    t.includes('dmap') ||
-    t.includes('funnel') ||
-    t.includes('campaign')
+    schoolLow === 'SKT' ||
+    /\b(kids?|teens?|junior|scratch|creative computing|creative coding|young web|young robotics|young ai|young entrepreneurs?)\b/i.test(titleLow)
   ) {
-    return 'content';
+    return 'junior';
   }
 
-  // 2. 3D Design, CAD, 3D Printing & Digital Fabrication
-  // MUST use word boundaries (\bcad\b) so that 'academic' NEVER matches 'cad'!
+  // 1B. Internet of Things (IoT) — RIOTH-02, Smart Energy IoT
   if (
-    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*print|3d\s*printing|3d\s*model|cura|slicer|rioth-06)\b/i.test(t) ||
-    (t.includes('fabricat') && !t.includes('textile')) ||
-    (t.includes('3d') && (t.includes('mesh') || t.includes('stl') || t.includes('g-code') || t.includes('extrusion')))
+    /\b(internet of things|iot|lorawan|mqtt|smart connected|smart agriculture|smart grid)\b/i.test(titleLow)
+  ) {
+    return 'iot';
+  }
+
+  // 1C. Drone Technology & UAVs — RIOTH-07
+  if (
+    /\b(drone|uav|quadcopter|aerial robotics|ardupilot|pixhawk|aviation)\b/i.test(titleLow)
+  ) {
+    return 'drone_uav';
+  }
+
+  // 1D. Embedded Systems & Microcontrollers — RIOTH-03
+  if (
+    /\b(embedded systems?|stm32|freertos|rtos|microcontrollers?|bare-metal|arm cortex)\b/i.test(titleLow)
+  ) {
+    return 'embedded';
+  }
+
+  // 1E. Electronics, Digital Systems & PCB Design — RIOTH-04 / RETE-03
+  if (
+    /\b(electronics and digital|electronic systems|pcb design|kicad|analog circuits|digital circuits|electrical and electronics)\b/i.test(titleLow)
+  ) {
+    return 'electronics_pcb';
+  }
+
+  // 1F. Computer Hardware Engineering & Diagnostics — RIOTH-05
+  if (
+    /\b(computer hardware|hardware engineering|pc repair|motherboard diagnostics|chip-level repair)\b/i.test(titleLow)
+  ) {
+    return 'computer_hardware';
+  }
+
+  // 1G. 3D Design, CAD & Digital Fabrication — RIOTH-06
+  if (
+    /\b(cad|autocad|fusion\s*360|solidworks|3d\s*design|3d\s*print|3d\s*printing|digital fabrication|rapid prototyping)\b/i.test(titleLow)
   ) {
     return 'cad_3d_fabrication';
   }
 
-  // 3. Computer Hardware Engineering (checked BEFORE robotics)
+  // 1H. Robotics & Automation — RIOTH-01
   if (
-    t.includes('computer hardware') ||
-    t.includes('hardware engineering') ||
-    t.includes('pc repair') ||
-    t.includes('motherboard') ||
-    (t.includes('hardware') && !t.includes('arduino') && !t.includes('robot'))
-  ) {
-    return 'computer_hardware';
-  }
-  if (
-    t.includes('machine learning') ||
-    t.includes('artificial intelligence') ||
-    t.includes('aiml') ||
-    t.includes('data science') ||
-    t.includes('neural') ||
-    t.includes('saiml') ||
-    t.includes('aidm')
-  ) {
-    return 'aiml';
-  }
-  if (
-    t.includes('robot') ||
-    t.includes('iot') ||
-    t.includes('arduino') ||
-    t.includes('embedded') ||
-    t.includes('microcontroller') ||
-    t.includes('srih') ||
-    t.includes('rioth')
+    /\b(robotics|mechatronics|ros2|autonomous mobile|autonomous robots?)\b/i.test(titleLow)
   ) {
     return 'robotics';
   }
-  if (t.includes('electronic') || t.includes('electrical') || t.includes('pcb') || t.includes('circuit')) {
-    return 'electronics';
-  }
-  if (t.includes('solar') || t.includes('energy') || t.includes('renewable') || t.includes('photovoltaic') || t.includes('sret') || t.includes('rete')) {
+
+  // 1I. Solar Installation, Renewable Energy & Energy Storage — RETE-01..05
+  if (
+    schoolLow === 'RETE' ||
+    /\b(solar|renewable energy|photovoltaic|energy storage|battery management|microgrids?)\b/i.test(titleLow)
+  ) {
     return 'solar';
   }
-  if (t.includes('cyber') || t.includes('security') || t.includes('network defense') || t.includes('penetration') || t.includes('devops')) {
+
+  // 1J. Digital Marketing, AI Content Creation & Growth — DMAP-01, 04, 05, 06, 07
+  // Notice: We strictly match explicit marketing phrases, NEVER bare "content"!
+  if (
+    schoolLow === 'DMAP' ||
+    /\b(digital marketing|ai content|content creation|copywriting|seo|paid advertising|meta ads|social media marketing|ai productivity|ai for education)\b/i.test(titleLow)
+  ) {
+    return 'content';
+  }
+
+  // 1K. Data Analytics & Business Intelligence — AIDM-01, AIDM-02
+  if (
+    /\b(data analytics|business intelligence|power bi|data analysis|data insights|tableau)\b/i.test(titleLow)
+  ) {
+    return 'data_science';
+  }
+
+  // 1L. Artificial Intelligence, Machine Learning & Computer Vision — AIDM-03..06
+  if (
+    schoolLow === 'AIDM' ||
+    /\b(artificial intelligence|machine learning|deep learning|data science|generative ai|computer vision|ai automation|neural networks?|llm)\b/i.test(titleLow)
+  ) {
+    return 'aiml';
+  }
+
+  // 1M. Cybersecurity, Cloud Computing, DevOps & Systems — CSE-05..07
+  if (
+    /\b(cybersecurity|cyber security|ethical hacking|cloud computing|devops|networking|system administration|docker|kubernetes)\b/i.test(titleLow)
+  ) {
     return 'cyber_cloud';
   }
-  if (t.includes('business') || t.includes('startup') || t.includes('venture') || t.includes('sbie') || t.includes('bie') || t.includes('entrepreneur') || t.includes('isl')) {
+
+  // 1N. Business, Entrepreneurship, Startup & Innovation Labs — BIE-01..05, ISL-01..06
+  if (
+    schoolLow === 'BIE' ||
+    schoolLow === 'ISL' ||
+    /\b(entrepreneurship|business development|startup|venture|freelancing|e-commerce|innovation lab|product development|hackathon)\b/i.test(titleLow)
+  ) {
     return 'business';
   }
-  if (t.includes('kid') || t.includes('junior') || t.includes('teen') || t.includes('scratch') || t.includes('skt')) {
-    return 'junior';
+
+  // 1O. Full-Stack Software Engineering & Web Development — CSE-01..04
+  if (
+    schoolLow === 'CSE' ||
+    /\b(software engineering|software development|web development|full-stack|fullstack|frontend|backend|python|javascript|typescript|mobile app)\b/i.test(titleLow)
+  ) {
+    return 'software';
   }
-  if (t.includes('math') || t.includes('calculus') || t.includes('linear algebra') || t.includes('statistics')) {
-    return 'mathematics';
-  }
-  if (t.includes('physic') || t.includes('mechanics') || t.includes('kinematics')) {
-    return 'physics';
-  }
-  if (t.includes('chem') || t.includes('stoichiometry') || t.includes('materials')) {
-    return 'chemistry';
-  }
+
+  // =========================================================================
+  // STAGE 2: SECONDARY KEYWORDS MATCH (Fallback for Custom / Unfamiliar Titles)
+  // Strict word boundaries prevent "content" or "academic" from hijacking classification
+  // =========================================================================
+  if (/\b(scratch|micro:bit|kids|teens)\b/i.test(keywordsLow)) return 'junior';
+  if (/\b(iot|internet of things|mqtt|esp32|lorawan)\b/i.test(keywordsLow)) return 'iot';
+  if (/\b(drone|uav|quadcopter|ardupilot)\b/i.test(keywordsLow)) return 'drone_uav';
+  if (/\b(embedded|freertos|stm32|arm cortex|microcontroller)\b/i.test(keywordsLow)) return 'embedded';
+  if (/\b(cad|fusion 360|solidworks|3d print|slicing)\b/i.test(keywordsLow)) return 'cad_3d_fabrication';
+  if (/\b(motherboard|esd|post card|vrm|chip-level)\b/i.test(keywordsLow)) return 'computer_hardware';
+  if (/\b(robot|robotics|ros2|kinematics)\b/i.test(keywordsLow)) return 'robotics';
+  if (/\b(pcb|kicad|oscilloscope|transistor|circuits?)\b/i.test(keywordsLow)) return 'electronics_pcb';
+  if (/\b(solar|photovoltaic|inverter|mppt|lifepo4)\b/i.test(keywordsLow)) return 'solar';
+  if (/\b(digital marketing|copywriting|seo|paid ads|ad creative)\b/i.test(keywordsLow)) return 'content';
+  if (/\b(data analytics|business intelligence|power bi|sql|pandas)\b/i.test(keywordsLow)) return 'data_science';
+  if (/\b(machine learning|deep learning|neural|pytorch|tensorflow|llm)\b/i.test(keywordsLow)) return 'aiml';
+  if (/\b(cybersecurity|firewall|devops|docker|kubernetes|aws)\b/i.test(keywordsLow)) return 'cyber_cloud';
+  if (/\b(startup|business model|venture|entrepreneur|pitch)\b/i.test(keywordsLow)) return 'business';
+
   return 'software';
 }
 
@@ -241,8 +297,9 @@ function getDomainLevelUnitBlueprints(
 ): UnitBlueprint[] {
   const lvlNum = levelCode.includes('4') ? 4 : levelCode.includes('3') ? 3 : levelCode.includes('2') ? 2 : 1;
 
-  // Domain-specific catalog of progressive themes per level
+  // Domain-specific catalog of progressive themes per level, augmented with full extended catalogs
   const domainThemes: Record<string, Record<number, Array<{ theme: string; l1: string; l2: string; deliverable: string }>>> = {
+    ...EXTENDED_DOMAIN_THEMES,
     computer_hardware: {
       1: [
         {

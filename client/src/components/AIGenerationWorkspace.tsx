@@ -285,6 +285,31 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            {/* Quick Curriculum Highlight Card */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 dark:from-slate-800 dark:to-slate-850 border border-emerald-200/80 dark:border-slate-700 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                  {(draft.modules || []).length}W
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    Full {(draft.modules || []).length}-Week Syllabus & Interactive Units Generated
+                  </h4>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    Includes {(draft.modules || []).reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0)} video-anchored lessons, weekly knowledge check quizzes, and hands-on lab projects.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('modules')}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <span>Inspect Modules & Videos</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-4">
                 <div>
@@ -440,7 +465,7 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
 
             <div className="grid grid-cols-1 gap-4">
               {(draft.modules || []).map((mod: any, idx: number) => {
-                const isExpanded = !!expandedModules[idx];
+                const isExpanded = expandedModules[idx] !== false;
                 const weekLabel = String(mod.weekNumber).toLowerCase().includes('intro') || mod.weekNumber === 0
                   ? 'Intro'
                   : `W${mod.weekNumber || idx + 1}`;
@@ -548,6 +573,13 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
                                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed pl-7">
                                     {lesson.contentSummary || (lesson.content ? lesson.content.slice(0, 160) + '...' : 'Comprehensive instructional guide covering core mechanics, toolchains, and real-world implementation.')}
                                   </p>
+
+                                  {lesson.videoSummary && (
+                                    <div className="text-[10px] text-slate-600 dark:text-slate-400 pl-7 flex items-start gap-1.5 pt-0.5">
+                                      <Play className="w-3 h-3 text-rose-600 shrink-0 mt-0.5" />
+                                      <span><strong className="text-slate-700 dark:text-slate-300">Curated Video Lecture:</strong> {lesson.videoSummary}</span>
+                                    </div>
+                                  )}
 
                                   {lesson.practicalActivities && lesson.practicalActivities.length > 0 && (
                                     <div className="pt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium pl-7">

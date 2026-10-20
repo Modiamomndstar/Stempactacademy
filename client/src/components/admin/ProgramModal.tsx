@@ -90,8 +90,61 @@ export const ProgramModal: React.FC<ProgramModalProps> = ({
   // Status & Feedback
   const [submitting, setSubmitting] = useState(false);
   const [curatingVideos, setCuratingVideos] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const handleGenerateSummary = async () => {
+    if (!name.trim()) {
+      setError('Please provide a Program Name first before generating summary.');
+      return;
+    }
+    setGeneratingSummary(true);
+    setError('');
+    try {
+      const res = await api.generateProgramSummary({
+        domain: name,
+        academicLevel: 'LEVEL_1_FOUNDATION',
+        keywords: `${tools} ${award}`,
+      });
+      if (res?.summary) {
+        setDescription(res.summary);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate program summary.');
+    } finally {
+      setGeneratingSummary(false);
+    }
+  };
+
+  const handleAutoFillAllMeta = async () => {
+    if (!name.trim()) {
+      setError('Please provide a Program Name first.');
+      return;
+    }
+    setAutoFilling(true);
+    setError('');
+    try {
+      const targetSchool = schools.find((s) => s.id === schoolId);
+      const res = await api.autofillProgramMeta({
+        domain: name,
+        academicLevel: 'LEVEL_1_FOUNDATION',
+        schoolCode: targetSchool?.code,
+        programCode: code,
+      });
+      if (res?.meta) {
+        if (res.meta.description && !description) setDescription(res.meta.description);
+        if (res.meta.targetAudience) setTargetLearner(res.meta.targetAudience);
+        if (res.meta.keywords) setTools(res.meta.keywords);
+        if (res.meta.specialInstructions) setCapstone(res.meta.specialInstructions);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to auto-fill program metadata.');
+    } finally {
+      setAutoFilling(false);
+    }
+  };
 
   useEffect(() => {
     if (programToEdit) {
@@ -370,6 +423,22 @@ export const ProgramModal: React.FC<ProgramModalProps> = ({
           {/* TAB 1: IDENTITY & FACULTY */}
           {activeTab === 'identity' && (
             <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/80 border border-blue-200/70 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">AI Program Metadata Assistant</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoFillAllMeta}
+                  disabled={autoFilling}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-700 shadow-xs border border-indigo-200 dark:border-indigo-600 hover:bg-indigo-50 transition cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles className={`w-3 h-3 ${autoFilling ? 'animate-spin' : ''}`} />
+                  <span>{autoFilling ? 'Analyzing...' : 'Auto-Fill from Program Name'}</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-700 dark:text-slate-200">
@@ -457,12 +526,23 @@ export const ProgramModal: React.FC<ProgramModalProps> = ({
 
               {/* Description */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 dark:text-slate-200">
-                  Program Overview & Executive Summary
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-200">
+                    Program Overview & Executive Summary
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateSummary}
+                    disabled={generatingSummary}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 px-2.5 py-1 rounded-lg border border-indigo-200/80 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${generatingSummary ? 'animate-spin' : ''}`} />
+                    <span>{generatingSummary ? 'AI Drafting...' : 'AI Generate Summary'}</span>
+                  </button>
+                </div>
                 <textarea
-                  rows={3}
-                  placeholder="Outline the core objective, industry relevance, and high-level training roadmap..."
+                  rows={4}
+                  placeholder="Outline the core objective, industry relevance, pedagogical methodology, and high-level training roadmap..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
