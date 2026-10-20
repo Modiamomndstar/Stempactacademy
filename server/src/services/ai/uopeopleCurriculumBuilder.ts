@@ -225,7 +225,28 @@ export function resolveDomainKey(title: string, schoolCode: string = '', keyword
     return 'content';
   }
 
-  // 1K. Data Analytics & Business Intelligence — AIDM-01, AIDM-02
+  // 1K-1. Python for Data Analytics & Machine Learning (AIDM)
+  if (
+    /\b(python)\b/i.test(titleLow) &&
+    /\b(data|analytics|machine learning|pandas|numpy|scikit|model|deep learning)\b/i.test(titleLow)
+  ) {
+    return 'python_data_ai';
+  }
+
+  // 1K-2. Python for Software Development & Backend Web Engineering (CSE)
+  if (
+    /\b(python)\b/i.test(titleLow) &&
+    /\b(software|developer|development|backend|web|django|flask|fastapi|api|programming|full-stack|fullstack)\b/i.test(titleLow)
+  ) {
+    return 'python_software';
+  }
+
+  // If title is specifically Python Programming or Learn Python
+  if (/\b(python programming|python fundamentals|learn python|mastering python)\b/i.test(titleLow)) {
+    return 'python_software';
+  }
+
+  // 1K-3. Data Analytics & Business Intelligence — AIDM-01, AIDM-02
   if (
     /\b(data analytics|business intelligence|power bi|data analysis|data insights|tableau)\b/i.test(titleLow)
   ) {
@@ -282,6 +303,9 @@ export function resolveDomainKey(title: string, schoolCode: string = '', keyword
   if (/\b(machine learning|deep learning|neural|pytorch|tensorflow|llm)\b/i.test(keywordsLow)) return 'aiml';
   if (/\b(cybersecurity|firewall|devops|docker|kubernetes|aws)\b/i.test(keywordsLow)) return 'cyber_cloud';
   if (/\b(startup|business model|venture|entrepreneur|pitch)\b/i.test(keywordsLow)) return 'business';
+  if (/\b(python)\b/i.test(keywordsLow) && /\b(data|pandas|analytics|machine learning|numpy|scikit)\b/i.test(keywordsLow)) return 'python_data_ai';
+  if (/\b(python)\b/i.test(keywordsLow) && /\b(django|flask|fastapi|backend|software|api|oop)\b/i.test(keywordsLow)) return 'python_software';
+  if (/\b(python)\b/i.test(keywordsLow)) return 'python_software';
 
   return 'software';
 }
@@ -650,12 +674,15 @@ function getDomainLevelUnitBlueprints(
 
   const selectedDomain = domainThemes[domainKey];
   const primaryTemplates = selectedDomain ? selectedDomain[lvlNum] || selectedDomain[1] || [] : [];
+  // Strictly prevent advanced levels (2, 3, 4) from borrowing Level 1 beginner units!
   const nextTierTemplates = selectedDomain
-    ? [
-        ...(selectedDomain[lvlNum < 4 ? lvlNum + 1 : 3] || []),
-        ...(selectedDomain[lvlNum < 3 ? lvlNum + 2 : 2] || []),
-        ...(selectedDomain[lvlNum === 1 ? 4 : 1] || []),
-      ]
+    ? (lvlNum === 1
+        ? [...(selectedDomain[2] || []), ...(selectedDomain[3] || [])]
+        : lvlNum === 2
+        ? [...(selectedDomain[3] || []), ...(selectedDomain[4] || [])]
+        : lvlNum === 3
+        ? [...(selectedDomain[4] || []), ...(selectedDomain[2] || [])]
+        : [...(selectedDomain[3] || [])])
     : [];
 
   // Deduplicate templates by theme so no two units in the same course ever repeat a title
@@ -668,50 +695,173 @@ function getDomainLevelUnitBlueprints(
     }
   }
 
-  const progressiveFallbackThemes = [
-    {
-      theme: `${programTitle} Foundations, Architecture & Toolchain Setup`,
-      l1: `Core Principles, Industry Standards & System Architecture of ${programTitle}`,
-      l2: `Workstation Setup, Safety Guardrails & Baseline Practical Verification`,
-      deliverable: `Baseline Architecture Diagram & Environment Verification Report`,
-    },
-    {
-      theme: `Core Subsystem Implementation, Data/Signal Flow & Component Integration`,
-      l1: `Designing and Implementing Core Functional Modules in ${programTitle}`,
-      l2: `Interfacing Subsystems, Signal/Data Validation & Guided Laboratory Build`,
-      deliverable: `Working Core Subsystem Prototype & Integration Test Log`,
-    },
-    {
-      theme: `Diagnostic Instrumentation, Debugging Workflows & Performance Measurement`,
-      l1: `Systematic Fault Isolation, Instrumentation Probing & Error Tracing`,
-      l2: `Stress-Testing, Telemetry Capture & Bottleneck Resolution`,
-      deliverable: `Diagnostic Root-Cause Analysis Report & Calibrated Measurement Log`,
-    },
-    {
-      theme: `Advanced Multi-Module Integration, Automation & Reliability Engineering`,
-      l1: `Orchestrating Multi-Component Workflows & Automated Quality Gates`,
-      l2: `Fault-Tolerant Design Patterns, Redundancy & Edge-Case Handling`,
-      deliverable: `Integrated Multi-Module System & Automated Verification Suite`,
-    },
-    {
-      theme: `Security Hardening, Preventive Maintenance & Operational Governance`,
-      l1: `Vulnerability Auditing, Safety Compliance & Preventive Maintenance Protocols`,
-      l2: `Standard Operating Procedures (SOPs), Service Level Agreements & Documentation`,
-      deliverable: `Security & Compliance Audit Checklist and Preventive Maintenance SOP`,
-    },
-    {
-      theme: `Production Optimization, Commercial Packaging & Pre-Capstone Synthesis`,
-      l1: `End-to-End Performance Tuning, Cost/Efficiency Optimization & Packaging`,
-      l2: `Pre-Capstone System Integration, Peer Design Review & Defense Preparation`,
-      deliverable: `Production-Optimized System Package & Pre-Capstone Readiness Brief`,
-    },
-    {
-      theme: `Enterprise Scaling, Field Deployment & Industry Case Study Analysis`,
-      l1: `Deploying Systems at Scale in Nigerian and Global Enterprise Environments`,
-      l2: `Post-Deployment Telemetry Monitoring, Incident Response & Lifecycle Management`,
-      deliverable: `Enterprise Field Deployment Blueprint & Lifecycle Operations Plan`,
-    },
-  ];
+  // Level-differentiated progressive fallbacks: guarantees Level 4 never gets Level 1 beginner fallbacks!
+  const getLevelFallbackThemes = (lvl: number) => {
+    if (lvl === 4) {
+      return [
+        {
+          theme: `${programTitle} Enterprise Systems Architecture & High-Availability SLAs`,
+          l1: `Architectural Principles, Fault Tolerance & Enterprise SLAs for ${programTitle}`,
+          l2: `High-Availability Multi-Region Deployment, Load Balancing & Zero-Downtime Migration`,
+          deliverable: `Enterprise High-Availability Architecture Specification & SLA Compliance Dossier`,
+        },
+        {
+          theme: `${programTitle} Production Observability, Automated CI/CD & Security Hardening`,
+          l1: `Continuous Delivery: Automated Testing Pipelines, Security Linting & Artifact Signing`,
+          l2: `Production Telemetry: Distributed Tracing, Real-Time Alerting & Incident Runbooks`,
+          deliverable: `Production Automated Deployment Pipeline & Telemetry Monitoring Dashboard Suite`,
+        },
+        {
+          theme: `${programTitle} High-Concurrency Optimization & Extreme Load Scaling`,
+          l1: `Profiling System Bottlenecks, Memory Footprints & Asynchronous Event Processing`,
+          l2: `Distributed Caching Strategies, Database Connection Pooling & Latency Optimization`,
+          deliverable: `System Stress-Testing Benchmark Report Demonstrating 5x Throughput Improvement`,
+        },
+        {
+          theme: `${programTitle} Enterprise Governance, Regulatory Compliance & Team Workflows`,
+          l1: `Security Auditing, OWASP Hardening, Role-Based Access Control & Compliance Standards`,
+          l2: `Collaborative Code Governance, Architectural Review Protocols & Technical Mentorship`,
+          deliverable: `Comprehensive Enterprise Compliance Audit & Production Runbook Documentation`,
+        },
+        {
+          theme: `${programTitle} Production Capstone Architecture & Defense Brief`,
+          l1: `Integrating Production-Grade Systems with End-to-End Enterprise Requirements`,
+          l2: `Peer System Architecture Review, Code Quality Gates & Deployment Verification`,
+          deliverable: `Production-Grade System Architecture Blueprint Ready for Defense`,
+        },
+        {
+          theme: `${programTitle} Industry Portfolio Showcase & Technical Hire-Readiness`,
+          l1: `Structuring Enterprise Engineering Portfolios, Live Demonstration & Technical Writing`,
+          l2: `Senior Engineering Interview Defense, System Design Review & Career Readiness`,
+          deliverable: `Hire-Ready Professional Portfolio Package with Live Deployment and Defense Deck`,
+        },
+      ];
+    }
+
+    if (lvl === 3) {
+      return [
+        {
+          theme: `${programTitle} Advanced Systems Modeling & Distributed Frameworks`,
+          l1: `Advanced Framework Architecture, Component Lifecycles & Design Patterns in ${programTitle}`,
+          l2: `Designing Modular Multi-Layer Systems with Decoupled Service Boundaries`,
+          deliverable: `Modular Multi-Layer System Architecture Blueprint & Interface Contract Specs`,
+        },
+        {
+          theme: `${programTitle} Relational Data Persistence, Schema Engineering & ORM Optimization`,
+          l1: `Relational Data Modeling, Normalization, Complex Entity Relationships & Migrations`,
+          l2: `Query Optimization, Database Indexing, Connection Pools & Mitigating N+1 Query Traps`,
+          deliverable: `Production-Grade Relational Schema and Benchmark-Optimized Query Layer`,
+        },
+        {
+          theme: `${programTitle} Asynchronous Messaging, Task Queues & Event-Driven Workflows`,
+          l1: `Event-Driven Architecture: Message Brokers, Pub/Sub Patterns & Background Task Queues`,
+          l2: `Worker Orchestration: Scheduled Periodic Jobs, Task Retries & Idempotent Handlers`,
+          deliverable: `Asynchronous Background Worker Pipeline with Broker Integration and Error Handling`,
+        },
+        {
+          theme: `${programTitle} Multi-Tier Testing: Unit, Integration & End-to-End Test Automation`,
+          l1: `Automated Test Suites: Mocking External Dependencies, Fixtures & Regression Assertions`,
+          l2: `Integration Testing: Testing Database Transactions, Service APIs & Coverage Profiling`,
+          deliverable: `Comprehensive Automated Test Suite Achieving Over 85% Code Coverage Verification`,
+        },
+        {
+          theme: `${programTitle} Containerization & Multi-Service Environment Orchestration`,
+          l1: `Writing Production Container Specifications, Dependency Isolation & Environment Security`,
+          l2: `Orchestrating Multi-Container Services with Networking, Volumes & Health Checks`,
+          deliverable: `Multi-Container Orchestration Environment with Automated Health Verification`,
+        },
+        {
+          theme: `${programTitle} Advanced Capstone Synthesis & Architectural Design Review`,
+          l1: `Synthesizing Multi-Service Systems into a Cohesive Production Architecture`,
+          l2: `Architectural Review, Performance Benchmarking & Pre-Defense Preparation`,
+          deliverable: `Advanced Architectural System Package with Comprehensive Documentation`,
+        },
+      ];
+    }
+
+    if (lvl === 2) {
+      return [
+        {
+          theme: `${programTitle} Algorithmic Data Structures, Core Protocols & Logic Architecture`,
+          l1: `Core Data Structures, Time/Space Efficiency & Algorithmic Problem Solving in ${programTitle}`,
+          l2: `Network & Application Protocols: Request-Response Lifecycles, Client/Server Mechanics & Sockets`,
+          deliverable: `Benchmarked Algorithm Suite & Protocol Inspection Test Log`,
+        },
+        {
+          theme: `${programTitle} Modular Service Architecture & RESTful API Engineering`,
+          l1: `RESTful Architecture: Resource URIs, HTTP Verbs, Status Codes & Data Contracts`,
+          l2: `Implementing Modular Route Handlers, Request Payload Parsing & Schema Validation`,
+          deliverable: `Modular Production REST Service with Strict Data Schema Validation`,
+        },
+        {
+          theme: `${programTitle} Web Security Essentials, Authentication & Session Defense`,
+          l1: `Security Fundamentals: TLS/SSL Handshakes, CORS Policies, Headers & Token Authentication`,
+          l2: `Defensive Programming: Input Sanitization, Role-Based Access Guards & Error Handling`,
+          deliverable: `Authenticated API Service with Cryptographic Verification and Defensive Middleware`,
+        },
+        {
+          theme: `${programTitle} Subsystem Integration, Automated Testing & Diagnostic Tracing`,
+          l1: `Subsystem Wiring: Interfacing Internal Modules, State Management & Diagnostic Logging`,
+          l2: `Automated Test Fixtures: Unit Testing, Mock Assertions & Runtime Error Diagnostics`,
+          deliverable: `Integrated Multi-Module Subsystem with Automated Unit and Diagnostic Test Logs`,
+        },
+        {
+          theme: `${programTitle} Database Connectivity, CRUD Operations & Data Serialization`,
+          l1: `Connecting Applications to Relational Datastores, Connection Lifecycles & Parametric Queries`,
+          l2: `Data Serialization: JSON/Binary Schemas, Structured Query Output & Model Mapping`,
+          deliverable: `Working Database Data Access Layer with Verified CRUD Functionality`,
+        },
+        {
+          theme: `${programTitle} Applied Intermediate Milestone & Practical Portfolio Showcase`,
+          l1: `Integrating Intermediate Subsystems into a Working Functional Prototype`,
+          l2: `Code Quality Verification, Refactoring Best Practices & Documentation Standards`,
+          deliverable: `Functional Intermediate Prototype Package with Source Code and Verification Report`,
+        },
+      ];
+    }
+
+    // Level 1: Foundations
+    return [
+      {
+        theme: `${programTitle} Foundations, Architecture & Toolchain Setup`,
+        l1: `Core Principles, Industry Standards & System Architecture of ${programTitle}`,
+        l2: `Workstation Setup, Safety Guardrails & Baseline Practical Verification`,
+        deliverable: `Baseline Architecture Diagram & Environment Verification Report`,
+      },
+      {
+        theme: `${programTitle} Core Subsystem Implementation & Component Workflows`,
+        l1: `Designing and Implementing Core Functional Modules in ${programTitle}`,
+        l2: `Interfacing Subsystems, Signal/Data Validation & Guided Laboratory Build`,
+        deliverable: `Working Core Subsystem Prototype & Integration Test Log`,
+      },
+      {
+        theme: `${programTitle} Diagnostic Instrumentation, Debugging Workflows & Precision Testing`,
+        l1: `Systematic Fault Isolation, Instrumentation Probing & Error Tracing`,
+        l2: `Stress-Testing, Telemetry Capture & Bottleneck Resolution`,
+        deliverable: `Diagnostic Root-Cause Analysis Report & Calibrated Measurement Log`,
+      },
+      {
+        theme: `${programTitle} Multi-Module Integration, Automation & Quality Verification`,
+        l1: `Orchestrating Multi-Component Workflows & Automated Quality Gates`,
+        l2: `Fault-Tolerant Design Patterns, Redundancy & Edge-Case Handling`,
+        deliverable: `Integrated Multi-Module System & Automated Verification Suite`,
+      },
+      {
+        theme: `${programTitle} Security Hardening, Preventive Maintenance & Standard Operating Procedures`,
+        l1: `Vulnerability Auditing, Safety Compliance & Preventive Maintenance Protocols`,
+        l2: `Standard Operating Procedures (SOPs), Service Level Agreements & Documentation`,
+        deliverable: `Security & Compliance Audit Checklist and Preventive Maintenance SOP`,
+      },
+      {
+        theme: `${programTitle} Foundation Capstone Synthesis & Practical Portfolio Demonstration`,
+        l1: `End-to-End Performance Tuning, Cost/Efficiency Optimization & Packaging`,
+        l2: `Pre-Capstone System Integration, Peer Design Review & Defense Preparation`,
+        deliverable: `Foundation Capstone System Package & Readiness Brief`,
+      },
+    ];
+  };
+
+  const progressiveFallbackThemes = getLevelFallbackThemes(lvlNum);
 
   const blueprints: UnitBlueprint[] = [];
 

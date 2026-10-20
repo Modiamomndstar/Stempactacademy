@@ -830,4 +830,320 @@ export const EXTENDED_DOMAIN_THEMES: Record<
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // 12. PYTHON FOR SOFTWARE DEVELOPMENT & WEB ENGINEERING (CSE)
+  // -------------------------------------------------------------------------
+  python_software: {
+    1: [
+      {
+        theme: 'Python Environment Setup, Virtual Environments (venv/poetry), REPL & Core Syntax',
+        l1: 'Python Runtime Architecture: CPython, Virtual Environments, Pip/Poetry Package Management & Modern Toolchains',
+        l2: 'Core Language Mechanics: Dynamic Typing, Primitive Types, Variable Assignment, String Formatting (F-Strings) & Operators',
+        deliverable: 'Configured Multi-Environment Python Workstation, Automated Dependency Manifest & Environment Audit Log',
+      },
+      {
+        theme: 'Control Flow, Iteration Patterns, List Comprehensions & Error Handling (try/except)',
+        l1: 'Decision Structures: Conditionals (if/elif/else), Logical Operators, While Loops, For-In Iteration & Range Generators',
+        l2: 'Pythonic Idioms: List/Dictionary Comprehensions, Exception Handling (try/except/finally) & Custom Exception Classes',
+        deliverable: 'Robust CLI Algorithm Suite Processing Structured Input with Complete Fault-Tolerant Exception Traps',
+      },
+      {
+        theme: 'Functions, Lambda Expressions, First-Class Functions & Variable Scope (*args/**kwargs)',
+        l1: 'Functional Decomposition: Positional vs Keyword Arguments, Default Parameters, Unpacking (*args, **kwargs) & Docstrings',
+        l2: 'First-Class Citizens: Lambda Expressions, Higher-Order Functions (map, filter, sorted), Closures & Custom Decorators',
+        deliverable: 'Modular Function Library Featuring Reusable Function Decorators for Runtime Execution Profiling',
+      },
+      {
+        theme: 'Data Structures in Python: Lists, Tuples, Dictionaries, Sets & Custom Collections',
+        l1: 'Sequence Types: List Mutation, Slicing, Tuple Immutability, Memory Views & Performance Characteristics',
+        l2: 'Key-Value Mapping: Dictionary Hashing, Collision Handling, Set Union/Intersection & Collections Module (deque, Counter)',
+        deliverable: 'High-Performance In-Memory Data Indexing Engine Utilizing Hash Maps and Double-Ended Queues',
+      },
+      {
+        theme: 'Object-Oriented Programming (OOP): Classes, Inheritance, Polymorphism & Dunder Methods',
+        l1: 'Class Architecture: Instance vs Class Attributes, Initializers (__init__), Self References & Encapsulation with Properties',
+        l2: 'Advanced OOP: Inheritance Hierarchies, Multiple Inheritance (MRO), Abstract Base Classes & Dunder Protocols (__repr__, __len__)',
+        deliverable: 'Fully Encapsulated Object-Oriented Domain Model with Custom Dunder Operator Overloading and Unit Tests',
+      },
+      {
+        theme: 'File I/O, Serialization (JSON/CSV), Modular Packages & Git Version Control',
+        l1: 'Context Managers: Safe File Operations (with open), Reading/Writing Plaintext, Binary Buffers & JSON/CSV Serialization',
+        l2: 'Modular Codebase Engineering: Package Organization (__init__.py), Importing Modules, Semantic Versioning & Git Commits',
+        deliverable: 'Modular File Processing Engine with Automated JSON Schema Serialization and Git Repository History',
+      },
+    ],
+    2: [
+      {
+        theme: 'Data Structures & Algorithms in Python: Stacks, Queues, Binary Trees & Big-O Complexity',
+        l1: 'Algorithmic Efficiency: Big-O Time & Space Complexity, Benchmarking Python Operations & Recursive Execution Stacks',
+        l2: 'Core Data Structures: Linked Lists, Stacks, Queues, Binary Search Trees & Tree Traversal (Inorder, Preorder, Postorder)',
+        deliverable: 'Benchmarked Python Algorithm Suite Implementing Binary Tree Search and Custom Sorting Algorithms',
+      },
+      {
+        theme: 'Web & Internet Architecture: TCP/IP, DNS, HTTP/HTTPS Lifecycle, Client/Server, Ports & Sockets',
+        l1: 'Internet Plumbing: OSI Model, TCP/IP Handshakes, UDP vs TCP, DNS Lookup Resolution & Port Number Assignments',
+        l2: 'HTTP Request-Response Lifecycle: Request Methods (GET/POST/PUT/DELETE), Response Status Codes, Headers & Payload Parsing',
+        deliverable: 'Interactive Network Diagnostic Report & Custom Python Low-Level Socket Client Interfacing HTTP Server',
+      },
+      {
+        theme: 'Web Security Fundamentals: TLS/SSL Handshakes, CORS Policies, Headers & Cookie Sessions',
+        l1: 'Cryptographic Security: Symmetric vs Asymmetric Encryption, TLS/SSL Certificates, Public/Private Keys & Secure Communication',
+        l2: 'Web Security Guardrails: Cross-Origin Resource Sharing (CORS), Content Security Policy (CSP), Session Hijacking & Secure Cookies',
+        deliverable: 'Hardened HTTP Client Implementation with TLS Certificate Verification and CORS Policy Enforcement',
+      },
+      {
+        theme: 'Micro-Frameworks & REST APIs: Building Production Endpoints with Flask & Blueprints',
+        l1: 'Flask Architecture: Application Context, Request Handlers, URL Routing, Request Payloads & JSON Response Serialization',
+        l2: 'RESTful Design: Modular Blueprints, CRUD Operations, Status Code Standards & Postman Automated Endpoint Verification',
+        deliverable: 'Production-Ready Modular Flask RESTful API with Authentication Middleware and Automated Test Assertions',
+      },
+      {
+        theme: 'Modern High-Performance APIs: FastAPI, Pydantic Schema Validation & Dependency Injection',
+        l1: 'FastAPI Core: Type Hints, Automatic OpenAPI/Swagger Documentation, Request Body Parsing & Pydantic Data Validation',
+        l2: 'Production Patterns: Asynchronous Route Handlers (async/await), Dependency Injection Systems & Custom Middleware Traps',
+        deliverable: 'High-Throughput Asynchronous FastAPI Service with Strict Pydantic Data Contracts and OpenAPI Schemas',
+      },
+      {
+        theme: 'Automated Testing & Debugging: Writing Unit and Integration Tests with Pytest & Fixtures',
+        l1: 'Testing Principles: Test-Driven Development (TDD), Assertions, Test Discovery, Pytest Fixtures & Parametrized Tests',
+        l2: 'Test Coverage & Mocking: Mocking External HTTP APIs with Unittest.mock, Pytest-cov Code Coverage & Debugging with PDB',
+        deliverable: 'Comprehensive Pytest Test Suite Achieving Over 85% Code Coverage with Automated Mock Services',
+      },
+    ],
+    3: [
+      {
+        theme: 'Full-Stack Web Development with Django: MVT Pattern, URL Routing, Views & Templates',
+        l1: 'Django Framework Architecture: Model-View-Template (MVT) Pattern, Settings Management & URL Dispatcher Routing',
+        l2: 'Server-Side Rendering: Class-Based Views (CBVs), Template Inheritance, Context Processors & Form Handling with Validation',
+        deliverable: 'Multi-Page Dynamic Django Web Application with Server-Side Rendered Views and Form Validation',
+      },
+      {
+        theme: 'Relational Database Modeling & Django ORM: Models, Migrations & Complex Relationships',
+        l1: 'Object-Relational Mapping (ORM): Model Field Definitions, Primary Keys, ForeignKeys, ManyToMany & OneToOne Relationships',
+        l2: 'Database Migrations: Makemigrations, Migrate, Schema Inspection, Database Seed Fixtures & Migration Rollback Procedures',
+        deliverable: 'Relational Schema Blueprint with Multi-Table Django ORM Models and Production Migration Scripts',
+      },
+      {
+        theme: 'Advanced Database Querying & PostgreSQL Integration: Indexing, Joins & Query Optimization',
+        l1: 'PostgreSQL Setup: Connecting Django to PostgreSQL, Database Connection Pooling & Analyzing Generated SQL Queries',
+        l2: 'Query Optimization: QuerySets, Select_related, Prefetch_related, Database Indexes, F/Q Expressions & Aggregations',
+        deliverable: 'Optimized PostgreSQL Database Layer Demonstrating Sub-10ms Query Execution with Zero N+1 Query Regressions',
+      },
+      {
+        theme: 'User Authentication, Authorization (RBAC) & Web Application Security Hardening',
+        l1: 'Identity & Access: Django Authentication System, Custom User Models, Password Hashing (Argon2/PBKDF2) & Group Permissions',
+        l2: 'Application Hardening: Cross-Site Scripting (XSS), Cross-Site Request Forgery (CSRF), SQL Injection & Clickjacking Traps',
+        deliverable: 'Secure Authentication & RBAC System with Protected Routes, Session Management and Security Audit Passing Grade',
+      },
+      {
+        theme: 'Asynchronous Task Processing: Background Worker Queues with Celery & Redis Broker',
+        l1: 'Distributed Tasks: Message Brokers (Redis), Celery Architecture, Defining Async Tasks & Handling Long-Running Operations',
+        l2: 'Scheduling & Reliability: Celery Beat for Scheduled Periodic Jobs, Task Retries with Exponential Backoff & Result Backends',
+        deliverable: 'Asynchronous Background Processing Pipeline with Redis, Celery Workers and Scheduled Database Maintenance Jobs',
+      },
+      {
+        theme: 'Containerization for Python Applications: Docker, Docker Compose & Multi-Stage Builds',
+        l1: 'Container Fundamentals: Writing Production Dockerfiles for Python/Django, Managing Dependencies & Non-Root User Security',
+        l2: 'Multi-Container Orchestration: Docker Compose Wiring Web Application, PostgreSQL Database, Redis Broker & Celery Workers',
+        deliverable: 'Production-Grade Docker Compose Environment Running Full-Stack Python Web Stack with Health Check Endpoints',
+      },
+    ],
+    4: [
+      {
+        theme: 'Asyncio & Concurrent Python: Coroutines, Event Loops, Aiohttp & High-Throughput ASGI Microservices',
+        l1: 'Concurrency Mechanics: Threads vs Processes vs Asyncio Event Loop, Coroutines (async/await), Tasks & Futures',
+        l2: 'ASGI Microservices: High-Concurrency WebSockets, Asynchronous HTTP Clients (aiohttp/httpx) & Rate-Limiting Semaphores',
+        deliverable: 'High-Concurrency Real-Time ASGI Microservice Handling 1,000+ Concurrent Requests with Zero Thread Locking',
+      },
+      {
+        theme: 'Enterprise Software Architecture: Clean Architecture, Repository Pattern & Domain-Driven Design (DDD)',
+        l1: 'Architecture Patterns: Separation of Concerns, Domain Entities, Use Cases, Repository Pattern & Dependency Inversion',
+        l2: 'Clean Code in Python: Type Annotations (mypy), Protocol Interfaces, Pydantic Settings & Decoupled Business Logic',
+        deliverable: 'Enterprise Clean-Architecture Python Microservice Decoupled from Frameworks with 100% Strict Typing',
+      },
+      {
+        theme: 'Cloud Infrastructure & CI/CD Pipelines: Automated Testing, GitHub Actions & Container Deployments',
+        l1: 'Continuous Integration: Writing GitHub Actions Workflows, Automated Linting (Ruff/Flake8), Type Checking & Pytest Execution',
+        l2: 'Continuous Deployment: Building Docker Images, Pushing to Cloud Registries & Zero-Downtime Rolling Deployments',
+        deliverable: 'Fully Automated End-to-End CI/CD Pipeline Deploying Validated Python Microservice to Production Host',
+      },
+      {
+        theme: 'Observability & Production Monitoring: Structured Logging, Sentry Error Tracking & Prometheus Metrics',
+        l1: 'Production Observability: Structured JSON Logging, Distributed Request Tracing (Correlation IDs) & Sentry Integration',
+        l2: 'Performance Metrics: Exposing Prometheus Metrics (/metrics), Grafana Dashboards & Establishing Enterprise SLA Alerts',
+        deliverable: 'Production Observability Suite with Distributed Tracing, Real-Time Exception Alerting and Health Dashboards',
+      },
+      {
+        theme: 'Production Performance Profiling: Memory Leak Isolation, Caching Strategies with Redis & Query Tuning',
+        l1: 'Profiling Techniques: Python CProfiler, Memory Profiler, Diagnosing Memory Leaks & GIL (Global Interpreter Lock) Nuances',
+        l2: 'Multi-Tier Caching: Distributed Redis Caching, Cache-Aside Pattern, TTL Expiration, Cache Invalidation & Query Acceleration',
+        deliverable: 'Production Performance Optimization Report Demonstrating 4x Latency Reduction via Redis Multi-Tier Caching',
+      },
+      {
+        theme: 'Industry Capstone Showcase & Career Readiness: Enterprise Python Portfolio Defense & Hire-Ready Standards',
+        l1: 'Capstone Architecture: Finalizing End-to-End Production Full-Stack Python Software with Documentation and Live URL',
+        l2: 'Professional Career Standards: Technical System Architecture Defense, Code Review Readiness & Senior Engineering Portfolios',
+        deliverable: 'Comprehensive Production Full-Stack Python Portfolio with Live Deployment, Documentation and Defense Presentation',
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // 13. PYTHON FOR DATA ANALYTICS & MACHINE LEARNING (AIDM)
+  // -------------------------------------------------------------------------
+  python_data_ai: {
+    1: [
+      {
+        theme: 'Python for Data Science Environment: JupyterLab, Virtual Environments & Scientific Computing Setup',
+        l1: 'Scientific Python Toolchains: Setting Up JupyterLab, Conda/Venv Environments, Package Management & Notebook Best Practices',
+        l2: 'Python Fundamentals for Data: Lists vs Arrays, Dict Computations, Lambda Transforms & Handling Tabular File Formats',
+        deliverable: 'Configured Reproducible JupyterLab Data Analytics Workspace with Environment Audit and Benchmark Scripts',
+      },
+      {
+        theme: 'High-Performance Vectorized Computing with NumPy: N-Dimensional Arrays & Mathematical Operations',
+        l1: 'NumPy Array Mechanics: Array Creation, Data Types, Indexing, Slicing, Reshaping & Vectorized Mathematics vs Python Loops',
+        l2: 'Linear Algebra & Statistics: Matrix Multiplication, Dot Products, Broadcasting Rules, Summary Statistics & Random Sampling',
+        deliverable: 'High-Performance NumPy Numerical Computation Script Benchmarking Vectorized Vector Operations against Pure Python',
+      },
+      {
+        theme: 'Tabular Data Manipulation with Pandas: Series, DataFrames, Indexing & Data Slicing',
+        l1: 'Pandas Core Structures: Series, DataFrames, Loading Data (CSV/Excel/SQL), Index Alignment & Boolean Masking',
+        l2: 'Data Inspection & Subsetting: Loc/Iloc Indexing, Column Renaming, Filtering, Sorting & Multi-Index Hierarchies',
+        deliverable: 'Structured Pandas Data Ingestion and Slicing Script Generating Clean Subsets from Real-World Commercial Datasets',
+      },
+      {
+        theme: 'Data Cleaning & Wrangling: Missing Value Imputation, Type Casting & Deduplication',
+        l1: 'Data Quality Audits: Identifying Missing Values (Null/NaN), Imputation Strategies (Mean, Median, Forward Fill) & Dropping Criteria',
+        l2: 'Data Transformations: Type Casting, String Cleaning (Regex), Date/Time Parsing, Handling Duplicates & Categorical Encodings',
+        deliverable: 'Comprehensive Data Cleaning Pipeline Script Producing Zero-Null, Format-Standardized Output Datasets',
+      },
+      {
+        theme: 'Exploratory Data Analysis (EDA): Statistical Distributions, GroupBy Aggregations & Pivot Tables',
+        l1: 'Descriptive Statistics: Central Tendency, Variance, Skewness, Kurtosis, Quartiles & Outlier Identification via Box Plots',
+        l2: 'Data Aggregations: GroupBy Operations, Multiple Aggregation Functions, Pivot Tables, Cross-Tabulations & Melt Transforms',
+        deliverable: 'Comprehensive Exploratory Data Analysis (EDA) Jupyter Notebook with Statistical Breakdown and Executive Findings',
+      },
+      {
+        theme: 'Data Visualization & Storytelling: Visualizing Trends with Matplotlib & Seaborn',
+        l1: 'Plotting Mechanics: Matplotlib Figures, Subplots, Line Charts, Bar Charts, Histograms, Scatter Plots & Layout Customization',
+        l2: 'Statistical Visualizations: Seaborn Heatmaps, Pair Plots, Correlation Matrices, Violin Plots & Visual Storytelling Standards',
+        deliverable: 'Publication-Ready Interactive Visual Analytics Report Featuring Correlated Heatmaps and Distribution Graphs',
+      },
+    ],
+    2: [
+      {
+        theme: 'Automated Data Sourcing: Web Scraping HTML/DOM with Beautiful Soup & Dynamic Page Extraction',
+        l1: 'Web Scraping Mechanics: HTTP Requests for Data, Inspecting DOM Trees, CSS Selectors & Parsing HTML with Beautiful Soup',
+        l2: 'Dynamic Sourcing: Scraping JavaScript-Rendered Content with Playwright/Selenium, Handling Pagination & Ethical Scraping Etiquette',
+        deliverable: 'Automated Python Web Scraping Tool Extracting Structured Tabular Data from Dynamic Multi-Page Websites',
+      },
+      {
+        theme: 'API Data Ingestion: Consuming RESTful Data APIs, JSON Normalization & Rate-Limit Handling',
+        l1: 'REST API Ingestion: Querying External Financial/Weather APIs, Header Authentication, JSON Parsing & Pandas Json_normalize',
+        l2: 'Resilient Pipelines: Handling Rate Limits, Exponential Backoff, Pagination Loops, Caching Responses & Error Traps',
+        deliverable: 'Automated Python API Data Extraction Pipeline Ingesting Live Data into Normalized Tabular DataFrames',
+      },
+      {
+        theme: 'Relational Database Extraction: Querying Relational Warehouses with SQL & SQLAlchemy in Python',
+        l1: 'Database Connectivity: SQLAlchemy Engine Setup, Connecting to PostgreSQL/MySQL, Running Parameterized SQL Queries from Python',
+        l2: 'Analytical SQL in Python: Inner/Outer Joins, Aggregations, Window Functions (Row_Number, Rank), CTEs & Direct DataFrame Loading',
+        deliverable: 'Hybrid SQL-Python Data Pipeline Querying Normalized Multi-Table Databases into Optimized Analytics DataFrames',
+      },
+      {
+        theme: 'Advanced Feature Engineering: Scaling, One-Hot Encoding, Binning & Mathematical Transforms',
+        l1: 'Numerical Transformations: Min-Max Normalization, Standard Scaling (Z-Score), Robust Scaling, Log/Box-Cox Transforms',
+        l2: 'Categorical Encoding: One-Hot Encoding, Ordinal Encoding, Target Encoding, Date-Time Feature Extraction & Binning Continuous Data',
+        deliverable: 'Scikit-Learn Preprocessing Pipeline Transforming Mixed Numerical and Categorical Raw Data into Model-Ready Matrices',
+      },
+      {
+        theme: 'Outlier Detection & Anomaly Filtering: IQR, Z-Scores & Isolation Forests',
+        l1: 'Statistical Anomaly Detection: Interquartile Range (IQR) Filtering, Z-Score Thresholds & Visualizing Outlier Leverage Points',
+        l2: 'Algorithmic Anomaly Detection: Multivariate Outlier Detection using Isolation Forests, Local Outlier Factor (LOF) & Data Truncation',
+        deliverable: 'Robust Anomaly Detection Framework Identifying and Remediating Multivariate Outliers in Financial/Sensor Data',
+      },
+      {
+        theme: 'End-to-End Data Pipeline Architecture: Building Automated Reproducible ETL Workflows',
+        l1: 'ETL Pipeline Design: Extract, Transform, Load (ETL) Architecture, Modular Data Scripts & Validation with Great Expectations',
+        l2: 'Automated Execution: Orchestrating Data Workflows, Scheduling Daily Updates with Cron/Prefect & Logging Data Lineage',
+        deliverable: 'Production-Grade Automated Python ETL Pipeline Processing Raw External Ingestion to Clean Data Warehouse Staging',
+      },
+    ],
+    3: [
+      {
+        theme: 'Machine Learning Foundations: Supervised vs Unsupervised Learning, Bias-Variance & Splitting',
+        l1: 'Core Machine Learning Paradigms: Problem Formulation, Supervised vs Unsupervised, Train-Validation-Test Splitting & Data Leakage',
+        l2: 'Model Evaluation Dynamics: Overfitting vs Underfitting, Bias-Variance Tradeoff, Baseline Predictors & Learning Curves',
+        deliverable: 'Comprehensive Machine Learning Experiment Baseline Comparing Naive Baselines against Initial Model Iterations',
+      },
+      {
+        theme: 'Regression Modeling: Linear, Ridge, Lasso Regression, Residual Analysis & Performance Metrics',
+        l1: 'Regression Mathematics: Ordinary Least Squares (OLS), Coefficients, Intercepts, Assumptions of Linearity & Multicollinearity (VIF)',
+        l2: 'Regularization & Metrics: Ridge (L2), Lasso (L1) Feature Selection, Mean Absolute Error (MAE), RMSE & R-Squared Interpretation',
+        deliverable: 'Tuned Regularized Regression Model Predicting Continuous Targets with Complete Residual Diagnostic Plots',
+      },
+      {
+        theme: 'Classification Algorithms: Logistic Regression, Decision Trees, K-Nearest Neighbors & Confusion Matrices',
+        l1: 'Binary & Multi-Class Classification: Logistic Regression, Sigmoid Function, Odds Ratios, Decision Boundary & KNN Classification',
+        l2: 'Decision Trees: Information Gain, Gini Impurity, Tree Pruning, Visualizing Decision Paths & Confusion Matrix Diagnostics',
+        deliverable: 'Calibrated Classification Pipeline Diagnosing Precision, Recall, Confusion Matrices and Decision Boundary Maps',
+      },
+      {
+        theme: 'Ensemble Learning: Random Forests, Gradient Boosted Trees (XGBoost/LightGBM) & Feature Importance',
+        l1: 'Bagging & Random Forests: Bootstrap Aggregation, Out-of-Bag (OOB) Error, Random Subspace Method & Feature Importance Scoring',
+        l2: 'Boosting Algorithms: AdaBoost, Gradient Boosting, XGBoost, LightGBM, Learning Rates, Early Stopping & Tree Depth Optimization',
+        deliverable: 'High-Performance XGBoost/Random Forest Classifier Achieving Benchmark-Leading Accuracy on Imbalanced Data',
+      },
+      {
+        theme: 'Model Evaluation, Validation & Imbalanced Data: K-Fold Cross-Validation, ROC-AUC & SMOTE',
+        l1: 'Validation Strategies: Stratified K-Fold Cross-Validation, Cross-Val-Score, Preventing Optimism Bias & Data Leakage Traps',
+        l2: 'Imbalanced Datasets: Class Weights, Synthetic Minority Oversampling (SMOTE), Precision-Recall Curves & ROC-AUC Optimization',
+        deliverable: 'Rigorous Stratified K-Fold Cross-Validation Pipeline with ROC-AUC Curve Analysis for High-Class-Imbalance Data',
+      },
+      {
+        theme: 'Hyperparameter Optimization & Model Serialization: Grid Search, Optuna & Joblib Deployment',
+        l1: 'Hyperparameter Tuning: Grid Search CV, Randomized Search CV, Automated Bayesian Optimization with Optuna & Search Spaces',
+        l2: 'Model Persistence: Serializing Machine Learning Pipelines with Joblib, Saving Preprocessors, Model Versioning & Verification',
+        deliverable: 'Bayesian-Optimized Machine Learning Model Artifact with Full Scikit-Learn Pipeline Serialization Ready for Serving',
+      },
+    ],
+    4: [
+      {
+        theme: 'Deep Learning Foundations: Perceptrons, Multi-Layer Perceptrons (MLPs), Backpropagation & PyTorch',
+        l1: 'Neural Network Architecture: Artificial Neurons, Activation Functions (ReLU, Softmax), Loss Functions & Gradient Descent',
+        l2: 'PyTorch Framework: Tensors, Autograd, Building Neural Modules (nn.Module), Optimizers (Adam), Forward Pass & Training Loops',
+        deliverable: 'Trained PyTorch Multi-Layer Perceptron (MLP) Classifier with Custom Training Loop and Loss Convergence Curves',
+      },
+      {
+        theme: 'Computer Vision & Convolutional Neural Networks (CNNs): Transfer Learning with Pretrained Models',
+        l1: 'Computer Vision Mechanics: Convolutional Layers, Pooling, Strides, Padding & Image Augmentation with Torchvision',
+        l2: 'Transfer Learning: Fine-Tuning Pre-Trained Architectures (ResNet50, MobileNet), Freezing Layers & Feature Extraction',
+        deliverable: 'Trained Transfer Learning Computer Vision Classifier Classifying Domain Imagery with Real-Time Inference Script',
+      },
+      {
+        theme: 'Natural Language Processing (NLP) & Transformers: Tokenization, Embeddings & Hugging Face APIs',
+        l1: 'NLP Fundamentals: Text Normalization, Tokenization (BPE/WordPiece), Word Embeddings & Vector Representations of Text',
+        l2: 'Transformer Models: Self-Attention Mechanics, Hugging Face Transformers Pipeline, Text Classification & Sentiment Analysis',
+        deliverable: 'Fine-Tuned Hugging Face Transformer Pipeline Performing Multi-Class Text Classification on Unstructured Data',
+      },
+      {
+        theme: 'Vector Databases & Retrieval-Augmented Generation (RAG): Semantic Embeddings & Search Pipelines',
+        l1: 'Semantic Vector Search: Generating High-Dimensional Embeddings, Cosine Similarity, Vector Indexing & Distance Metrics',
+        l2: 'RAG Architecture: Ingesting Documents into ChromaDB/Pinecone, Semantic Query Retrieval & Augmenting LLM Context Windows',
+        deliverable: 'Complete Functional Retrieval-Augmented Generation (RAG) Question-Answering Pipeline Backed by Vector Database',
+      },
+      {
+        theme: 'MLOps & Real-Time Model Deployment: Serving Predictions with FastAPI, Docker & MLflow',
+        l1: 'REST Model Serving: Building Real-Time Inference Endpoints with FastAPI, Input Validation, Model Caching & Latency Profiling',
+        l2: 'MLOps Lifecycle: Tracking Experiments with MLflow, Dockerizing Inference Containers & Deploying Production Microservices',
+        deliverable: 'Containerized FastAPI Machine Learning Prediction Microservice Monitored with MLflow Experiment Tracking',
+      },
+      {
+        theme: 'Production AI Capstone & Model Governance: Enterprise Portfolio Defense, Data Drift & Monitoring',
+        l1: 'Model Governance: Monitoring Production Data Drift (Evidently AI), Model Retraining Triggers, Ethics & Algorithmic Fairness',
+        l2: 'Portfolio Defense: Packaging End-to-End Enterprise Machine Learning Capstone with Documentation, Live API & Executive Presentation',
+        deliverable: 'Complete End-to-End Enterprise Machine Learning Production Showcase with Live API and Executive Defense Deck',
+      },
+    ],
+  },
 };

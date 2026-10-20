@@ -19,6 +19,7 @@ import {
 import { WorkflowEngine } from '../services/workflow/workflowEngine.js';
 import { aiGovernanceService } from '../services/ai/aiGovernance.js';
 import { sanitizePromptInput } from '../services/ai/aiSanitizer.js';
+import { enrichCourseVideosWithYouTube } from '../services/youtubeSearchService.js';
 
 // ---------------------------------------------------------------------------
 // 1. PROGRAM GENERATOR
@@ -150,6 +151,13 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
 
     const authoritativeCourses = hasRichCourses ? structured.courses : uoPeopleCourses;
 
+    // Enrich core lessons with real-time YouTube Data API search results if YOUTUBE_API_KEY is present
+    await enrichCourseVideosWithYouTube(authoritativeCourses, {
+      programTitle: domainTitle,
+      programCode: programCode || structured.code,
+      schoolCode: resolvedSchool,
+    });
+
     // Build client-compatible flat modules array with rich lessons preserved
     const clientModules = authoritativeCourses.flatMap((c: any, cIdx: number) =>
       (c.modules || []).map((m: any, mIdx: number) => ({
@@ -210,6 +218,12 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       `${keywords} ${specialInstructions}`,
       programCode
     );
+
+    await enrichCourseVideosWithYouTube(fallbackCourses, {
+      programTitle: domain,
+      programCode,
+      schoolCode,
+    });
 
     const fallbackModules = fallbackCourses.flatMap((c: any, cIdx: number) =>
       (c.modules || []).map((m: any, mIdx: number) => ({
@@ -1056,6 +1070,22 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
         keywords: 'Linux Hardening, Wireshark, Nmap, Metasploit, Burp Suite, Network Protocols, Firewalls, Threat Modeling, Incident Response, SIEM',
         specialInstructions: 'Strict ethical sandbox labs, vulnerability scanning, packet inspection, defensible web application security, and incident response playbooks.',
         description: `The ${domain || 'Cybersecurity & Defensive Cloud Systems'} curriculum prepares security practitioners to defend enterprise networks and cloud infrastructure against modern cyber threats. Learners master Linux terminal security, packet capture with Wireshark, vulnerability assessments, and web penetration testing methodologies.\n\nHands-on defensive war-game labs provide practical experience in detecting intrusion attempts, configuring host firewalls, and documenting incident mitigation reports.`,
+        durationWeeks: 10,
+      };
+    } else if (t.includes('python') && (t.includes('data') || t.includes('analytics') || t.includes('machine learning') || t.includes('ai') || t.includes('pandas'))) {
+      meta = {
+        targetAudience: 'Data analysts, business intelligence specialists, aspiring machine learning engineers, and STEM researchers.',
+        keywords: 'Python 3.12, JupyterLab, NumPy, Pandas, Matplotlib, Seaborn, Beautiful Soup, Playwright, Scikit-Learn, XGBoost, PyTorch, Hugging Face, FastAPI, MLOps',
+        specialInstructions: 'Progressive data pipeline: start with Python data essentials, exploratory data analysis, web scraping/API sourcing, statistical inference, scikit-learn models, and deep learning RAG deployment.',
+        description: `The ${domain || 'Python for Data Analytics and Machine Learning'} curriculum provides a rigorous, hands-on path from exploratory data analysis to production machine learning systems. Learners master vectorized array computing with NumPy, high-speed data wrangling with Pandas, automated web data extraction, and statistical modeling in Scikit-Learn.\n\nThroughout higher levels, students train ensemble models, build semantic vector search and RAG pipelines, and deploy containerized FastAPI model inference microservices for commercial African and global enterprises.`,
+        durationWeeks: 10,
+      };
+    } else if (t.includes('python') && (t.includes('software') || t.includes('web') || t.includes('developer') || t.includes('backend') || t.includes('django') || t.includes('flask') || t.includes('fastapi') || t.includes('programming'))) {
+      meta = {
+        targetAudience: 'Aspiring backend developers, software engineers, and university graduates seeking industry-standard Python development mastery.',
+        keywords: 'Python 3.12, Virtual Environments, Pytest, Flask, FastAPI, Django, PostgreSQL, Celery, Redis, Docker, REST APIs, Git, Asyncio, Clean Architecture',
+        specialInstructions: 'Progressive software engineering: start with Python syntax and OOP, move to Web/Internet protocols (HTTP/DNS/TCP), build REST APIs (FastAPI/Flask), scale full-stack Django applications with PostgreSQL, and deploy Dockerized microservices.',
+        description: `The ${domain || 'Python for Software Development'} program equips learners with production-grade engineering practices across modern web and backend architectures. Students progress from object-oriented programming, data structures, and algorithms to building high-performance REST APIs with FastAPI and full-stack web platforms with Django.\n\nEmphasizing 70% hands-on laboratory builds, learners master relational database schema design with PostgreSQL, asynchronous task workers with Celery and Redis, and automated containerized CI/CD deployments.`,
         durationWeeks: 10,
       };
     } else if (t.includes('data science') || t.includes('data analytics') || t.includes('power bi') || t.includes('business intelligence')) {

@@ -562,12 +562,23 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
                                         {lesson.title}
                                       </span>
                                     </div>
-                                    {lesson.videoDurationMin && (
-                                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 shrink-0">
-                                        <Play className="w-2.5 h-2.5 fill-rose-600 text-rose-600" />
-                                        {lesson.videoDurationMin}m Video
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {lesson.videoSource === 'YOUTUBE_SEARCH' ? (
+                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                          YouTube API
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                          Verified Video
+                                        </span>
+                                      )}
+                                      {lesson.videoDurationMin && (
+                                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1">
+                                          <Play className="w-2.5 h-2.5 fill-rose-600 text-rose-600" />
+                                          {lesson.videoDurationMin}m
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed pl-7">
@@ -575,9 +586,40 @@ export const AIGenerationWorkspace: React.FC<AIGenerationWorkspaceProps> = ({
                                   </p>
 
                                   {lesson.videoSummary && (
-                                    <div className="text-[10px] text-slate-600 dark:text-slate-400 pl-7 flex items-start gap-1.5 pt-0.5">
-                                      <Play className="w-3 h-3 text-rose-600 shrink-0 mt-0.5" />
-                                      <span><strong className="text-slate-700 dark:text-slate-300">Curated Video Lecture:</strong> {lesson.videoSummary}</span>
+                                    <div className="text-[10px] text-slate-600 dark:text-slate-400 pl-7 flex items-start justify-between gap-2 pt-0.5">
+                                      <div className="flex items-start gap-1.5">
+                                        <Play className="w-3 h-3 text-rose-600 shrink-0 mt-0.5" />
+                                        <span><strong className="text-slate-700 dark:text-slate-300">Curated Video Lecture:</strong> {lesson.videoSummary}</span>
+                                      </div>
+                                      {lesson.videoUrl && (
+                                        <a
+                                          href={lesson.videoUrl.replace('/embed/', '/watch?v=')}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold shrink-0"
+                                        >
+                                          Open Video ↗
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {isEditing && (
+                                    <div className="pl-7 pt-1 flex items-center gap-2">
+                                      <label className="text-[10px] font-bold text-slate-500 shrink-0">Custom Video URL:</label>
+                                      <input
+                                        type="text"
+                                        value={lesson.videoUrl || ''}
+                                        onChange={(e) => {
+                                          const updated = [...(draft.modules || [])];
+                                          const modLessons = [...(updated[idx].lessons || [])];
+                                          modLessons[lIdx] = { ...lesson, videoUrl: e.target.value };
+                                          updated[idx] = { ...updated[idx], lessons: modLessons };
+                                          setDraft({ ...draft, modules: updated });
+                                        }}
+                                        placeholder="https://www.youtube.com/embed/..."
+                                        className="text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 w-full"
+                                      />
                                     </div>
                                   )}
 

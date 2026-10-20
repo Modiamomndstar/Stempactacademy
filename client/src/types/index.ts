@@ -28,6 +28,34 @@ export const AcademicLevel = {
 } as const;
 export type AcademicLevel = (typeof AcademicLevel)[keyof typeof AcademicLevel];
 
+export interface ProgramDraftLesson {
+  lessonNumber?: number;
+  title: string;
+  topic?: string;
+  durationMinutes?: number;
+  videoUrl?: string;
+  videoSource?: string;
+  videoDurationMin?: number;
+  videoSummary?: string;
+  instructionalContent?: string;
+  practicalActivities?: string[];
+  keyTakeaways?: string[];
+  [key: string]: any;
+}
+
+export interface ProgramDraftModule {
+  weekNumber: number;
+  title: string;
+  description: string;
+  learningObjectives: string[];
+  practicalProjects: string[];
+  lessons?: ProgramDraftLesson[];
+  quiz?: any;
+  assignment?: any;
+  capstoneProject?: any;
+  [key: string]: any;
+}
+
 export interface ProgramDraft {
   name: string;
   code: string;
@@ -40,13 +68,9 @@ export interface ProgramDraft {
   prerequisites: string[];
   careerOutcomes: string[];
   suggestedFeeNgn: number;
-  modules: {
-    weekNumber: number;
-    title: string;
-    description: string;
-    learningObjectives: string[];
-    practicalProjects: string[];
-  }[];
+  modules: ProgramDraftModule[];
+  courses?: any[];
+  [key: string]: any;
 }
 
 export interface QualityCheckResult {

@@ -5,6 +5,7 @@ import {
   validateYouTubeVideo,
   VerifiedVideo,
 } from './verifiedVideoRegistry.js';
+import { searchVideoForLesson } from './youtubeSearchService.js';
 
 export interface VideoCurationResult {
   videoUrl: string;
@@ -41,20 +42,20 @@ export class VideoCuratorService {
       lessonIdx = 0,
     } = params;
 
-    // 1. Get domain-matched verified video from our guaranteed registry
-    const registeredVideo: VerifiedVideo = getCuratedVideoForLesson({
-      programName,
+    // 1. Search YouTube Data API first with automatic fallback to guaranteed registry
+    const searchResult = await searchVideoForLesson({
+      lessonTitle,
+      programTitle: programName,
       programCode,
       schoolCode,
       moduleTitle,
-      lessonTitle,
       weekIdx,
       lessonIdx,
     });
 
-    let selectedVideoId = registeredVideo.youtubeId;
-    let selectedDuration = registeredVideo.durationMin;
-    let selectedSummary = registeredVideo.summary;
+    let selectedVideoId = searchResult.youtubeId;
+    let selectedDuration = searchResult.durationMin;
+    let selectedSummary = searchResult.summary;
     let selectedTimestamps: Array<{ time: string; title: string }> = [
       { time: '00:00', title: `${lessonTitle} Overview` },
       { time: '04:30', title: 'Core Concepts & Tool Walkthrough' },
@@ -72,17 +73,17 @@ We need a verified, practical educational video tutorial for this lesson:
 - Lesson: "${lessonTitle}"
 
 Primary Registered Video:
-- YouTube ID: "${registeredVideo.youtubeId}"
-- Title: "${registeredVideo.title}" (${registeredVideo.channel})
+- YouTube ID: "${searchResult.youtubeId}"
+- Title: "${searchResult.title}" (${searchResult.channelTitle})
 
 Task:
 Provide 2-3 sentences of educational summary for this lesson and 3 practical timestamps.
-If you know a strictly verified, active YouTube ID that is even more specific to "${lessonTitle}", you may suggest it. Otherwise keep "${registeredVideo.youtubeId}".
+If you know a strictly verified, active YouTube ID that is even more specific to "${lessonTitle}", you may suggest it. Otherwise keep "${searchResult.youtubeId}".
 
 Respond ONLY with valid JSON:
 {
-  "youtubeId": "${registeredVideo.youtubeId}",
-  "videoDurationMin": ${registeredVideo.durationMin},
+  "youtubeId": "${searchResult.youtubeId}",
+  "videoDurationMin": ${searchResult.durationMin},
   "videoSummary": "2-3 sentences explaining the key concepts demonstrated in the lesson.",
   "keyTimestamps": [
     { "time": "00:00", "title": "Introduction" },
@@ -104,13 +105,13 @@ Respond ONLY with valid JSON:
       if (parsed.youtubeId && typeof parsed.youtubeId === 'string') {
         const candidateId = parsed.youtubeId.trim();
         // If AI suggested a different ID, validate via YouTube oEmbed first!
-        if (candidateId !== registeredVideo.youtubeId) {
+        if (candidateId !== searchResult.youtubeId) {
           const isValid = await validateYouTubeVideo(candidateId);
           if (isValid) {
             selectedVideoId = candidateId;
           } else {
-            console.warn(`[VideoCurator] AI suggested invalid YouTube ID "${candidateId}", keeping verified ID "${registeredVideo.youtubeId}"`);
-            selectedVideoId = registeredVideo.youtubeId;
+            console.warn(`[VideoCurator] AI suggested invalid YouTube ID "${candidateId}", keeping verified ID "${searchResult.youtubeId}"`);
+            selectedVideoId = searchResult.youtubeId;
           }
         }
       }
