@@ -27,6 +27,7 @@ interface AIProgramGeneratorModalProps {
 const DOMAIN_PRESETS = [
   {
     name: 'AI for Digital Marketing',
+    shortLabel: '🎯 AI Marketing',
     level: AcademicLevel.LEVEL_1_FOUNDATION,
     weeks: 6,
     learners: 'Marketing professionals, copywriters, digital creators, growth hackers, and agency entrepreneurs',
@@ -34,7 +35,26 @@ const DOMAIN_PRESETS = [
     guidelines: 'Emphasize AI-driven direct response copywriting, automated Meta/Google ad creative variants, SEO keyword clusters, and high-ticket client retainers.',
   },
   {
+    name: 'Python for Software Development',
+    shortLabel: '🐍 Python Software',
+    level: AcademicLevel.LEVEL_1_FOUNDATION,
+    weeks: 10,
+    learners: 'Aspiring backend developers, software engineers, and university graduates seeking industry-standard Python development mastery.',
+    tech: 'Python 3.12, Virtual Environments, Pytest, Flask, FastAPI, Django, PostgreSQL, Celery, Redis, Docker, REST APIs, Git, Asyncio, Clean Architecture',
+    guidelines: 'Progressive software engineering: start with Python syntax and OOP, move to Web/Internet protocols (HTTP/DNS/TCP), build REST APIs (FastAPI/Flask), scale full-stack Django applications with PostgreSQL, and deploy Dockerized microservices.',
+  },
+  {
+    name: 'Python for Data Analytics and Machine Learning',
+    shortLabel: '📊 Python Data & AI',
+    level: AcademicLevel.LEVEL_1_FOUNDATION,
+    weeks: 10,
+    learners: 'Data analysts, business intelligence specialists, researchers, and aspiring machine learning practitioners.',
+    tech: 'JupyterLab, NumPy, Pandas, Matplotlib, Seaborn, Beautiful Soup, SQL, SQLAlchemy, Scikit-Learn, PyTorch, Hugging Face, Vector DBs, Streamlit',
+    guidelines: 'Progressive data track: start with NumPy/Pandas and data cleaning, advance to web scraping and SQL data ingestion, master classical ML modeling and hyperparameter tuning, and build RAG/LLM applications with PyTorch and FastAPI.',
+  },
+  {
     name: 'Full Stack Web Engineering & Cloud Native Systems',
+    shortLabel: '💻 Web Engineering',
     level: AcademicLevel.LEVEL_1_FOUNDATION,
     weeks: 12,
     learners: 'Polytechnic and university students, young tech professionals, coding bootcamp graduates, and career switchers',
@@ -43,6 +63,7 @@ const DOMAIN_PRESETS = [
   },
   {
     name: 'Applied Artificial Intelligence & Machine Learning',
+    shortLabel: '🧠 AI & ML',
     level: AcademicLevel.LEVEL_2_INTERMEDIATE,
     weeks: 10,
     learners: 'Computer science undergraduates, software developers, data analysts, and aspiring AI engineers',
@@ -50,7 +71,35 @@ const DOMAIN_PRESETS = [
     guidelines: 'Hands-on neural network training, model evaluation metrics, fine-tuning open-source LLMs, and deploying scalable REST inference APIs.',
   },
   {
+    name: 'Internet of Things (IoT) & Smart Connected Systems',
+    shortLabel: '📡 IoT & Telemetry',
+    level: AcademicLevel.LEVEL_1_FOUNDATION,
+    weeks: 8,
+    learners: 'IoT engineers, smart hardware makers, firmware developers, and industrial automation technicians.',
+    tech: 'ESP32, MicroPython, FreeRTOS, MQTT, InfluxDB, Grafana, LoRaWAN, RS485/Modbus, Sensors, Relays, TinyML, AWS IoT Core',
+    guidelines: 'Hands-on breadboard and PCB sensor interfacing, MQTT pub/sub telemetry, Grafana dashboard deployment, deep-sleep solar optimization, and real-world African smart irrigation/energy telemetry case studies.',
+  },
+  {
+    name: 'Young Innovators: STEM & Creative Coding for Kids (Ages 7–12)',
+    shortLabel: '🧒 Kids Coding (7-12)',
+    level: AcademicLevel.LEVEL_1_FOUNDATION,
+    weeks: 6,
+    learners: 'Young learners (Ages 7–12), primary school pupils, and junior inventors starting their technology journey.',
+    tech: 'Scratch 3.0, MIT Media Lab, Block-Based Algorithms, Interactive Storytelling, Sprite Animation, Sound Design, Logic Loops, Tinkercad 3D, Micro:bit Basics',
+    guidelines: 'Highly visual, gamified, and narrative-driven pedagogical design. Zero abstract syntax; emphasize block puzzles, character animation, game mechanics, and earning explorer achievement badges.',
+  },
+  {
+    name: 'Young Innovators: Python & Web Tech for Teens (Ages 13–17)',
+    shortLabel: '🧑‍💻 Teens Tech (13-17)',
+    level: AcademicLevel.LEVEL_1_FOUNDATION,
+    weeks: 8,
+    learners: 'Junior and senior secondary school students (Ages 13–17), tech-curious teenagers, and pre-university youth.',
+    tech: 'Python Fundamentals, Pygame Arcade Games, HTML5/CSS3, Web Building, MicroPython, Raspberry Pi Pico, Git Version Control, Algorithmic Thinking, Teen Portfolio',
+    guidelines: 'Bridging visual logic to real-world code. Focus on building real playable games with Pygame, creating personal website portfolios, exploring electronics with MicroPython, and collaborative team hacks.',
+  },
+  {
     name: 'Robotics, IoT & Embedded Systems Engineering',
+    shortLabel: '🤖 Robotics',
     level: AcademicLevel.LEVEL_1_FOUNDATION,
     weeks: 8,
     learners: 'Mechatronics students, makers, embedded software developers, and automation engineers',
@@ -59,6 +108,7 @@ const DOMAIN_PRESETS = [
   },
   {
     name: 'Computer Systems & Hardware Engineering',
+    shortLabel: '🔧 Hardware Repair',
     level: AcademicLevel.LEVEL_1_FOUNDATION,
     weeks: 8,
     learners: 'Aspiring computer engineers, hardware technicians, electronics hobbyists, and IT support professionals',
@@ -67,6 +117,7 @@ const DOMAIN_PRESETS = [
   },
   {
     name: 'Solar & Renewable Clean Energy Engineering',
+    shortLabel: '⚡ Solar Energy',
     level: AcademicLevel.LEVEL_1_FOUNDATION,
     weeks: 8,
     learners: 'Electrical technicians, clean energy installers, facilities managers, and renewable energy entrepreneurs',
@@ -342,17 +393,7 @@ export const AIProgramGeneratorModal: React.FC<AIProgramGeneratorModalProps> = (
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:text-emerald-600'
                         }`}
                       >
-                        {preset.name.includes('Marketing')
-                          ? '🎯 AI Marketing'
-                          : preset.name.includes('Web')
-                          ? '💻 Web Engineering'
-                          : preset.name.includes('Robotics')
-                          ? '🤖 Robotics & IoT'
-                          : preset.name.includes('Hardware')
-                          ? '🔧 Hardware Repair'
-                          : preset.name.includes('Solar')
-                          ? '⚡ Solar Energy'
-                          : '🧠 AI & ML'}
+                        {preset.shortLabel || preset.name}
                       </button>
                     ))}
                   </div>

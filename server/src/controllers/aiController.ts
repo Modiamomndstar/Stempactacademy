@@ -1008,6 +1008,22 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
         description: `The ${domain || 'Drone Piloting & UAV Engineering'} program equips learners with end-to-end expertise in commercial unmanned aerial vehicle assembly, aerodynamics, and mission piloting. Students progress from frame mechanics, brushless motor selection, and electronic speed controllers to flight controller calibration and telemetry links.\n\nThrough structured field flight sessions and bench assembly labs at accredited STEMPACT Learning Centers, learners configure autonomous flight waypoints, conduct photogrammetry surveys, and earn credentials for high-demand agricultural, inspection, and security drone operations.`,
         durationWeeks: 8,
       };
+    } else if (t.includes('kid') || t.includes('child') || t.includes('scratch') || t.includes('young innovator') || t.includes('ages 7') || t.includes('ages 8') || t.includes('primary school')) {
+      meta = {
+        targetAudience: 'Young learners (Ages 7–12), primary school pupils, and junior inventors starting their technology journey.',
+        keywords: 'Scratch 3.0, MIT Media Lab, Block-Based Algorithms, Interactive Storytelling, Sprite Animation, Sound Design, Logic Loops, Tinkercad 3D, Micro:bit Basics',
+        specialInstructions: 'Highly visual, gamified, and narrative-driven pedagogical design. Zero abstract syntax; emphasize block puzzles, character animation, game mechanics, and earning explorer achievement badges.',
+        description: `The ${domain || 'Young Innovators STEM & Coding for Kids'} curriculum inspires curiosity and computational thinking in young minds aged 7 to 12. Using interactive block-based platforms like Scratch and visual physics simulators, children learn core logic concepts—sequencing, conditionals, loops, and variables—through fun storytelling and game creation.\n\nThroughout the track, young learners build their own playable arcade games, design animated digital greetings, and construct beginner physical computing projects, nurturing foundational digital confidence in a safe, encouraging environment.`,
+        durationWeeks: 6,
+      };
+    } else if (t.includes('teen') || t.includes('high school') || t.includes('secondary school') || t.includes('ages 13') || t.includes('ages 14') || t.includes('ages 15') || t.includes('ages 16') || t.includes('ages 17')) {
+      meta = {
+        targetAudience: 'Junior and senior secondary school students (Ages 13–17), tech-curious teenagers, and pre-university youth.',
+        keywords: 'Python Fundamentals, Pygame Arcade Games, HTML5/CSS3, Web Building, MicroPython, Raspberry Pi Pico, Git Version Control, Algorithmic Thinking, Teen Portfolio',
+        specialInstructions: 'Bridging visual logic to real-world code. Focus on building real playable games with Pygame, creating personal website portfolios, exploring electronics with MicroPython, and collaborative team hacks.',
+        description: `The ${domain || 'Young Innovators Python & Tech for Teens'} program bridges creative curiosity and practical engineering for teenagers aged 13 to 17. Students transition from block concepts to real-world text programming in Python, building playable graphical games, interactive web pages, and beginner IoT sensor projects.\n\nBy emphasizing hands-on creative sprints and digital ethics, teenagers develop problem-solving grit, collaborative teamwork, and an authentic technical portfolio that prepares them for university STEM excellence or junior tech apprenticeships.`,
+        durationWeeks: 8,
+      };
     } else if (pCode.startsWith('RIOTH-02') || (t.includes('iot') && !t.includes('marketing')) || t.includes('internet of things') || t.includes('telemetry') || t.includes('smart agriculture') || t.includes('smart meter')) {
       meta = {
         targetAudience: 'IoT engineers, smart hardware makers, firmware developers, and industrial automation technicians.',
