@@ -216,11 +216,10 @@ export function resolveDomainKey(title: string, schoolCode: string = '', keyword
     return 'solar';
   }
 
-  // 1J. Digital Marketing, AI Content Creation & Growth — DMAP-01, 04, 05, 06, 07
-  // Notice: We strictly match explicit marketing phrases, NEVER bare "content"!
+  // 1J. Digital Marketing, AI Content Creation, Digital Design & Educators — DMAP-01, 04, 05, 06, 07
   if (
     schoolLow === 'DMAP' ||
-    /\b(digital marketing|ai content|content creation|copywriting|seo|paid advertising|meta ads|social media marketing|ai productivity|ai for education)\b/i.test(titleLow)
+    /\b(digital marketing|ai marketing|ai content|content creation|copywriting|seo|paid advertising|meta ads|social media marketing|ai productivity|ai for education|ai for educators?|ai for teachers?|digital design|graphic design|ai design|ai digital design|creative media)\b/i.test(titleLow)
   ) {
     return 'content';
   }
@@ -298,7 +297,7 @@ export function resolveDomainKey(title: string, schoolCode: string = '', keyword
   if (/\b(robot|robotics|ros2|kinematics)\b/i.test(keywordsLow)) return 'robotics';
   if (/\b(pcb|kicad|oscilloscope|transistor|circuits?)\b/i.test(keywordsLow)) return 'electronics_pcb';
   if (/\b(solar|photovoltaic|inverter|mppt|lifepo4)\b/i.test(keywordsLow)) return 'solar';
-  if (/\b(digital marketing|copywriting|seo|paid ads|ad creative)\b/i.test(keywordsLow)) return 'content';
+  if (/\b(digital marketing|copywriting|seo|paid ads|ad creative|digital design|graphic design|content creation|educator|ai for education)\b/i.test(keywordsLow)) return 'content';
   if (/\b(data analytics|business intelligence|power bi|sql|pandas)\b/i.test(keywordsLow)) return 'data_science';
   if (/\b(machine learning|deep learning|neural|pytorch|tensorflow|llm)\b/i.test(keywordsLow)) return 'aiml';
   if (/\b(cybersecurity|firewall|devops|docker|kubernetes|aws)\b/i.test(keywordsLow)) return 'cyber_cloud';

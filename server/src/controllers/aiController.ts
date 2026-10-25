@@ -1112,6 +1112,30 @@ export const autofillProgramMeta = async (req: AuthRequest, res: Response): Prom
         description: `The ${domain || 'Data Analytics & Business Intelligence'} program empowers professionals to transform raw organizational data into actionable executive insights. Learners master advanced data modeling in SQL, automated ETL pipelines in Power Query, and interactive business intelligence dashboards in Power BI.\n\nThrough real-world case studies, students build automated sales, operational, and financial dashboards that solve actual business challenges in the African commercial landscape.`,
         durationWeeks: 8,
       };
+    } else if (t.includes('content creation') || t.includes('creator') || t.includes('creative media') || t.includes('digital media') || t.includes('video editing')) {
+      meta = {
+        targetAudience: 'Content creators, video producers, social media managers, copywriters, and digital media entrepreneurs.',
+        keywords: 'ChatGPT, Claude 3.5 Sonnet, Midjourney, Runway Gen-3, ElevenLabs, CapCut AI, Descript, Canva AI, Figma, Prompt Engineering, Multi-Platform Viral Distribution',
+        specialInstructions: 'Focus on multi-modal generative media: AI scriptwriting, high-retention video editing, AI voice cloning, automated captioning, photorealistic thumbnails, and monetizing digital content channels.',
+        description: `The ${domain || 'AI Digital Content Creation'} program equips modern creators, brand storytellers, and media producers with cutting-edge artificial intelligence toolchains. Students master automated viral script generation, text-to-video diffusion models, high-fidelity neural voice synthesis, and dynamic AI-assisted video editing.\n\nThroughout the program, learners build automated production workflows that produce broadcast-ready multimedia content at 10x speed, graduating with an omnichannel portfolio ready for brand partnerships and high-ticket creator retainers.`,
+        durationWeeks: 6,
+      };
+    } else if (t.includes('educator') || t.includes('teacher') || t.includes('instructional') || t.includes('ai for education') || t.includes('teaching')) {
+      meta = {
+        targetAudience: 'School teachers, university lecturers, corporate trainers, academic coordinators, and educational technologists.',
+        keywords: 'Curriculum AI, Lesson Plan Generators, Formative Assessment Bots, Automated Rubric Scoring, Diffit, MagicSchool AI, Canva Education, Quizlet AI, AI Ethics & Academic Integrity',
+        specialInstructions: '10x educator productivity and student engagement: auto-generating differentiated lesson plans, interactive student quizzes, customized grading rubrics, ethical AI school guidelines, and personalized learning adaptations.',
+        description: `The ${domain || 'AI for Educators & Instructional Leadership'} program trains teachers, lecturers, and academic administrators to harness artificial intelligence to transform teaching and learning. Participants master automated curriculum mapping, personalized student worksheet generation, intelligent grading assistance, and interactive gamified assessments.\n\nEmphasizing responsible AI pedagogy, educators develop institutional policies on academic integrity and AI literacy, equipping them to lead 21st-century modern classrooms with exceptional efficiency.`,
+        durationWeeks: 6,
+      };
+    } else if (t.includes('digital design') || t.includes('graphic design') || t.includes('ai design') || t.includes('visual design') || t.includes('ui/ux') || t.includes('brand design')) {
+      meta = {
+        targetAudience: 'Graphic designers, UI/UX designers, brand identity creators, visual artists, and digital marketing creatives.',
+        keywords: 'Midjourney v6, Adobe Firefly, Figma AI, Stable Diffusion, ControlNet, Vectorize.ai, Photorealistic Product Mockups, Brand Identity Systems, Typography & Visual Hierarchy',
+        specialInstructions: 'Commercial AI visual workflows: generative brand assets, vector conversion, photorealistic e-commerce mockups, UI wireframe generation, and high-resolution design deliverables for African and global brands.',
+        description: `The ${domain || 'AI Digital Design & Visual Communication'} program bridges traditional design fundamentals with transformative generative AI tooling. Designers master text-to-image styling, ControlNet spatial precision, AI-assisted Figma UI workflows, and automated vector asset creation.\n\nStudents create comprehensive brand identity kits, commercial advertising creatives, and polished product mockups, building a standout creative portfolio that commands premium client fees.`,
+        durationWeeks: 6,
+      };
     } else if (sCode.startsWith('DMAP') || pCode.startsWith('AIDM') || t.includes('marketing') || t.includes('advertising') || t.includes('copywriting') || t.includes('social media marketing')) {
       meta = {
         targetAudience: 'Marketing professionals, copywriters, digital creators, growth hackers, and entrepreneurs seeking AI automation workflows.',
