@@ -101,29 +101,48 @@ export class PlacementService {
     // 2. Resolve Application record & verify ownership
     let application: any = null;
 
-    if (applicationId && applicationId !== 'demo-applicant-session') {
+    const cleanAppId = (applicationId && typeof applicationId === 'string') ? applicationId.trim() : '';
+    const isAppIdProvided = cleanAppId && cleanAppId !== 'undefined' && cleanAppId !== 'null' && cleanAppId !== 'demo-applicant-session';
+
+    if (isAppIdProvided) {
+      // 2A. Try finding by UUID / primary key
       application = await prisma.application.findUnique({
-        where: { id: applicationId },
+        where: { id: cleanAppId },
         include: { program: true },
       });
 
+      // 2B. If not found by primary ID, try by applicationNumber (e.g. STEM-2026-XXXX)
       if (!application) {
-        throw new Error('Application record not found');
+        application = await prisma.application.findFirst({
+          where: { applicationNumber: cleanAppId },
+          include: { program: true },
+        });
       }
 
-      // Verify that authUser owns this application or is authorized staff
-      const isOwner =
-        (application.userId && application.userId === authUser.id) ||
-        (application.email && application.email.toLowerCase() === authUser.email.toLowerCase());
-      const staffRoles: Role[] = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN];
-      const isStaff = staffRoles.includes(authUser.role);
-
-      if (!isOwner && !isStaff) {
-        const forbiddenErr: any = new Error('Forbidden: You are not authorized to submit assessments for this application.');
-        forbiddenErr.statusCode = 403;
-        throw forbiddenErr;
+      // 2C. If still not found by specified ID, gracefully locate candidate's existing application by user ID or email
+      if (!application) {
+        if (programId) {
+          application = await prisma.application.findFirst({
+            where: {
+              OR: [{ userId: authUser.id }, { email: authUser.email }],
+              programId: String(programId),
+            },
+            include: { program: true },
+            orderBy: { createdAt: 'desc' },
+          });
+        }
+        if (!application) {
+          application = await prisma.application.findFirst({
+            where: {
+              OR: [{ userId: authUser.id }, { email: authUser.email }],
+            },
+            include: { program: true },
+            orderBy: { createdAt: 'desc' },
+          });
+        }
       }
     } else {
+      // 2D. No application ID provided: locate candidate's application by user ID or email
       if (programId) {
         application = await prisma.application.findFirst({
           where: {
@@ -143,51 +162,73 @@ export class PlacementService {
           orderBy: { createdAt: 'desc' },
         });
       }
+    }
 
-      if (!application) {
-        // Safeguard: If the authenticated candidate takes an assessment without a pre-existing application record,
-        // auto-provision the official Application record to prevent blocking their assessment submission.
-        let resolvedProgramId: string | null = programId ? String(programId) : (assessment.programId || null);
-        if (!resolvedProgramId) {
-          const firstProg = await prisma.program.findFirst({ select: { id: true } });
-          resolvedProgramId = firstProg?.id || null;
-        }
-
-        if (resolvedProgramId) {
-          const applicationNumber = await identifierService.generateApplicationNumber();
-          const userRecord = await prisma.user.findUnique({ where: { id: authUser.id } });
-          const userFull = userRecord
-            ? `${userRecord.firstName || ''} ${userRecord.lastName || ''}`.trim() || authUser.email
-            : authUser.email;
-
-          application = await prisma.application.create({
-            data: {
-              applicationNumber,
-              userId: authUser.id,
-              programId: resolvedProgramId,
-              fullName: userFull,
-              email: authUser.email,
-              phone: userRecord?.phone || '',
-              address: 'Ile-Ife, Osun State',
-              educationLevel: 'Undergraduate / Technical Candidate',
-              careerGoals: 'Practical STEM Mastery & Real-World Impact',
-              learningObjectives: 'Hands-on Technical Excellence',
-              statementOfPurpose: 'Diagnostic Placement Assessment initiated via STEMPACT Academy Portal.',
-              preferredSchedule: 'Hybrid (Weekend & Evening)',
-              intendedLevel: 'LEVEL_1_FOUNDATION',
-              status: ApplicationStatus.SUBMITTED,
-              dateOfBirth: new Date(Date.now() - 18 * 365 * 24 * 3600 * 1000),
-              gender: 'Unspecified',
-            },
-            include: { program: true },
-          });
-          console.log(`✔ [PlacementService] Auto-provisioned application ${application.applicationNumber} for candidate ${authUser.email}`);
-        } else {
-          const notFoundErr: any = new Error('No active application found for your account. Please submit an application before taking the placement assessment.');
-          notFoundErr.statusCode = 400;
-          throw notFoundErr;
-        }
+    // 2E. Safeguard: If the authenticated candidate takes an assessment without a pre-existing application record,
+    // auto-provision the official Application record to prevent blocking their assessment submission.
+    if (!application) {
+      let resolvedProgramId: string | null = programId ? String(programId) : (assessment.programId || null);
+      if (!resolvedProgramId) {
+        const firstProg = await prisma.program.findFirst({ select: { id: true } });
+        resolvedProgramId = firstProg?.id || null;
       }
+
+      if (resolvedProgramId) {
+        const applicationNumber = await identifierService.generateApplicationNumber();
+        const userRecord = await prisma.user.findUnique({ where: { id: authUser.id } });
+        const userFull = userRecord
+          ? `${userRecord.firstName || ''} ${userRecord.lastName || ''}`.trim() || authUser.email
+          : authUser.email;
+
+        application = await prisma.application.create({
+          data: {
+            applicationNumber,
+            userId: authUser.id,
+            programId: resolvedProgramId,
+            fullName: userFull,
+            email: authUser.email,
+            phone: userRecord?.phone || '',
+            address: 'Ile-Ife, Osun State',
+            educationLevel: 'Undergraduate / Technical Candidate',
+            careerGoals: 'Practical STEM Mastery & Real-World Impact',
+            learningObjectives: 'Hands-on Technical Excellence',
+            statementOfPurpose: 'Diagnostic Placement Assessment initiated via STEMPACT Academy Portal.',
+            preferredSchedule: 'Hybrid (Weekend & Evening)',
+            intendedLevel: 'LEVEL_1_FOUNDATION',
+            status: ApplicationStatus.SUBMITTED,
+            dateOfBirth: new Date(Date.now() - 18 * 365 * 24 * 3600 * 1000),
+            gender: 'Unspecified',
+          },
+          include: { program: true },
+        });
+        console.log(`✔ [PlacementService] Auto-provisioned application ${application.applicationNumber} for candidate ${authUser.email}`);
+      } else {
+        const notFoundErr: any = new Error('No active application found for your account. Please submit an application before taking the placement assessment.');
+        notFoundErr.statusCode = 400;
+        throw notFoundErr;
+      }
+    }
+
+    // 2F. Verify that authUser owns this application or is authorized staff
+    const isOwner =
+      (application.userId && application.userId === authUser.id) ||
+      (application.email && application.email.toLowerCase() === authUser.email.toLowerCase());
+    const staffRoles: Role[] = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN];
+    const isStaff = staffRoles.includes(authUser.role);
+
+    if (!isOwner && !isStaff) {
+      const forbiddenErr: any = new Error('Forbidden: You are not authorized to submit assessments for this application.');
+      forbiddenErr.statusCode = 403;
+      throw forbiddenErr;
+    }
+
+    // 2G. Sync userId on application if matched by email but userId was not set
+    if (isOwner && !application.userId) {
+      await prisma.application.update({
+        where: { id: application.id },
+        data: { userId: authUser.id },
+      });
+      application.userId = authUser.id;
     }
 
     const targetProgramId = application.programId || assessment.programId;

@@ -105,29 +105,14 @@ export const submitAssessmentAttempt = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    if (applicationId && applicationId !== 'demo-applicant-session') {
-      const application = await prisma.application.findUnique({
-        where: { id: String(applicationId) },
-      });
-      if (application) {
-        const isOwner =
-          (application.userId && application.userId === authUser.id) ||
-          (application.email && application.email.toLowerCase() === authUser.email.toLowerCase());
-        const staffRoles: Role[] = [Role.SUPER_ADMIN, Role.ACADEMIC_ADMIN, Role.ADMISSIONS_ADMIN];
-        const isStaff = staffRoles.includes(authUser.role);
+    const rawAppId = (applicationId && typeof applicationId === 'string') ? applicationId.trim() : '';
+    const cleanAppId = (rawAppId && rawAppId !== 'undefined' && rawAppId !== 'null' && rawAppId !== 'demo-applicant-session')
+      ? rawAppId
+      : undefined;
 
-        if (!isOwner && !isStaff) {
-          res.status(403).json({
-            message: 'Forbidden: You are not authorized to submit assessments for this application.',
-          });
-          return;
-        }
-      }
-    }
-
-    // Delegate to canonical placementService for scoring, rules evaluation, and persistence
+    // Delegate to canonical placementService for resilient resolution, scoring, rules evaluation, and persistence
     const result = await placementService.recordAssessmentAttempt({
-      applicationId: applicationId && applicationId !== 'demo-applicant-session' ? String(applicationId) : undefined,
+      applicationId: cleanAppId,
       assessmentId: String(assessmentId),
       programId: programId ? String(programId) : undefined,
       answers,

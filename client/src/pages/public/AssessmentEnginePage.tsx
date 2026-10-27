@@ -28,8 +28,14 @@ import {
 
 export const AssessmentEnginePage: React.FC<{ portalMode?: boolean }> = ({ portalMode = false }) => {
   const [searchParams] = useSearchParams();
-  const applicationId = searchParams.get('appId') || searchParams.get('applicationId');
-  const programId = searchParams.get('programId');
+  const rawAppId = searchParams.get('appId') || searchParams.get('applicationId');
+  const applicationId = (rawAppId && rawAppId !== 'undefined' && rawAppId !== 'null' && rawAppId.trim() !== '')
+    ? rawAppId.trim()
+    : '';
+  const rawProgId = searchParams.get('programId');
+  const programId = (rawProgId && rawProgId !== 'undefined' && rawProgId !== 'null' && rawProgId.trim() !== '')
+    ? rawProgId.trim()
+    : '';
   const trackParam = searchParams.get('track');
   const { user, portalRoute } = useAuth();
   const navigate = useNavigate();

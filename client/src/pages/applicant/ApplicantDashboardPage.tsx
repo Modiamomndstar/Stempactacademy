@@ -817,7 +817,7 @@ export const ApplicantDashboardPage: React.FC = () => {
 
               {(!attempt || isReassessmentRequired) && (
                 <Link
-                  to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}${isInnovation ? '&track=innovation' : ''}`}
+                  to={app?.id ? `/portal/applicant/assessment?appId=${app.id}&programId=${app.programId || ''}${isInnovation ? '&track=innovation' : ''}` : `/portal/applicant/assessment${app?.programId ? `?programId=${app.programId}` : ''}`}
                   className={`w-full py-3 px-4 ${
                     isReassessmentRequired
                       ? 'bg-amber-600 hover:bg-amber-700'
@@ -1006,7 +1006,7 @@ export const ApplicantDashboardPage: React.FC = () => {
 
                 <div className="pt-1">
                   <Link
-                    to={`/portal/applicant/assessment?appId=${app?.id}&programId=${app?.programId || ''}`}
+                    to={app?.id ? `/portal/applicant/assessment?appId=${app.id}&programId=${app.programId || ''}` : `/portal/applicant/assessment${app?.programId ? `?programId=${app.programId}` : ''}`}
                     className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
                   >
                     <RotateCcw className="w-4 h-4" />
@@ -1093,7 +1093,7 @@ export const ApplicantDashboardPage: React.FC = () => {
 
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
-                    to={`/portal/applicant/assessment?appId=${app?.id || ''}&programId=${app?.programId || ''}${isInnovation ? '&track=innovation' : ''}`}
+                    to={app?.id ? `/portal/applicant/assessment?appId=${app.id}&programId=${app.programId || ''}${isInnovation ? '&track=innovation' : ''}` : `/portal/applicant/assessment${app?.programId ? `?programId=${app.programId}` : ''}`}
                     className={`px-6 py-3 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 ${
                       isInnovation ? 'bg-sky-600 hover:bg-sky-700' : 'bg-blue-600 hover:bg-blue-700'
                     }`}

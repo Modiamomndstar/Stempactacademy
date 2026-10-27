@@ -296,7 +296,7 @@ export const ApplicationWizardPage: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 pt-2">
             <Link
-              to={successData.nextSteps?.assessmentUrl || `/assessment?appId=${successData.applicationId}&programId=${formData.programId}`}
+              to={successData.nextSteps?.assessmentUrl || (successData.applicationId ? `/assessment?appId=${successData.applicationId}&programId=${formData.programId || ''}` : `/assessment?programId=${formData.programId || ''}`)}
               className={`flex-1 py-3.5 px-6 rounded-xl text-white font-bold text-xs shadow-md transition-colors flex items-center justify-center gap-2 ${
                 successData.nextSteps?.isInnovationLab ? 'bg-sky-600 hover:bg-sky-700' : 'bg-blue-600 hover:bg-blue-700'
               }`}
