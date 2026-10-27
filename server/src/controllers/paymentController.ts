@@ -228,14 +228,21 @@ export const submitBankTransfer = async (req: AuthRequest, res: Response): Promi
 };
 
 /**
- * Fetch bank transfers pending verification (Finance Admin or Super Admin)
+ * Fetch payments and bank transfers with full candidate/student relations (Finance Admin or Super Admin)
  */
 export const getBankTransfers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status } = req.query;
-    const where: any = { channel: 'BANK_TRANSFER' };
-    if (status) {
+    const { status, channel, payerType } = req.query;
+    const where: any = {};
+
+    if (channel && channel !== 'ALL') {
+      where.channel = String(channel);
+    }
+    if (status && status !== 'ALL') {
       where.status = String(status);
+    }
+    if (payerType && payerType !== 'ALL') {
+      where.payerType = String(payerType);
     }
 
     const payments = await prisma.payment.findMany({
@@ -243,8 +250,45 @@ export const getBankTransfers = async (req: AuthRequest, res: Response): Promise
       include: {
         invoice: {
           include: {
-            student: { include: { user: true } },
-            application: true,
+            student: {
+              include: {
+                user: true,
+                enrollments: {
+                  include: {
+                    cohort: {
+                      include: {
+                        program: { include: { school: true } },
+                        academicSession: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            application: {
+              include: {
+                program: { include: { school: true } },
+                cohort: true,
+                user: true,
+              },
+            },
+            admission: {
+              include: {
+                cohort: {
+                  include: {
+                    program: { include: { school: true } },
+                    academicSession: true,
+                  },
+                },
+              },
+            },
+            cohort: {
+              include: {
+                program: { include: { school: true } },
+                academicSession: true,
+              },
+            },
+            coupon: true,
           },
         },
       },

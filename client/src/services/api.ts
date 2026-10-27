@@ -263,8 +263,20 @@ export const api = {
     payerName?: string;
     payerEmail?: string;
   }) => apiRequest('/payments/bank-transfer', { method: 'POST', body: JSON.stringify(data) }),
-  getBankTransfers: (status?: string) =>
-    apiRequest(`/payments/bank-transfers${status ? `?status=${status}` : ''}`),
+  getBankTransfers: (statusOrParams?: string | { status?: string; channel?: string; payerType?: string }) => {
+    if (typeof statusOrParams === 'string') {
+      return apiRequest(`/payments/bank-transfers${statusOrParams ? `?status=${encodeURIComponent(statusOrParams)}` : ''}`);
+    }
+    if (statusOrParams && typeof statusOrParams === 'object') {
+      const q = new URLSearchParams();
+      if (statusOrParams.status) q.append('status', statusOrParams.status);
+      if (statusOrParams.channel) q.append('channel', statusOrParams.channel);
+      if (statusOrParams.payerType) q.append('payerType', statusOrParams.payerType);
+      const qs = q.toString();
+      return apiRequest(`/payments/bank-transfers${qs ? `?${qs}` : ''}`);
+    }
+    return apiRequest('/payments/bank-transfers');
+  },
   approveBankTransfer: (paymentId: string) =>
     apiRequest(`/payments/bank-transfers/${paymentId}/approve`, { method: 'POST' }),
   rejectBankTransfer: (paymentId: string, rejectionReason?: string) =>

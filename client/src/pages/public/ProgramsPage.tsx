@@ -23,8 +23,8 @@ export const ProgramsPage: React.FC = () => {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedSchool, setSelectedSchool] = useState<string>(searchParams.get('school') || 'ALL');
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'all' | 'openOnly'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('OPEN_FOR_APPLICATION');
+  const [viewMode, setViewMode] = useState<'all' | 'openOnly'>('openOnly');
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -94,14 +94,17 @@ export const ProgramsPage: React.FC = () => {
     }
 
     // Status filter
-    if (selectedStatus !== 'ALL' && p.status !== selectedStatus) {
+    if (selectedStatus === 'OPEN_FOR_APPLICATION') {
+      const hasCohort = !!openCohortsByProgram[p.id];
+      if (!hasCohort) return false;
+    } else if (selectedStatus !== 'ALL' && p.status !== selectedStatus) {
       return false;
     }
 
     // View mode filter (open cohorts vs all)
     if (viewMode === 'openOnly') {
       const hasCohort = !!openCohortsByProgram[p.id];
-      if (!hasCohort && p.status !== 'OPEN_FOR_APPLICATION') {
+      if (!hasCohort) {
         return false;
       }
     }
@@ -110,7 +113,7 @@ export const ProgramsPage: React.FC = () => {
   });
 
   const openProgramsCount = programs.filter(
-    (p) => !!openCohortsByProgram[p.id] || (p.status === 'OPEN_FOR_APPLICATION' && p.cohorts && p.cohorts.length > 0)
+    (p) => !!openCohortsByProgram[p.id]
   ).length;
 
   return (
@@ -131,8 +134,11 @@ export const ProgramsPage: React.FC = () => {
           <div className="pt-4 flex items-center justify-center">
             <div className="inline-flex rounded-xl bg-slate-800 p-1 border border-slate-700">
               <button
-                onClick={() => setViewMode('all')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                onClick={() => {
+                  setViewMode('all');
+                  setSelectedStatus('ALL');
+                }}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'all'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-300 hover:text-white'
@@ -141,14 +147,17 @@ export const ProgramsPage: React.FC = () => {
                 All Available Programs ({programs.length})
               </button>
               <button
-                onClick={() => setViewMode('openOnly')}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                onClick={() => {
+                  setViewMode('openOnly');
+                  setSelectedStatus('OPEN_FOR_APPLICATION');
+                }}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   viewMode === 'openOnly'
-                    ? 'bg-rose-600 text-white shadow-sm'
+                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400/40'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <Flame className="w-3.5 h-3.5" />
+                <Flame className="w-3.5 h-3.5 text-white" />
                 <span>Currently Open Cohorts ({openProgramsCount})</span>
               </button>
             </div>
@@ -200,32 +209,48 @@ export const ProgramsPage: React.FC = () => {
             <div className="md:col-span-3">
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedStatus(val);
+                  if (val === 'OPEN_FOR_APPLICATION') {
+                    setViewMode('openOnly');
+                  } else {
+                    setViewMode('all');
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option value="ALL">All Statuses</option>
-                <option value="OPEN_FOR_APPLICATION">Open for Application</option>
+                <option value="OPEN_FOR_APPLICATION">Open for Application (Active Intake)</option>
+                <option value="ALL">All Statuses (Full Catalog)</option>
                 <option value="UPCOMING">Upcoming</option>
-                <option value="FULL">Full</option>
+                <option value="FULL">Full / Waitlist</option>
                 <option value="CLOSED">Closed</option>
               </select>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span>Showing {filteredPrograms.length} programs matching criteria</span>
-            {(searchQuery || selectedSchool !== 'ALL' || selectedStatus !== 'ALL') && (
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 flex-wrap gap-2">
+            <span className="font-medium">
+              Showing <strong className="text-slate-900 font-bold">{filteredPrograms.length}</strong> programs matching criteria
+              {viewMode === 'openOnly' && (
+                <span className="ml-2 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold text-[11px]">
+                  Filtered: Active Intake Cohorts Only
+                </span>
+              )}
+            </span>
+            {(searchQuery || selectedSchool !== 'ALL' || selectedStatus !== 'ALL' || viewMode !== 'all') && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedSchool('ALL');
                   setSelectedStatus('ALL');
+                  setViewMode('all');
                   searchParams.delete('school');
                   setSearchParams(searchParams);
                 }}
-                className="text-blue-600 hover:text-blue-800 font-semibold"
+                className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
               >
-                Clear all filters
+                View Full Catalog ({programs.length} Programs)
               </button>
             )}
           </div>

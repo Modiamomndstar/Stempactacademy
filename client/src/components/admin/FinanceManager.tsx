@@ -6,6 +6,7 @@ import { CustomInvoiceModal } from './CustomInvoiceModal';
 import { SignatoriesModal } from './SignatoriesModal';
 import { LearnerPaymentHistoryModal } from './LearnerPaymentHistoryModal';
 import { PaymentSettingsModal } from './PaymentSettingsModal';
+import { PayerProfileAuditModal } from './PayerProfileAuditModal';
 import {
   CreditCard,
   Building,
@@ -31,6 +32,14 @@ import {
   Award,
   RefreshCw,
   Sparkles,
+  SlidersHorizontal,
+  User,
+  BookOpen,
+  Layers,
+  School,
+  Phone,
+  Clock,
+  Check,
 } from 'lucide-react';
 
 interface FinanceManagerProps {
@@ -51,6 +60,110 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   const [subTab, setSubTab] = useState<'transfers' | 'ledger' | 'coupons' | 'invoices' | 'clearance' | 'signatories'>('transfers');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Enhanced Transfers & Payment Filter States
+  const [transferSearch, setTransferSearch] = useState('');
+  const [transferStatusFilter, setTransferStatusFilter] = useState('ALL');
+  const [transferChannelFilter, setTransferChannelFilter] = useState('ALL');
+  const [transferClearanceFilter, setTransferClearanceFilter] = useState('ALL');
+  const [transferPayerTypeFilter, setTransferPayerTypeFilter] = useState('ALL');
+  const [transferDateFilter, setTransferDateFilter] = useState('ALL');
+  const [inspectingPayment, setInspectingPayment] = useState<any | null>(null);
+
+  // Helper to resolve full payer and enrollment identity
+  const resolvePaymentDossier = (tx: any) => {
+    const inv = tx.invoice || {};
+    const student = inv.student;
+    const application = inv.application;
+    const admission = inv.admission;
+    const cohort = inv.cohort || admission?.cohort || application?.cohort;
+    const program =
+      cohort?.program ||
+      admission?.cohort?.program ||
+      application?.program ||
+      student?.enrollments?.[0]?.cohort?.program;
+
+    const candidateName =
+      student?.user
+        ? `${student.user.firstName} ${student.user.lastName}`
+        : application?.fullName ||
+          tx.payerName ||
+          inv.payerName ||
+          tx.senderAccount ||
+          'Candidate';
+
+    const candidateId =
+      student?.registrationNumber ||
+      admission?.admissionNumber ||
+      application?.applicationNumber ||
+      inv.invoiceNumber ||
+      'STP-ID';
+
+    const candidateEmail =
+      student?.user?.email || application?.email || inv.payerEmail || '';
+    const candidatePhone =
+      student?.user?.phone || application?.phone || '';
+
+    const isEnrolledStudent = Boolean(student || admission?.status === 'ENROLLED');
+    const isApplicant = Boolean(application && !isEnrolledStudent);
+    const isParent = tx.payerType === 'PARENT' || inv.payerType === 'PARENT';
+    const isSponsor = tx.payerType === 'SPONSOR' || inv.payerType === 'SPONSOR';
+
+    let roleLabel = '📝 New Applicant';
+    let roleBadgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
+    if (isEnrolledStudent) {
+      roleLabel = '🎓 Enrolled Student';
+      roleBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    } else if (isParent) {
+      roleLabel = '👨‍👩‍👦 Parent / Guardian';
+      roleBadgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
+    } else if (isSponsor) {
+      roleLabel = '🏢 Corporate / Sponsor';
+      roleBadgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+    }
+
+    const programName = program?.name || 'Academic Specialization';
+    const schoolName = program?.school?.name || 'STEMPACT Academy';
+    const cohortName = cohort?.name || application?.cohortName || 'Assigned Cohort';
+    const cohortCode = cohort?.cohortCode || '';
+    const level =
+      cohort?.level ||
+      application?.intendedLevel?.replace(/_/g, ' ') ||
+      'Level 1 (Foundation)';
+
+    const totalInv = Number(inv.totalAmount || tx.amount || 0);
+    const paidInv = Number(
+      inv.amountPaid !== undefined
+        ? inv.amountPaid
+        : tx.status === 'PAID'
+        ? tx.amount
+        : 0
+    );
+    const balance = Number(
+      inv.balance !== undefined ? inv.balance : Math.max(0, totalInv - paidInv)
+    );
+    const isFullPayment = balance <= 0;
+
+    return {
+      candidateName,
+      candidateId,
+      candidateEmail,
+      candidatePhone,
+      isEnrolledStudent,
+      isApplicant,
+      roleLabel,
+      roleBadgeClass,
+      programName,
+      schoolName,
+      cohortName,
+      cohortCode,
+      level,
+      totalInv,
+      paidInv,
+      balance,
+      isFullPayment,
+    };
+  };
 
   const [processing, setProcessing] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
@@ -313,6 +426,80 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     return true;
   });
 
+  // Filtered transactions for the verification queue & ledger
+  const filteredTransfers = bankTransfers.filter((tx) => {
+    const dossier = resolvePaymentDossier(tx);
+
+    // 1. Search Query
+    if (transferSearch.trim()) {
+      const q = transferSearch.toLowerCase();
+      const matchName = dossier.candidateName.toLowerCase().includes(q);
+      const matchId = dossier.candidateId.toLowerCase().includes(q);
+      const matchEmail = dossier.candidateEmail.toLowerCase().includes(q);
+      const matchPhone = dossier.candidatePhone.toLowerCase().includes(q);
+      const matchProg = dossier.programName.toLowerCase().includes(q);
+      const matchCohort = dossier.cohortName.toLowerCase().includes(q);
+      const matchRef = (tx.paymentReference || '').toLowerCase().includes(q);
+      const matchInv = (tx.invoice?.invoiceNumber || tx.invoiceId || '').toLowerCase().includes(q);
+      const matchBank = (tx.senderBank || '').toLowerCase().includes(q);
+      const matchAccount = (tx.senderAccount || '').toLowerCase().includes(q);
+
+      if (
+        !matchName &&
+        !matchId &&
+        !matchEmail &&
+        !matchPhone &&
+        !matchProg &&
+        !matchCohort &&
+        !matchRef &&
+        !matchInv &&
+        !matchBank &&
+        !matchAccount
+      ) {
+        return false;
+      }
+    }
+
+    // 2. Status Filter
+    if (transferStatusFilter !== 'ALL' && tx.status !== transferStatusFilter) {
+      return false;
+    }
+
+    // 3. Channel Filter
+    if (transferChannelFilter !== 'ALL') {
+      if (transferChannelFilter === 'BANK_TRANSFER' && tx.channel !== 'BANK_TRANSFER') return false;
+      if (transferChannelFilter === 'PAYSTACK' && tx.channel !== 'PAYSTACK') return false;
+      if (transferChannelFilter === 'FLUTTERWAVE' && tx.channel !== 'FLUTTERWAVE') return false;
+      if (transferChannelFilter === 'GATEWAY' && tx.channel === 'BANK_TRANSFER') return false;
+    }
+
+    // 4. Clearance Filter
+    if (transferClearanceFilter === 'FULL' && !dossier.isFullPayment) return false;
+    if (transferClearanceFilter === 'PARTIAL' && dossier.isFullPayment) return false;
+
+    // 5. Payer Type Filter
+    if (transferPayerTypeFilter === 'APPLICANT' && !dossier.isApplicant) return false;
+    if (transferPayerTypeFilter === 'STUDENT' && !dossier.isEnrolledStudent) return false;
+    if (transferPayerTypeFilter === 'PARENT_SPONSOR' && (dossier.isApplicant || dossier.isEnrolledStudent)) return false;
+
+    // 6. Date Filter
+    if (transferDateFilter !== 'ALL' && tx.paidAt) {
+      const txTime = new Date(tx.paidAt).getTime();
+      const now = Date.now();
+      if (transferDateFilter === 'TODAY') {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        if (txTime < startOfToday.getTime()) return false;
+      } else if (transferDateFilter === '7DAYS') {
+        if (now - txTime > 7 * 24 * 60 * 60 * 1000) return false;
+      } else if (transferDateFilter === '30DAYS') {
+        if (now - txTime > 30 * 24 * 60 * 60 * 1000) return false;
+      }
+    }
+
+    return true;
+  });
+
   const pendingTransfers = bankTransfers.filter((t) => t.status === 'PENDING');
 
   return (
@@ -473,94 +660,354 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         </div>
       )}
 
-      {/* SUBTAB 1: BANK TRANSFERS */}
+      {/* SUBTAB 1: BANK TRANSFERS & COMPREHENSIVE PAYMENT AUDIT */}
       {subTab === 'transfers' && (
         <div className="space-y-4">
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-            <h3 className="font-bold text-sm text-slate-900">Direct Bank Deposit Verification Queue</h3>
-            <p className="text-xs text-slate-500">
-              Inspect uploaded bank payment tellers, match against official statement records, and emit verified receipts.
-            </p>
+          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                <span>Payment Verification & Payer Audit Ledger</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Audit candidate payments, verify bank deposit tellers, inspect online gateway settlements, and view full payer profiles.
+              </p>
+            </div>
+            {pendingTransfers.length > 0 && (
+              <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 animate-pulse self-start md:self-auto">
+                {pendingTransfers.length} Payment(s) Awaiting Verification
+              </span>
+            )}
           </div>
 
-          {bankTransfers.length === 0 ? (
-            <Card className="p-12 text-center text-slate-400 text-xs">
-              No bank transfer submissions recorded.
+          {/* Multi-Criteria Robust Filter Bar */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              {/* Search Field */}
+              <div className="sm:col-span-2 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search student, ID, program, cohort, ref, bank..."
+                  value={transferSearch}
+                  onChange={(e) => setTransferSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={transferStatusFilter}
+                  onChange={(e) => setTransferStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="PENDING">🟡 Pending Verification</option>
+                  <option value="PAID">🟢 Verified & Cleared (PAID)</option>
+                  <option value="REJECTED">🔴 Rejected</option>
+                </select>
+              </div>
+
+              {/* Channel / Gateway Filter */}
+              <div>
+                <select
+                  value={transferChannelFilter}
+                  onChange={(e) => setTransferChannelFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">All Payment Methods</option>
+                  <option value="BANK_TRANSFER">🏦 Direct Bank Transfer</option>
+                  <option value="PAYSTACK">💳 Paystack Gateway</option>
+                  <option value="FLUTTERWAVE">⚡ Flutterwave Gateway</option>
+                  <option value="GATEWAY">🌐 Any Online Gateway</option>
+                </select>
+              </div>
+
+              {/* Clearance Standing Filter */}
+              <div>
+                <select
+                  value={transferClearanceFilter}
+                  onChange={(e) => setTransferClearanceFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">All Settlements</option>
+                  <option value="FULL">✅ Full Payment (₦0 Bal)</option>
+                  <option value="PARTIAL">⏳ Part Payment (Balance Due)</option>
+                </select>
+              </div>
+
+              {/* Payer Type Filter */}
+              <div>
+                <select
+                  value={transferPayerTypeFilter}
+                  onChange={(e) => setTransferPayerTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">All Payer Roles</option>
+                  <option value="APPLICANT">📝 New Applicants</option>
+                  <option value="STUDENT">🎓 Enrolled Students</option>
+                  <option value="PARENT_SPONSOR">👨‍👩‍👦 Parents & Sponsors</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Filter Summary & Timeframe Bar */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>
+                  Showing <strong className="text-slate-900 font-bold">{filteredTransfers.length}</strong> of{' '}
+                  {bankTransfers.length} transactions
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-[11px] font-bold text-slate-400">Filter Period:</span>
+                <div className="inline-flex gap-1">
+                  {[
+                    { key: 'ALL', label: 'All Time' },
+                    { key: 'TODAY', label: 'Today' },
+                    { key: '7DAYS', label: 'Last 7 Days' },
+                    { key: '30DAYS', label: 'This Month' },
+                  ].map((p) => (
+                    <button
+                      key={p.key}
+                      onClick={() => setTransferDateFilter(p.key)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                        transferDateFilter === p.key
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(transferSearch ||
+                transferStatusFilter !== 'ALL' ||
+                transferChannelFilter !== 'ALL' ||
+                transferClearanceFilter !== 'ALL' ||
+                transferPayerTypeFilter !== 'ALL' ||
+                transferDateFilter !== 'ALL') && (
+                <button
+                  onClick={() => {
+                    setTransferSearch('');
+                    setTransferStatusFilter('ALL');
+                    setTransferChannelFilter('ALL');
+                    setTransferClearanceFilter('ALL');
+                    setTransferPayerTypeFilter('ALL');
+                    setTransferDateFilter('ALL');
+                  }}
+                  className="text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filteredTransfers.length === 0 ? (
+            <Card className="p-12 text-center text-slate-400 text-xs space-y-2">
+              <CreditCard className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="font-bold text-slate-600">No payment records matching the selected criteria.</p>
+              <p className="text-[11px]">Try modifying your search or clearing active filters.</p>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {bankTransfers.map((tx) => (
-                <Card key={tx.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                        {tx.paymentReference}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          tx.status === 'PAID'
-                            ? 'bg-emerald-100 text-emerald-800'
+            <div className="space-y-3.5">
+              {filteredTransfers.map((tx) => {
+                const dossier = resolvePaymentDossier(tx);
+
+                return (
+                  <Card
+                    key={tx.id}
+                    className="p-5 hover:border-blue-300 transition-all shadow-2xs space-y-3 bg-white"
+                  >
+                    {/* Top Status & Channel Row */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-slate-100 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-xs text-blue-800 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                          {tx.paymentReference}
+                        </span>
+
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            tx.status === 'PAID'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : tx.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                              : 'bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}
+                        >
+                          {tx.status === 'PAID'
+                            ? 'VERIFIED & PAID'
                             : tx.status === 'PENDING'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
-                    </div>
+                            ? 'AWAITING VERIFICATION'
+                            : 'REJECTED'}
+                        </span>
 
-                    <div className="text-xs text-slate-700">
-                      <strong>Payer:</strong> {tx.senderAccount || tx.payerName || 'Student'} • <strong>Bank:</strong> {tx.senderBank || 'Access Bank'}
-                    </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+                          {tx.channel === 'BANK_TRANSFER'
+                            ? '🏦 Direct Bank Transfer'
+                            : tx.channel === 'PAYSTACK'
+                            ? '💳 Paystack'
+                            : tx.channel === 'FLUTTERWAVE'
+                            ? '⚡ Flutterwave'
+                            : tx.channel}
+                        </span>
 
-                    <div className="text-[11px] text-slate-400">
-                      Invoice ID: {tx.invoice?.invoiceNumber || tx.invoiceId} • Submitted: {new Date(tx.paidAt).toLocaleString()}
-                    </div>
-
-                    {tx.proofUrl && (
-                      <div className="pt-1">
-                        <a
-                          href={tx.proofUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1"
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            dossier.isFullPayment
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-800 border border-amber-200'
+                          }`}
                         >
-                          <span>View Uploaded Bank Teller / Proof</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                          {dossier.isFullPayment
+                            ? '✅ Full Tuition Cleared (₦0 Bal)'
+                            : `⏳ Part Payment (₦${dossier.balance.toLocaleString()} Due)`}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <span className="font-mono font-black text-slate-900 text-base block">
-                        ₦{(tx.amount || 0).toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-slate-400">Direct Deposit</span>
+                      <div className="text-[11px] text-slate-400">
+                        Submitted: {tx.paidAt ? new Date(tx.paidAt).toLocaleString() : '—'}
+                      </div>
                     </div>
 
-                    {tx.status === 'PENDING' && isFinanceOrSuperAdmin && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleApproveBankTransfer(tx.id)}
-                          disabled={processing}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => setRejectingTransferId(tx.id)}
-                          disabled={processing}
-                          className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
+                    {/* Middle: Rich Payer, Program & Bank Details */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Left: Candidate Identity & Program Info */}
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black text-sm shrink-0">
+                            {dossier.candidateName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-base font-black text-slate-900 leading-tight">
+                                {dossier.candidateName}
+                              </h4>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${dossier.roleBadgeClass}`}
+                              >
+                                {dossier.roleLabel}
+                              </span>
+                              <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                {dossier.candidateId}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 pt-0.5 flex items-center gap-3 flex-wrap">
+                              {dossier.candidateEmail && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3 text-slate-400" />
+                                  <span>{dossier.candidateEmail}</span>
+                                </span>
+                              )}
+                              {dossier.candidatePhone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  <span>{dossier.candidatePhone}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Program & Cohort Line */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                              Enrolled Program Track:
+                            </span>
+                            <span className="font-bold text-slate-800 line-clamp-1">
+                              {dossier.programName}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                              Intake Cohort & Level:
+                            </span>
+                            <span className="font-bold text-blue-900">
+                              {dossier.cohortName}
+                              {dossier.cohortCode && ` (${dossier.cohortCode})`}
+                              <span className="text-slate-400 font-normal"> · {dossier.level}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Bank Transfer Sender Info (if bank transfer) */}
+                        <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                          <span>
+                            <strong>Bank:</strong> {tx.senderBank || 'Bank Transfer'}
+                          </span>
+                          <span>•</span>
+                          <span>
+                            <strong>Payer Account / Note:</strong> {tx.senderAccount || tx.payerName || 'Direct Deposit'}
+                          </span>
+                          <span>•</span>
+                          <span>
+                            Invoice: <strong>{tx.invoice?.invoiceNumber || tx.invoiceId}</strong>
+                          </span>
+                          {tx.proofUrl && (
+                            <a
+                              href={tx.proofUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1 ml-auto"
+                            >
+                              <span>View Bank Teller</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
+
+                      {/* Right: Payment Amount & Actions */}
+                      <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 shrink-0">
+                        <div className="text-left lg:text-right">
+                          <span className="font-mono font-black text-slate-900 text-lg sm:text-xl block">
+                            ₦{Number(tx.amount || 0).toLocaleString()}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            Invoice Total: ₦{dossier.totalInv.toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingPayment(tx)}
+                            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-blue-300" />
+                            <span>View Payer Profile</span>
+                          </button>
+
+                          {tx.status === 'PENDING' && isFinanceOrSuperAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveBankTransfer(tx.id)}
+                                disabled={processing}
+                                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectingTransferId(tx.id)}
+                                disabled={processing}
+                                className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs disabled:opacity-50 cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1429,6 +1876,32 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         onSaved={async () => {
           await onDataRefresh();
         }}
+      />
+      {/* PAYER PROFILE & AUDIT DOSSIER MODAL */}
+      <PayerProfileAuditModal
+        isOpen={!!inspectingPayment}
+        onClose={() => setInspectingPayment(null)}
+        payment={inspectingPayment}
+        onApprove={async (pid) => {
+          await handleApproveBankTransfer(pid);
+          setInspectingPayment(null);
+        }}
+        onReject={async (pid, reason) => {
+          setProcessing(true);
+          setActionError('');
+          try {
+            await api.rejectBankTransfer(pid, reason);
+            setActionSuccess('Bank transfer rejected.');
+            setInspectingPayment(null);
+            await onDataRefresh();
+          } catch (err: any) {
+            setActionError(err.message || 'Failed to reject bank transfer');
+          } finally {
+            setProcessing(false);
+          }
+        }}
+        processing={processing}
+        isFinanceOrSuperAdmin={isFinanceOrSuperAdmin}
       />
     </div>
   );
