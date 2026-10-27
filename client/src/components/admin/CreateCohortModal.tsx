@@ -9,6 +9,7 @@ import {
   MapPin,
   Sparkles,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Check,
   School,
@@ -47,14 +48,123 @@ interface ProgramIntakeConfig {
 }
 
 export const SCHEDULE_PRESETS = [
-  { label: 'Weekday Evenings (Mon, Wed, Fri • 4:00 PM – 7:00 PM WAT)', value: 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)' },
-  { label: 'Weekend Intensive (Saturdays • 10:00 AM – 3:00 PM WAT)', value: 'Saturdays (10:00 AM – 3:00 PM WAT)' },
-  { label: 'Morning Immersion (Mon – Thu • 9:00 AM – 1:00 PM WAT)', value: 'Mondays to Thursdays (9:00 AM – 1:00 PM WAT)' },
-  { label: 'Hardware Lab (Wed 3:30–6:30 PM & Sat 10 AM–2 PM WAT)', value: 'Wednesdays (3:30 PM – 6:30 PM) & Saturdays (10:00 AM – 2:00 PM WAT)' },
-  { label: 'Solar Field Practicum (Mon & Thu • 9:00 AM – 1:00 PM WAT)', value: 'Mondays & Thursdays (9:00 AM – 1:00 PM Field Work)' },
-  { label: 'Youth Maker Space (Saturdays • 10:00 AM – 1:00 PM WAT)', value: 'Saturdays (10:00 AM – 1:00 PM WAT)' },
-  { label: 'Founder Sprints (Tue & Thu • 5:00 PM – 7:30 PM WAT)', value: 'Tuesdays & Thursdays (5:00 PM – 7:30 PM WAT)' },
+  { label: 'Weekday Afternoon Sprint (Mon & Wed • 2:00 PM – 5:00 PM WAT)', value: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)' },
+  { label: 'Weekday Afternoon Sprint (Tue & Thu • 2:00 PM – 5:00 PM WAT)', value: 'Tuesdays & Thursdays (2:00 PM – 5:00 PM WAT)' },
+  { label: 'Weekday Morning Lab (Mon & Wed • 10:30 AM – 1:30 PM WAT)', value: 'Mondays & Wednesdays (10:30 AM – 1:30 PM WAT)' },
+  { label: 'Weekday Morning Lab (Tue & Thu • 10:30 AM – 1:00 PM WAT)', value: 'Tuesdays & Thursdays (10:30 AM – 1:00 PM WAT)' },
+  { label: 'Educators Masterclass (Saturdays Only • 10:30 AM – 4:00 PM WAT)', value: 'Saturdays Only (10:30 AM – 4:00 PM WAT - Educator Masterclass)' },
+  { label: 'Youth Discovery Lab (Saturdays • 10:00 AM – 1:00 PM WAT)', value: 'Saturdays (10:00 AM – 1:00 PM WAT - Junior Discovery Lab)' },
+  { label: 'Teen Code Studio (Saturdays • 1:30 PM – 4:30 PM WAT)', value: 'Saturdays (1:30 PM – 4:30 PM WAT - Teen Code Studio)' },
+  { label: 'Hardware Lab (Wed 2:00–5:00 PM & Sat 10:00 AM–1:30 PM WAT)', value: 'Wednesdays (2:00 PM – 5:00 PM) & Saturdays (10:00 AM – 1:30 PM WAT - Lab Practicum)' },
+  { label: 'Solar Field Practicum (Mon & Thu • 10:00 AM – 1:30 PM WAT)', value: 'Mondays & Thursdays (10:00 AM – 1:30 PM WAT - Daylight PV Practicum)' },
+  { label: 'Tri-Weekly Sprints (Mon, Wed, Fri • 2:30 PM – 5:00 PM WAT)', value: 'Mondays, Wednesdays, Fridays (2:30 PM – 5:00 PM WAT)' },
+  { label: 'Venture Sprints (Fridays • 2:00 PM – 5:00 PM WAT)', value: 'Fridays (2:00 PM – 5:00 PM WAT - Venture Standup & Founder Sprints)' },
 ];
+
+export const resolveProgramDefaultSchedule = (prog: any) => {
+  const text = `${prog?.name || ''} ${prog?.code || ''}`.toLowerCase();
+  if (text.includes('kid') || (text.includes('young') && !text.includes('teen'))) {
+    return {
+      schedule: 'Saturdays (10:00 AM – 1:00 PM WAT - Junior Discovery Lab)',
+      mode: 'Onsite Kids Discovery Hub & Interactive Lab',
+    };
+  }
+  if (text.includes('teen')) {
+    return {
+      schedule: 'Saturdays (1:30 PM – 4:30 PM WAT - Teen Code Studio)',
+      mode: 'Onsite Teen Studio & Interactive Lab',
+    };
+  }
+  if (text.includes('educator') || text.includes('teacher') || text.includes('instructional')) {
+    return {
+      schedule: 'Saturdays Only (10:30 AM – 4:00 PM WAT - Educator Masterclass)',
+      mode: 'Hybrid (Onsite Executive Seminar & Interactive Stream)',
+    };
+  }
+  if (text.includes('solar') || text.includes('clean energy') || text.includes('energy') || text.includes('install')) {
+    return {
+      schedule: 'Mondays & Thursdays (10:00 AM – 1:30 PM WAT - Daylight PV Practicum)',
+      mode: 'Onsite Technical Workshop & Field Practicum',
+    };
+  }
+  if (text.includes('repair') || (text.includes('system') && text.includes('hardware')) || text.includes('pc')) {
+    return {
+      schedule: 'Tuesdays & Thursdays (10:00 AM – 1:30 PM WAT - Workbench Practicum)',
+      mode: 'Onsite Technical Workshop & Repair Practicum',
+    };
+  }
+  if (text.includes('robot') || text.includes('iot') || text.includes('hardware') || text.includes('embed')) {
+    return {
+      schedule: 'Wednesdays (2:00 PM – 5:00 PM) & Saturdays (10:00 AM – 1:30 PM WAT - Lab Practicum)',
+      mode: 'Onsite Laboratory Intensive & Interactive Practice',
+    };
+  }
+  if (text.includes('market') || text.includes('growth') || text.includes('seo')) {
+    return {
+      schedule: 'Mondays & Wednesdays (2:30 PM – 5:00 PM WAT)',
+      mode: 'Hybrid (Interactive Computer Lab & Live Campaigns)',
+    };
+  }
+  if (text.includes('design') || text.includes('creative') || text.includes('content') || text.includes('media')) {
+    return {
+      schedule: 'Tuesdays & Thursdays (10:30 AM – 1:00 PM WAT)',
+      mode: 'Hybrid (Onsite Design Studio & Virtual Portfolio)',
+    };
+  }
+  if (text.includes('data') || text.includes('analyt') || text.includes('machine learning')) {
+    return {
+      schedule: 'Tuesdays & Thursdays (2:00 PM – 5:00 PM WAT)',
+      mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+    };
+  }
+  if (text.includes('python') && text.includes('software')) {
+    return {
+      schedule: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+      mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+    };
+  }
+  if (text.includes('web') || text.includes('full') || text.includes('fse')) {
+    return {
+      schedule: 'Mondays & Wednesdays (10:30 AM – 1:30 PM) & Saturdays (10:00 AM – 1:00 PM WAT)',
+      mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+    };
+  }
+  return {
+    schedule: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+    mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+  };
+};
+
+export const parseTimeSlot = (slotStr: string) => {
+  const regex = /(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i;
+  const match = slotStr.match(regex);
+  if (!match) return null;
+
+  const toMinutes = (hStr: string, mStr: string, period: string) => {
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10);
+    const isPM = period.toUpperCase() === 'PM';
+    if (isPM && h !== 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+    return h * 60 + m;
+  };
+
+  const startMin = toMinutes(match[1], match[2], match[3]);
+  const endMin = toMinutes(match[4], match[5], match[6]);
+  return { startMin, endMin };
+};
+
+export const parseDaysOfWeek = (slotStr: string): string[] => {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const found: string[] = [];
+  const s = slotStr.toLowerCase();
+  days.forEach((d) => {
+    if (s.includes(d.toLowerCase()) || s.includes(d.toLowerCase().slice(0, 3))) {
+      found.push(d);
+    }
+  });
+  return found;
+};
 
 export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
   isOpen,
@@ -128,6 +238,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
     if (initialProgramId && programs.length > 0) {
       const p = programs.find((prog) => prog.id === initialProgramId);
       if (p) {
+        const defaults = resolveProgramDefaultSchedule(p);
         setActiveConfigs((prev) => ({
           ...prev,
           [p.id]: {
@@ -142,14 +253,14 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
             certificationFee: 10000,
             discountPercentage: 0,
             status: 'OPEN',
-            schedule: schedule || 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
-            mode: mode || 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+            schedule: defaults.schedule,
+            mode: defaults.mode,
             location: location || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State',
           },
         }));
       }
     }
-  }, [initialProgramId, programs, schedule, mode, location]);
+  }, [initialProgramId, programs, location]);
 
   // Fetch learning centers and instructors for selectors
   useEffect(() => {
@@ -201,6 +312,7 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
       if (next[prog.id]) {
         delete next[prog.id];
       } else {
+        const defaults = resolveProgramDefaultSchedule(prog);
         next[prog.id] = {
           programId: prog.id,
           programName: prog.name,
@@ -213,14 +325,72 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
           certificationFee: 10000,
           discountPercentage: 0,
           status: 'OPEN',
-          schedule: schedule || 'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
-          mode: mode || 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          schedule: defaults.schedule,
+          mode: defaults.mode,
           location: location || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State',
         };
       }
       return next;
     });
   };
+
+  // Check instructor timetable conflicts & minimum 30-minute buffer rule (10:00 AM – 5:30 PM)
+  const instructorConflicts = useMemo(() => {
+    if (instructorIds.length === 0) return [];
+    const warnings: string[] = [];
+
+    // All active schedules to be assigned in this batch
+    const batchSchedules = Object.values(activeConfigs)
+      .map((c) => ({ progName: c.programName, schedule: c.schedule }))
+      .filter((s) => Boolean(s.schedule));
+
+    instructorIds.forEach((instId) => {
+      const inst = instructors.find((i: any) => i.id === instId || i.userId === instId);
+      if (!inst) return;
+      const instName = `${inst.firstName || ''} ${inst.lastName || ''}`.trim() || 'Instructor';
+
+      const existingCohorts = inst.instructorProfile?.cohortAssignments
+        ?.map((a: any) => a.cohort)
+        ?.filter((c: any) => c && c.status !== 'CLOSED' && c.status !== 'COMPLETED') || [];
+
+      // Check each batch schedule against instructor's existing cohorts
+      batchSchedules.forEach((bItem) => {
+        const bDays = parseDaysOfWeek(bItem.schedule);
+        const bSlot = parseTimeSlot(bItem.schedule);
+        if (!bSlot || bDays.length === 0) return;
+
+        existingCohorts.forEach((ex: any) => {
+          if (!ex.schedule) return;
+          const exDays = parseDaysOfWeek(ex.schedule);
+          const exSlot = parseTimeSlot(ex.schedule);
+          if (!exSlot) return;
+
+          const sharedDays = bDays.filter((d) => exDays.includes(d));
+          if (sharedDays.length > 0) {
+            // Check direct overlap
+            const overlaps = (bSlot.startMin < exSlot.endMin && exSlot.startMin < bSlot.endMin);
+            if (overlaps) {
+              warnings.push(
+                `${instName}: Schedule overlap on ${sharedDays.join(', ')} with active cohort "${ex.cohortCode || ex.name}" (${ex.schedule}). Conflicts with "${bItem.progName}".`
+              );
+            } else {
+              // Check 30-minute buffer
+              const gap = bSlot.startMin >= exSlot.endMin
+                ? bSlot.startMin - exSlot.endMin
+                : exSlot.startMin - bSlot.endMin;
+              if (gap < 30) {
+                warnings.push(
+                  `${instName}: Only ${gap} mins break between "${ex.cohortCode || ex.name}" and "${bItem.progName}" on ${sharedDays.join(', ')}. Minimum 30-minute buffer required.`
+                );
+              }
+            }
+          }
+        });
+      });
+    });
+
+    return Array.from(new Set(warnings));
+  }, [instructorIds, instructors, activeConfigs]);
 
   const updateConfig = (progId: string, field: keyof ProgramIntakeConfig, value: any) => {
     setActiveConfigs((prev) => {
@@ -645,6 +815,24 @@ export const CreateCohortModal: React.FC<CreateCohortModalProps> = ({
               )}
               {instructorIds.length > 0 && (
                 <p className="text-[10px] text-blue-600 font-semibold">{instructorIds.length} instructor(s) assigned to all cohorts in this batch.</p>
+              )}
+
+              {/* Instructor Schedule Conflict / 30-min Buffer Advisory */}
+              {instructorConflicts.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-amber-900">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Instructor Timetable Advisory & Minimum 30-Min Buffer Check</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-800">
+                    {instructorConflicts.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-amber-700 italic border-t border-amber-200/60 pt-1.5">
+                    Academy Policy: Instructors can take up to 2 classes daily between 10:00 AM – 5:30 PM with a mandatory 30-minute break between sessions.
+                  </p>
+                </div>
               )}
             </div>
           </div>

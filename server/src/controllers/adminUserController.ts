@@ -272,7 +272,23 @@ export const getInstructors = async (req: AuthRequest, res: Response): Promise<v
     const instructors = await prisma.user.findMany({
       where: { role: Role.INSTRUCTOR },
       include: {
-        instructorProfile: true,
+        instructorProfile: {
+          include: {
+            cohortAssignments: {
+              include: {
+                cohort: {
+                  select: {
+                    id: true,
+                    name: true,
+                    cohortCode: true,
+                    schedule: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

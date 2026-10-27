@@ -173,6 +173,110 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
       }))
     );
 
+    // Resolve pedagogical timetable blueprint (strictly conforming to 10:00 AM - 5:30 PM WAT)
+    const resolveTimetableBlueprint = (title: string, code: string) => {
+      const lower = `${title} ${code}`.toLowerCase();
+      if (lower.includes('kid') || (lower.includes('young') && !lower.includes('teen'))) {
+        return {
+          recommendedSchedule: 'Saturdays (10:00 AM – 1:00 PM WAT - Junior Discovery Lab)',
+          deliveryFormat: 'Onsite Kids Discovery Hub & Interactive Lab',
+          weeklySessions: 1,
+          sessionDurationHours: 3,
+          scheduleRationale: 'Saturday morning slot allows primary school pupils to learn without conflicting with regular weekday schooling.',
+        };
+      }
+      if (lower.includes('teen')) {
+        return {
+          recommendedSchedule: 'Saturdays (1:30 PM – 4:30 PM WAT - Teen Code Studio)',
+          deliveryFormat: 'Onsite Teen Studio & Interactive Lab',
+          weeklySessions: 1,
+          sessionDurationHours: 3,
+          scheduleRationale: 'Saturday afternoon slot provides a 30-minute lab reset after junior sessions, allowing secondary students to build real apps.',
+        };
+      }
+      if (lower.includes('educator') || lower.includes('teacher') || lower.includes('instructional')) {
+        return {
+          recommendedSchedule: 'Saturdays Only (10:30 AM – 4:00 PM WAT - Educator Masterclass)',
+          deliveryFormat: 'Hybrid (Onsite Executive Seminar & Interactive Stream)',
+          weeklySessions: 1,
+          sessionDurationHours: 5,
+          scheduleRationale: 'Single intensive Saturday masterclass (with 45-min lunch break) designed specifically for working school teachers and lecturers.',
+        };
+      }
+      if (lower.includes('solar') || lower.includes('clean energy') || lower.includes('energy') || lower.includes('install')) {
+        return {
+          recommendedSchedule: 'Mondays & Thursdays (10:00 AM – 1:30 PM WAT - Daylight PV Practicum)',
+          deliveryFormat: 'Onsite Technical Workshop & Field Practicum',
+          weeklySessions: 2,
+          sessionDurationHours: 3.5,
+          scheduleRationale: 'Strict morning daylight hours between 10:00 AM and 1:30 PM guarantee full solar irradiance for rooftop and inverter field testing.',
+        };
+      }
+      if (lower.includes('repair') || (lower.includes('system') && lower.includes('hardware')) || lower.includes('pc')) {
+        return {
+          recommendedSchedule: 'Tuesdays & Thursdays (10:00 AM – 1:30 PM WAT - Workbench Practicum)',
+          deliveryFormat: 'Onsite Technical Workshop & Repair Practicum',
+          weeklySessions: 2,
+          sessionDurationHours: 3.5,
+          scheduleRationale: 'Morning 3.5-hour workbench sessions provide ample time for ESD diagnostics, SMD rework, and schematic tracing.',
+        };
+      }
+      if (lower.includes('robot') || lower.includes('iot') || lower.includes('hardware') || lower.includes('embed')) {
+        return {
+          recommendedSchedule: 'Wednesdays (2:00 PM – 5:00 PM) & Saturdays (10:00 AM – 1:30 PM WAT - Lab Practicum)',
+          deliveryFormat: 'Onsite Laboratory Intensive & Interactive Practice',
+          weeklySessions: 2,
+          sessionDurationHours: 3,
+          scheduleRationale: 'Midweek lab sprint plus Saturday morning bench prototyping, strictly ending before 5:00 PM without evening risk.',
+        };
+      }
+      if (lower.includes('market') || lower.includes('growth') || lower.includes('seo')) {
+        return {
+          recommendedSchedule: 'Mondays & Wednesdays (2:30 PM – 5:00 PM WAT)',
+          deliveryFormat: 'Hybrid (Interactive Computer Lab & Live Campaigns)',
+          weeklySessions: 2,
+          sessionDurationHours: 2.5,
+          scheduleRationale: 'Afternoon 2.5-hour sessions allow marketing learners to analyze live ad metrics and build campaigns safely before 5:00 PM.',
+        };
+      }
+      if (lower.includes('design') || lower.includes('creative') || lower.includes('content') || lower.includes('media')) {
+        return {
+          recommendedSchedule: 'Tuesdays & Thursdays (10:30 AM – 1:00 PM WAT)',
+          deliveryFormat: 'Hybrid (Onsite Design Studio & Virtual Portfolio)',
+          weeklySessions: 2,
+          sessionDurationHours: 2.5,
+          scheduleRationale: 'Morning creative lab time provides dedicated rendering and feedback sprints, leaving instructors a lunch buffer before afternoon sessions.',
+        };
+      }
+      if (lower.includes('data') || lower.includes('analyt') || lower.includes('machine learning')) {
+        return {
+          recommendedSchedule: 'Tuesdays & Thursdays (2:00 PM – 5:00 PM WAT)',
+          deliveryFormat: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          weeklySessions: 2,
+          sessionDurationHours: 3,
+          scheduleRationale: 'Afternoon 3-hour sessions on Tue/Thu allow Python instructors to teach software on Mon/Wed with zero collision.',
+        };
+      }
+      if (lower.includes('python') && lower.includes('software')) {
+        return {
+          recommendedSchedule: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+          deliveryFormat: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          weeklySessions: 2,
+          sessionDurationHours: 3,
+          scheduleRationale: 'Afternoon 3-hour sessions on Mon/Wed strictly concluding by 5:00 PM with zero night classes.',
+        };
+      }
+      return {
+        recommendedSchedule: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+        deliveryFormat: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+        weeklySessions: 2,
+        sessionDurationHours: 3,
+        scheduleRationale: 'Daylight campus hours (10:00 AM – 5:00 PM) guarantee student safety, transit convenience, and a minimum 30-minute instructor buffer.',
+      };
+    };
+
+    const timetableBlueprint = resolveTimetableBlueprint(domainTitle, programCode || structured.code || '');
+
     const draft = {
       ...structured,
       name: domainTitle,
@@ -192,6 +296,11 @@ CRITICAL: Return ONLY a valid, raw JSON object strictly adhering to this structu
         ? structured.prerequisites
         : (typeof structured.prerequisites === 'string' ? [structured.prerequisites] : ['Basic computer literacy and logical thinking']),
       suggestedFeeNgn: 150000,
+      recommendedSchedule: timetableBlueprint.recommendedSchedule,
+      deliveryFormat: timetableBlueprint.deliveryFormat,
+      weeklySessions: timetableBlueprint.weeklySessions,
+      sessionDurationHours: timetableBlueprint.sessionDurationHours,
+      scheduleRationale: timetableBlueprint.scheduleRationale,
       courses: authoritativeCourses,
       modules: clientModules,
     };
@@ -781,49 +890,111 @@ export const optimizeSchedule = async (req: AuthRequest, res: Response): Promise
 
     const defaultLocation = hubLocation || 'STEMPACT Innovation Hub, 14 Fajuyi Road, Ile-Ife, Osun State';
 
-    // Algorithmic rule base for disciplines
+    // Algorithmic rule base for disciplines strictly conforming to 10:00 AM – 5:30 PM WAT & 30-min buffer rules
     const getDisciplineSchedule = (name: string, code: string, index: number) => {
       const lower = `${name} ${code}`.toLowerCase();
 
-      if (lower.includes('robot') || lower.includes('iot') || lower.includes('hardware') || lower.includes('embed')) {
+      // 1. Kids (Ages 7-12)
+      if (lower.includes('kid') || (lower.includes('young') && !lower.includes('teen'))) {
         return {
-          schedule: 'Wednesdays (3:30 PM – 6:30 PM) & Saturdays (10:00 AM – 2:00 PM WAT)',
-          mode: 'Onsite Laboratory Intensive & Interactive Practice',
-          rationale: 'Hardware & IoT require dedicated bench access and physical prototyping equipment on Saturdays with midweek debugging sprints.',
+          schedule: 'Saturdays (10:00 AM – 1:00 PM WAT - Junior Discovery Lab)',
+          mode: 'Onsite Kids Discovery Hub & Interactive Lab',
+          rationale: 'Saturday morning slot allows primary school pupils to explore STEM with zero conflict with regular school hours.',
         };
       }
+      // 2. Teens (Ages 13-17) - 30 min buffer after morning kids session
+      if (lower.includes('teen')) {
+        return {
+          schedule: 'Saturdays (1:30 PM – 4:30 PM WAT - Teen Code Studio)',
+          mode: 'Onsite Teen Studio & Interactive Lab',
+          rationale: 'Saturday afternoon slot provides a mandatory 30-minute room/instructor buffer after morning classes and completes safely by 4:30 PM.',
+        };
+      }
+      // 3. AI for Educators & Instructional Leadership
+      if (lower.includes('educator') || lower.includes('teacher') || lower.includes('instructional')) {
+        return {
+          schedule: 'Saturdays Only (10:30 AM – 4:00 PM WAT - Educator Masterclass)',
+          mode: 'Hybrid (Onsite Executive Seminar & Interactive Stream)',
+          rationale: 'Dedicated Saturday intensive with built-in 45-minute lunch break, tailored for working school teachers and lecturers.',
+        };
+      }
+      // 4. Solar & Renewable Clean Energy
       if (lower.includes('solar') || lower.includes('clean energy') || lower.includes('energy') || lower.includes('install')) {
         return {
-          schedule: 'Mondays & Thursdays (9:00 AM – 1:00 PM WAT Practical Field Work)',
+          schedule: 'Mondays & Thursdays (10:00 AM – 1:30 PM WAT - Daylight PV Practicum)',
           mode: 'Onsite Technical Workshop & Field Practicum',
-          rationale: 'Renewable energy systems require daylight hours for PV irradiance measurements, rooftop mounting, and inverter testing.',
+          rationale: 'Strict morning daylight hours between 10:00 AM and 1:30 PM guarantee full solar irradiance for rooftop and inverter field testing.',
         };
       }
-      if (lower.includes('kid') || lower.includes('teen') || lower.includes('young') || lower.includes('maker')) {
+      // 5. Computer Systems & Hardware Engineering / Repair
+      if (lower.includes('repair') || (lower.includes('system') && lower.includes('hardware')) || lower.includes('pc')) {
         return {
-          schedule: 'Saturdays (10:00 AM – 1:00 PM WAT Weekend STEM Discovery)',
-          mode: 'Onsite Kids Discovery Hub & Interactive Lab',
-          rationale: 'Designed for primary and secondary school learners with zero conflict with regular school hours.',
+          schedule: 'Tuesdays & Thursdays (10:00 AM – 1:30 PM WAT - Workbench Practicum)',
+          mode: 'Onsite Technical Workshop & Repair Practicum',
+          rationale: 'Morning 3.5-hour workbench sessions provide ample time for ESD diagnostics, SMD rework, and schematic tracing.',
         };
       }
-      if (lower.includes('startup') || lower.includes('venture') || lower.includes('freelance') || lower.includes('market')) {
+      // 6. Robotics, IoT & Embedded Systems
+      if (lower.includes('robot') || lower.includes('iot') || lower.includes('hardware') || lower.includes('embed')) {
         return {
-          schedule: 'Tuesdays & Thursdays (5:00 PM – 7:30 PM) & Bi-weekly Saturday Demo',
-          mode: 'Hybrid (Virtual Interactive Sprints + Onsite Venture Demo)',
-          rationale: 'Evening sessions accommodate young founders and remote professionals with weekend pitch and client sprints.',
+          schedule: 'Wednesdays (2:00 PM – 5:00 PM) & Saturdays (10:00 AM – 1:30 PM WAT - Lab Practicum)',
+          mode: 'Onsite Laboratory Intensive & Interactive Practice',
+          rationale: 'Midweek lab sprint plus Saturday morning bench prototyping, strictly ending before 5:00 PM without evening risk.',
         };
       }
-      // Software Engineering, Data Science, AI, Cloud
+      // 7. AI for Digital Marketing
+      if (lower.includes('market') || lower.includes('growth') || lower.includes('seo')) {
+        return {
+          schedule: 'Mondays & Wednesdays (2:30 PM – 5:00 PM WAT)',
+          mode: 'Hybrid (Interactive Computer Lab & Live Campaigns)',
+          rationale: 'Afternoon 2.5-hour sessions allow marketing learners to analyze live ad metrics and build campaigns safely before 5:00 PM.',
+        };
+      }
+      // 8. AI Digital Design & Content Creation
+      if (lower.includes('design') || lower.includes('creative') || lower.includes('content') || lower.includes('media')) {
+        return {
+          schedule: 'Tuesdays & Thursdays (10:30 AM – 1:00 PM WAT)',
+          mode: 'Hybrid (Onsite Design Studio & Virtual Portfolio)',
+          rationale: 'Morning creative lab time provides dedicated rendering and feedback sprints, leaving instructors a lunch buffer before afternoon sessions.',
+        };
+      }
+      // 9. Startup Lab / Venture / Incubator
+      if (lower.includes('startup') || lower.includes('venture') || (lower.includes('lab') && lower.includes('incubator'))) {
+        return {
+          schedule: 'Fridays (2:00 PM – 5:00 PM WAT - Venture Standup & Founder Sprints)',
+          mode: 'Hybrid Venture Studio',
+          rationale: 'Friday afternoon venture studio ensures founders present sprint deliverables and receive venture mentorship.',
+        };
+      }
+      // 10. Python Software vs Python Data tracks (staggered to allow 1 instructor to teach both without clash)
+      if (lower.includes('data') || lower.includes('analyt') || lower.includes('machine learning')) {
+        return {
+          schedule: 'Tuesdays & Thursdays (2:00 PM – 5:00 PM WAT)',
+          mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          rationale: 'Afternoon 3-hour sessions on Tue/Thu allow Python instructors to teach software on Mon/Wed with zero collision.',
+        };
+      }
+      if (lower.includes('python') && lower.includes('software')) {
+        return {
+          schedule: 'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+          mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
+          rationale: 'Afternoon 3-hour sessions on Mon/Wed strictly concluding by 5:00 PM with zero night classes.',
+        };
+      }
+
+      // Default Software / Web / Cloud staggered slots (all 10:00 AM – 5:00 PM WAT)
       const slotVariations = [
-        'Mondays, Wednesdays, Fridays (4:00 PM – 7:00 PM WAT)',
-        'Tuesdays, Thursdays (4:00 PM – 7:00 PM) & Saturdays (10:00 AM – 1:00 PM WAT)',
-        'Mondays, Thursdays (5:00 PM – 8:00 PM) & Saturdays (1:00 PM – 4:00 PM WAT)',
+        'Mondays & Wednesdays (10:30 AM – 1:30 PM WAT)',
+        'Mondays & Wednesdays (2:00 PM – 5:00 PM WAT)',
+        'Tuesdays & Thursdays (10:30 AM – 1:30 PM WAT)',
+        'Tuesdays & Thursdays (2:00 PM – 5:00 PM WAT)',
+        'Mondays, Wednesdays, Fridays (2:30 PM – 5:00 PM WAT)',
       ];
       const selectedSlot = slotVariations[index % slotVariations.length];
       return {
         schedule: selectedSlot,
         mode: 'Hybrid (Onsite Ile-Ife Hub & Virtual Interactive)',
-        rationale: 'Spaced repetition across 3 weekly touchpoints ensures high code retention and prevents cognitive overload.',
+        rationale: 'Daylight campus hours (10:00 AM – 5:00 PM) guarantee student safety, transit convenience, and a minimum 30-minute instructor buffer.',
       };
     };
 
@@ -858,11 +1029,15 @@ ${JSON.stringify(programs, null, 2)}
 Location: ${defaultLocation}
 Timing Preference: ${preferredTiming}
 
-Rules:
-1. Software & AI programs thrive on 3-day hybrid evening formats (4-7pm WAT) so polytechnic/university students have zero class conflict.
-2. Hardware, Robotics & Electronics require Saturday morning physical bench lab sessions (10am-2pm).
-3. Solar & Clean Energy requires morning/daylight hours for solar field workshops.
-4. Teen & Junior programs must be strictly Saturdays.
+STRICT ACADEMY TIMETABLE & SAFETY CONSTRAINTS:
+1. ALL physical and default instructor-led classes MUST fall strictly between 10:00 AM and 5:30 PM maximum (WAT). Late night classes are strictly prohibited for student transit safety and facility hours.
+2. Each session duration must be at least 2 hours (typically 2 to 3.5 hours per session; or single-day Saturday educator masterclasses up to 5 hours with a 45-minute lunch break).
+3. If an instructor teaches multiple classes, there MUST be at least a 30-minute break between sessions. Instructors can teach at most two classes daily.
+4. Solar & Clean Energy requires morning daylight hours (10:00 AM – 1:30 PM) for PV field testing.
+5. Hardware & Robotics require dedicated bench access (Wed 2:00–5:00 PM & Sat 10:00 AM–1:30 PM).
+6. Kids & Teens must be strictly Saturdays (Kids 10:00 AM – 1:00 PM; Teens 1:30 PM – 4:30 PM with 30-min buffer between them).
+7. Teachers & Educators must be Saturday-only masterclasses (10:30 AM – 4:00 PM).
+8. Python Software Development (Mon/Wed 2:00–5:00 PM) and Python Data Analytics (Tue/Thu 2:00–5:00 PM) must be staggered so 1 instructor can teach both without collision.
 
 Return a JSON object containing a "schedules" array of objects with keys: "programId", "programName", "schedule", "mode", "location", "rationale".`;
 
