@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   FileText,
   User,
+  Users,
   BookOpen,
   Send,
   AlertCircle,
@@ -469,12 +470,30 @@ export const ApplicationWizardPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                        {selectedCohortData.name}
-                      </h3>
-                      <p className="text-xs font-bold text-blue-900">
-                        Track: {selectedCohortData.program?.name || currentProgram?.name}
-                      </p>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-md border border-blue-200">
+                          Target Academic Track
+                        </span>
+                        <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                          {selectedCohortData.program?.name || currentProgram?.name || 'Academic Specialization'}
+                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold shadow-2xs">
+                            <Users className="w-3.5 h-3.5 text-blue-400" />
+                            Intake Cohort: {selectedCohortData.name}
+                          </span>
+                          {selectedCohortData.cohortCode && (
+                            <span className="text-[11px] font-mono text-slate-600 font-bold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                              Code: {selectedCohortData.cohortCode}
+                            </span>
+                          )}
+                          {selectedCohortData.level && (
+                            <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                              {selectedCohortData.level}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <button
@@ -532,19 +551,42 @@ export const ApplicationWizardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-blue-200/40 text-xs text-slate-600">
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-blue-200/40 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-700">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium">
                         Intake status: <strong className="text-emerald-700">Open for Enrollment</strong>
                       </span>
                     </div>
 
-                    {selectedCohortData.trainingFee !== undefined && Number(selectedCohortData.trainingFee) > 0 && (
-                      <span className="font-bold text-slate-900">
-                        Tuition Fee: ₦{Number(selectedCohortData.trainingFee).toLocaleString()}
-                      </span>
-                    )}
+                    {(() => {
+                      const tFee = Number(selectedCohortData.trainingFee || 0);
+                      const rFee = Number(selectedCohortData.registrationFee || 0);
+                      const cFee = Number(selectedCohortData.certificationFee || 0);
+                      const totalFee = tFee + rFee + cFee;
+
+                      if (totalFee <= 0) return null;
+
+                      return (
+                        <div className="p-2.5 sm:p-3 rounded-xl bg-white border border-blue-200 text-right space-y-1 sm:max-w-xs shadow-2xs">
+                          <div className="flex items-center justify-between sm:justify-end gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                              Total Program Fee:
+                            </span>
+                            <span className="text-sm sm:text-base font-black text-blue-900 font-mono">
+                              ₦{totalFee.toLocaleString()}
+                            </span>
+                          </div>
+                          {(rFee > 0 || cFee > 0) && (
+                            <div className="text-[10px] text-slate-500">
+                              Tuition ₦{tFee.toLocaleString()}
+                              {rFee > 0 && ` · Reg ₦${rFee.toLocaleString()}`}
+                              {cFee > 0 && ` · Cert ₦${cFee.toLocaleString()}`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1420,14 +1462,25 @@ export const ApplicationWizardPage: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Tuition Note */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-medium">Standard Tuition:</span>
-                    <strong className="text-slate-900 font-black">
-                      {selectedCohortData?.trainingFee
-                        ? `₦${Number(selectedCohortData.trainingFee).toLocaleString()}`
-                        : '₦65,000'}
-                    </strong>
+                  {/* Tuition & Investment Note */}
+                  <div className="pt-3 border-t border-slate-100 space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 font-semibold">Total Program Fee:</span>
+                      <strong className="text-blue-900 font-black text-sm">
+                        ₦{(
+                          Number(selectedCohortData?.trainingFee || 0) +
+                          Number(selectedCohortData?.registrationFee || 0) +
+                          Number(selectedCohortData?.certificationFee || 0) || 65000
+                        ).toLocaleString()}
+                      </strong>
+                    </div>
+                    {selectedCohortData && (Number(selectedCohortData.registrationFee || 0) > 0 || Number(selectedCohortData.certificationFee || 0) > 0) && (
+                      <p className="text-[10px] text-slate-400 text-right">
+                        Tuition ₦{Number(selectedCohortData.trainingFee || 0).toLocaleString()}
+                        {Number(selectedCohortData.registrationFee || 0) > 0 && ` + Reg ₦${Number(selectedCohortData.registrationFee).toLocaleString()}`}
+                        {Number(selectedCohortData.certificationFee || 0) > 0 && ` + Cert ₦${Number(selectedCohortData.certificationFee).toLocaleString()}`}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (

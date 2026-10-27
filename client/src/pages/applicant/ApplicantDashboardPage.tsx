@@ -35,6 +35,8 @@ import {
   Coins,
   Copy,
   Rocket,
+  Layers,
+  Users,
 } from 'lucide-react';
 import { isInnovationLabSchool, isInnovationLabProgram } from '../../utils/schoolClassifier';
 
@@ -443,6 +445,18 @@ export const ApplicantDashboardPage: React.FC = () => {
 
   const isReassessmentRequired = placement?.status === 'RETURNED_FOR_REASSESSMENT';
 
+  const isFinanciallyCleared = Boolean(
+    clearanceData?.isCleared ||
+    clearanceData?.cleared ||
+    clearanceData?.status === 'CLEARED' ||
+    clearanceData?.status === 'WAIVED' ||
+    admission?.status === 'FINANCIALLY_CLEARED' ||
+    admission?.status === 'ENROLLED' ||
+    (invoice && Number(invoice.balance || 0) <= 0 && Number(invoice.totalAmount || 0) > 0)
+  );
+
+  const isEnrolled = admission?.status === 'ENROLLED' || user?.role === 'STUDENT';
+
   const stages = [
     { key: 'APPLICATION', title: 'Application', desc: 'Application profile submitted', done: true },
     {
@@ -470,17 +484,20 @@ export const ApplicantDashboardPage: React.FC = () => {
     {
       key: 'FINANCIAL_CLEARANCE',
       title: 'Financial Clearance',
-      desc: 'Tuition clearance verified',
-      done: Boolean(
-        clearanceData?.isCleared ||
-        clearanceData?.cleared ||
-        clearanceData?.status === 'CLEARED' ||
-        clearanceData?.status === 'WAIVED' ||
-        admission?.status === 'FINANCIALLY_CLEARED' ||
-        admission?.status === 'ENROLLED'
-      ),
+      desc: isFinanciallyCleared ? 'Tuition clearance verified' : 'Tuition payment required',
+      done: isFinanciallyCleared,
     },
-    { key: 'ENROLLMENT', title: 'Enrollment', desc: 'Official letter delivered & enrolled', done: admission?.status === 'ENROLLED' || user?.role === 'STUDENT' },
+    {
+      key: 'ENROLLMENT',
+      title: 'Enrollment',
+      desc: isEnrolled
+        ? 'Official letter delivered & matriculated'
+        : isFinanciallyCleared
+        ? 'Cleared — Ready to Finalize'
+        : 'Pending tuition clearance',
+      done: isEnrolled,
+      active: isFinanciallyCleared && !isEnrolled,
+    },
   ];
 
   return (
@@ -748,6 +765,172 @@ export const ApplicantDashboardPage: React.FC = () => {
               </div>
             )}
 
+            {/* ACTION BANNER: FINANCIAL CLEARANCE COMPLETE -> ENROLLMENT READY */}
+            {isFinanciallyCleared && !isEnrolled && (
+              <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-4 border border-emerald-500">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                      <span>Stage 05 Completed • Financial Clearance Verified</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+                      You Are Cleared for Official Cohort Enrollment!
+                    </h3>
+                    <p className="text-xs sm:text-sm text-emerald-100 max-w-2xl leading-relaxed">
+                      Your tuition payment has been verified and your seat is reserved. Click below to complete official matriculation, generate your official Student ID & Admission Letter, and activate your Student Learning Cockpit.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={enrolling}
+                    onClick={handleFinalizeEnrollment}
+                    className="px-6 py-4 bg-white hover:bg-emerald-50 text-emerald-950 rounded-2xl text-xs sm:text-sm font-black shadow-lg transition-all flex items-center justify-center gap-2.5 shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <span>{enrolling ? 'Finalizing Enrollment...' : 'Finalize Enrollment & Enter Student Portal 🚀'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ACADEMIC COMMENCEMENT & ORIENTATION HUB (POST-ENROLLMENT) */}
+            {isEnrolled && (() => {
+              const cohortStartDate = admission?.cohort?.startDate || app?.cohortStartDate;
+              let daysUntilStart: number | null = null;
+              let isFuture = false;
+              if (cohortStartDate) {
+                const diffTime = new Date(cohortStartDate).getTime() - Date.now();
+                daysUntilStart = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                isFuture = daysUntilStart > 0;
+              }
+
+              return (
+                <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl space-y-6 border border-indigo-500/40">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Officially Enrolled • Student Matriculation Confirmed</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black">
+                        Welcome to {admission?.cohort?.name || app?.cohortName || 'STEMPACT Academy'}!
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+                        Your admission is official. You can access your learning cockpit now to explore the curriculum syllabus, timetable, and prep guides before classes commence.
+                      </p>
+                    </div>
+
+                    <Link
+                      to="/portal/student"
+                      className="px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl text-xs sm:text-sm font-black shadow-lg transition flex items-center justify-center gap-2 shrink-0 text-center"
+                    >
+                      <Rocket className="w-4 h-4" />
+                      <span>Enter Student Learning Cockpit 🚀</span>
+                    </Link>
+                  </div>
+
+                  {/* Countdown & Cohort Commencement Status */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                        Academic Commencement
+                      </span>
+                      <div className="text-base font-extrabold text-white flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-blue-400" />
+                        <span>
+                          {cohortStartDate
+                            ? new Date(cohortStartDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                            : 'Scheduled by Faculty'}
+                        </span>
+                      </div>
+                      {daysUntilStart !== null && (
+                        <p className={`text-xs font-bold ${isFuture ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {isFuture ? `⏳ Classes commence in ${daysUntilStart} day${daysUntilStart === 1 ? '' : 's'}` : '🎉 Cohort is actively in session!'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                        Assigned Matriculation ID
+                      </span>
+                      <div className="text-base font-mono font-black text-emerald-400">
+                        {admission?.admissionNumber || 'STP/2026/ENR'}
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Official student reference number on all transcripts & credentials.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                        Learning Mode & Venue
+                      </span>
+                      <div className="text-base font-bold text-white flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-rose-400" />
+                        <span>{admission?.cohort?.mode || app?.preferredSchedule || 'Hybrid / Virtual'}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        {admission?.cohort?.schedule || 'Live interactive virtual + LMS portal'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pre-Commencement Checklist & Quick Links */}
+                  <div className="pt-2 border-t border-white/10">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                      Pre-Commencement Onboarding Checklist
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                      <button
+                        type="button"
+                        onClick={handleViewDocument}
+                        className="p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition flex items-center gap-3 cursor-pointer"
+                      >
+                        <FileText className="w-5 h-5 text-blue-400 shrink-0" />
+                        <div>
+                          <strong className="block text-white">Official Letter</strong>
+                          <span className="text-[10px] text-slate-300">Download signed admission doc</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('tuition')}
+                        className="p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-left transition flex items-center gap-3 cursor-pointer"
+                      >
+                        <CreditCard className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <div>
+                          <strong className="block text-white">Tuition Receipt</strong>
+                          <span className="text-[10px] text-slate-300">Download financial clearance receipt</span>
+                        </div>
+                      </button>
+
+                      <div className="p-3 rounded-xl bg-white/10 border border-white/10 text-left flex items-center gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-purple-400 shrink-0" />
+                        <div>
+                          <strong className="block text-white">Device Setup</strong>
+                          <span className="text-[10px] text-slate-300">Min 8GB RAM, VS Code ready</span>
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/portal/student"
+                        className="p-3 rounded-xl bg-blue-600/30 hover:bg-blue-600/40 border border-blue-400/30 text-left transition flex items-center gap-3"
+                      >
+                        <Layers className="w-5 h-5 text-blue-300 shrink-0" />
+                        <div>
+                          <strong className="block text-white">Curriculum Syllabus</strong>
+                          <span className="text-[10px] text-blue-200">Preview lessons in Cockpit</span>
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -808,10 +991,18 @@ export const ApplicantDashboardPage: React.FC = () => {
               </h3>
               <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-xs space-y-2">
                 <div className="font-extrabold text-blue-950">
-                  {dashboardData?.nextAction || 'Review Application Details'}
+                  {isEnrolled
+                    ? 'Access Student Learning Cockpit'
+                    : isFinanciallyCleared
+                    ? 'Finalize Cohort Matriculation & Activate Student Portal'
+                    : dashboardData?.nextAction || 'Review Application Details'}
                 </div>
                 <p className="text-blue-900 text-[11px] leading-relaxed">
-                  Follow the steps in the tabs above to advance your candidacy.
+                  {isEnrolled
+                    ? 'You are an active enrolled student. Enter your dashboard to preview classes and syllabus.'
+                    : isFinanciallyCleared
+                    ? 'Tuition payment verified. Click below to claim your official Student ID and matriculate.'
+                    : 'Follow the steps in the tabs above to advance your candidacy.'}
                 </p>
               </div>
 
@@ -844,13 +1035,35 @@ export const ApplicantDashboardPage: React.FC = () => {
                 </Link>
               )}
 
-              {admission && admission.status !== 'ENROLLED' && (
+              {isFinanciallyCleared && admission && !isEnrolled && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab('admission')}
+                  disabled={enrolling}
+                  onClick={handleFinalizeEnrollment}
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-300" />
+                  <span>{enrolling ? 'Finalizing Enrollment...' : 'Finalize Enrollment & Enter Student Portal 🚀'}</span>
+                </button>
+              )}
+
+              {isEnrolled && (
+                <Link
+                  to="/portal/student"
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 text-center"
+                >
+                  <Rocket className="w-4 h-4" />
+                  <span>Open Student Learning Cockpit 🚀</span>
+                </Link>
+              )}
+
+              {!isFinanciallyCleared && admission && !isEnrolled && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(admission.status === 'ACCEPTED' ? 'tuition' : 'admission')}
                   className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Review Provisional Offer</span>
+                  <span>{admission.status === 'ACCEPTED' ? 'Proceed to Tuition Clearance' : 'Review Provisional Offer'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}

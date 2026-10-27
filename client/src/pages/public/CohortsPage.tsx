@@ -355,6 +355,12 @@ export const CohortsPage: React.FC = () => {
                         <span>Official Credential Fee:</span>
                         <span>₦{cohort.certificationFee.toLocaleString()}</span>
                       </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-xs font-bold text-slate-900">
+                        <span>Total Program Fee:</span>
+                        <span className="text-blue-900 text-sm font-black">
+                          ₦{(discountedFee + cohort.registrationFee + cohort.certificationFee).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Deadline Notice */}

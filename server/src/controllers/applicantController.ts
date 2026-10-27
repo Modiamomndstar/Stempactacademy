@@ -79,10 +79,16 @@ export const getApplicantDashboard = async (req: AuthRequest, res: Response): Pr
 
     if (admission && admission.status === 'ENROLLED') {
       currentStage = 'ENROLLED';
-      nextAction = 'Access Student Portal';
+      nextAction = 'Access Student Learning Cockpit';
+    } else if (admission && (admission.status === 'FINANCIALLY_CLEARED' || (invoice && (Number(invoice.balance || 0) <= 0 || invoice.status === 'PAID')))) {
+      currentStage = 'FINANCIALLY_CLEARED';
+      nextAction = 'Finalize Cohort Enrollment (Financial Clearance Approved)';
+    } else if (admission && admission.status === 'ACCEPTED') {
+      currentStage = 'ADMISSION_OFFER_ACCEPTED';
+      nextAction = 'Complete Financial Clearance & Tuition Payment';
     } else if (admission) {
       currentStage = 'ADMITTED';
-      nextAction = 'Pay Tuition Deposit to Confirm Seat';
+      nextAction = 'Review & Accept Provisional Admission Offer';
     } else if (placement && placement.status === 'APPROVED') {
       currentStage = 'PLACEMENT_APPROVED';
       nextAction = 'Awaiting Admission Letter Generation';
